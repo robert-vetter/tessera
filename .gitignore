@@ -13,6 +13,9 @@ __pycache__/
 node_modules/
 dist/
 
+# MkDocs build output
+site/
+
 # Secrets / env
 .env
 .env.*

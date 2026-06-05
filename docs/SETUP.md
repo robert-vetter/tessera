@@ -72,6 +72,10 @@ Drive Claude Code to produce these as separate, verified commits. Each is a `/sp
 - **CI** — a `.github/workflows/` pipeline that runs format → lint → type-check → tests → (later) eval, on every PR. **Once this exists, go back to A3 and require it in branch protection.**
 - **Reproducibility** — a `Dockerfile` and devcontainer so the project runs identically anywhere.
 - **Docs site** — MkDocs Material config that publishes `docs/` to GitHub Pages.
+  After this lands, enable it once in **Settings → Pages → Build and deployment
+  → Source: GitHub Actions**; the `docs.yml` workflow then deploys on every push
+  to `main`. (Until Pages is enabled, the deploy job fails harmlessly — it is not
+  the required `gate` check, so it never blocks a PR.)
 - **Housekeeping** — `CHANGELOG`, issue/PR templates, README badges (CI, coverage, and the eval/faithfulness badge once the harness exists).
 
 ### B3. Prove the skeleton end-to-end
