@@ -102,6 +102,20 @@ ingestion path and the provenance — the two non-negotiables, **provenance is
 mandatory** and **the system can decline**, which the evaluation harness will
 then measure.
 
+### The eval harness
+
+Trust is measured, so the eval is runnable from the start:
+
+```bash
+uv run tessera-eval
+# Reports faithfulness / coverage / quality. Today: "no gold set evaluated yet"
+# (0 gold cases) — the harness is honest rather than printing a fake number.
+```
+
+The curated gold set and the metric computation arrive in a later unit; the
+scaffold exists now so every change runs the eval (`/verify` step 5) and it never
+bitrots. The gold set lives in [`eval/gold/`](eval/gold/).
+
 ### Data
 
 The structured source lives under [`data/salt_synthetic/`](data/salt_synthetic/)
