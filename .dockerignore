@@ -1,0 +1,14 @@
+# Keep the Docker build context small and reproducible: exclude local envs,
+# caches, and VCS metadata. Dependencies come from uv.lock, not the host .venv.
+.venv/
+.git/
+.github/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.cache/
+node_modules/
+*.egg-info/
+.DS_Store

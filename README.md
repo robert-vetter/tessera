@@ -59,6 +59,19 @@ Run the quality gate at any time with `uv run pre-commit run --all-files`
 (format, lint, secret scan, hygiene). The fuller gate — types and tests —
 runs via `uv run mypy src tests` and `uv run pytest`.
 
+### No toolchain? Use the container
+
+A `Dockerfile` and a [devcontainer](.devcontainer/devcontainer.json) provide a
+clean, pinned environment with no host setup beyond Docker:
+
+```bash
+docker build -t tessera-dev .          # build the pinned image
+docker run --rm tessera-dev pytest     # run the test suite inside it
+```
+
+Or open the folder in VS Code / GitHub Codespaces and "Reopen in Container" —
+the environment builds and syncs automatically.
+
 ## Repository map
 
 | File | What's in it |
