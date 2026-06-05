@@ -82,29 +82,34 @@ the environment builds and syncs automatically.
 
 ### Try the demo
 
-A deterministic slice proves the end-to-end shape — *question → evidence →
-grounded answer with provenance → render*. As of Phase 1 the evidence is no
-longer hardcoded: it is **ingested** from a structured dataset, and every claim
-traces back to the specific source rows behind it.
+A deterministic slice proves the end-to-end shape — *question → retrieve evidence
+→ grounded answer with provenance → render*. The evidence is **ingested** from a
+structured dataset and a document corpus; a lexical retriever selects the records
+relevant to a question, and every surfaced claim traces back to the specific
+source behind it.
 
 ```bash
 uv run tessera
-# Answers a built-in question about a customer's sales orders; every claim shows
-# the ingested source rows (file + table + row) behind it.
+# Surfaces the records relevant to a customer-orders question — each traced to its
+# ingested source row (file + table + row).
 
-uv run tessera "When does Müller Logistik's service agreement renew?"
-# Answered from an ingested *document*; the claim traces to a specific clause
-# (file + line range + chunk) — the unstructured path, same provenance.
+uv run tessera "What are the renewal and termination terms of the service agreement?"
+# Retrieves a *document* clause; the claim traces to a specific span (file + lines).
 
-uv run tessera "Who is Acme's CEO?"
-# No supporting evidence → a principled refusal, not a guess.
+uv run tessera "What colour is the sky?"
+# No evidence shares its terms → a principled refusal, not a guess.
 ```
 
-There is still no model in this slice: question→claim matching is deliberate and
-deterministic (real retrieval arrives in a later phase). What is real is the
-ingestion path and the provenance — the two non-negotiables, **provenance is
-mandatory** and **the system can decline**, which the evaluation harness will
-then measure.
+**What the answer is — and isn't.** This slice *retrieves and sources evidence*: it
+surfaces the records that match your question, each with provenance. It does
+**not** yet synthesize prose or compute aggregates — it shows the relevant sales
+rows, not a single "combined value is EUR X"; that synthesis is multi-step
+reasoning, a later phase. Surfacing evidence rather than a polished sentence is
+the *honest* state of the slice, not a regression. There is no model: retrieval is
+lexical, deterministic, and offline
+([ADR 0003](docs/adr/0003-lexical-first-retrieval.md)). What is already real is the
+ingestion, the retrieval, the provenance, and the principled refusal — exactly
+what the evaluation harness will measure.
 
 ### The eval harness
 

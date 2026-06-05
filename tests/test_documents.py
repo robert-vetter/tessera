@@ -12,9 +12,9 @@ from __future__ import annotations
 import csv
 import re
 
-from tessera.grounding import answer
 from tessera.ingestion import Ingester
 from tessera.knowledge import DEMO_KB
+from tessera.retrieval import answer
 from tessera.sources.documents import DATA_DIR, DocumentSource
 from tessera.sources.salt import DATA_DIR as SALT_DIR
 
@@ -112,9 +112,14 @@ def test_documents_add_information_tables_lack() -> None:
 
 
 def test_document_grounded_answer_traces_to_doc_span() -> None:
-    result = answer("When does Müller Logistik's service agreement renew?", DEMO_KB)
+    """A question about the agreement's terms retrieves the document clause, with
+    provenance to a specific doc span (file + line range)."""
+    result = answer(
+        "What are the renewal and termination terms of the service agreement?",
+        DEMO_KB,
+    )
     assert result.is_grounded
     support = [rec for claim in result.claims for rec in claim.support]
-    assert support
-    assert all(rec.origin.locator.kind == "doc-span" for rec in support)
-    assert any(rec.origin.source.endswith("mueller_logistik_msa.md") for rec in support)
+    clause = next(rec for rec in support if "auto-renews" in rec.text)
+    assert clause.origin.source.endswith("mueller_logistik_msa.md")
+    assert clause.origin.locator.kind == "doc-span"

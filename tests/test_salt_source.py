@@ -7,7 +7,8 @@ from __future__ import annotations
 import re
 
 from tessera.ingestion import read_csv_rows
-from tessera.knowledge import DEMO_KB, DEMO_QUESTION, build_demo_kb
+from tessera.knowledge import DEMO_KB, DEMO_QUESTION
+from tessera.retrieval import answer
 from tessera.sources.salt import DATA_DIR
 
 
@@ -67,35 +68,19 @@ def test_entity_resolution_difficulty_is_present() -> None:
 
 
 def test_demo_answer_traces_to_ingested_salt_rows() -> None:
-    """The structured (sales) claims are backed by ingested SALT-shaped records,
-    and the reported figures actually appear in the cited evidence."""
-    kb = build_demo_kb()
-    assert kb.facts  # the demo question is wired to at least one fact
+    """A question about the spotlight customer's orders retrieves ingested SALT
+    rows, each carrying provenance back to its source row."""
+    result = answer("What are Müller Logistik's sales orders?", DEMO_KB)
+    assert result.is_grounded
 
-    # The structured (sales) claims are backed only by ingested SALT-shaped rows.
-    # (The demo also has a document-grounded claim — covered in test_documents.py.)
-    combined = next(f for f in kb.facts if "combined net value" in f.claim.text)
-    assert all(
-        r.origin.source.startswith("salt_synthetic/") for r in combined.claim.support
-    )
-
-    # The combined-value claim's figure is the sum of the figures in its evidence.
-    order_texts = " ".join(r.text for r in combined.claim.support)
-    assert "20,000.00" in order_texts
-    assert "25,000.00" in order_texts
-    assert "45,000.00" in combined.claim.text  # 20,000 + 25,000
-
-    # The spotlight customer name is genuinely in the ingested SALT evidence.
-    orders = next(f for f in kb.facts if "two sales" in f.claim.text)
-    assert all(
-        r.origin.source.startswith("salt_synthetic/") for r in orders.claim.support
-    )
-    assert any("Müller Logistik GmbH" in r.text for r in orders.claim.support)
+    support = [rec for claim in result.claims for rec in claim.support]
+    salt = [rec for rec in support if rec.origin.source.startswith("salt_synthetic/")]
+    assert salt  # structured rows were surfaced
+    assert any("Müller Logistik GmbH" in rec.text for rec in salt)
+    assert all(rec.origin.locator.kind == "table-row" for rec in salt)
 
 
 def test_demo_kb_question_is_answerable() -> None:
-    from tessera.grounding import answer
-
     result = answer(DEMO_QUESTION, DEMO_KB)
     assert result.is_grounded
     assert result.claims
