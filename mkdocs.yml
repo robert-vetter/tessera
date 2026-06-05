@@ -1,0 +1,57 @@
+# MkDocs Material configuration for the Tessera docs site.
+# Build:  uv run --group docs mkdocs build      (strict — see `strict` below)
+# Serve:  uv run --group docs mkdocs serve
+# Published to GitHub Pages by .github/workflows/docs.yml on push to main.
+
+site_name: Tessera
+site_description: A trust layer for enterprise AI agents — grounded answers with claim-level provenance and measured faithfulness.
+repo_url: https://github.com/robert-vetter/tessera
+repo_name: robert-vetter/tessera
+
+# Treat build warnings (broken links, pages missing from nav) as errors, so the
+# docs site can never quietly rot.
+strict: true
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Project Brief: PROJECT_BRIEF.md
+  - Capabilities: CAPABILITIES.md
+  - Roadmap: ROADMAP.md
+  - SAP Alignment: SAP_ALIGNMENT.md
+  - Engineering: ENGINEERING.md
+  - Setup: SETUP.md
+  - Status: STATUS.md
+  - Architecture Decisions:
+      - Overview: adr/README.md
+      - 0001 Record architecture decisions: adr/0001-record-architecture-decisions.md
+
+# The ADR template is intentionally not a published page.
+not_in_nav: |
+  adr/0000-template.md
