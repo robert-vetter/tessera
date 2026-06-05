@@ -1,0 +1,55 @@
+# Tessera — Python project configuration.
+# Managed by uv. The toolchain (ruff, mypy, pytest) is configured here so that
+# the /verify gate and CI run the exact same checks from one source of truth.
+
+[project]
+name = "tessera"
+version = "0.0.0"
+description = "A trust layer for enterprise AI agents — grounded answers with claim-level provenance and measured faithfulness."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tessera"]
+
+# Dev tooling (PEP 735 dependency group). Installed via `uv sync`.
+[dependency-groups]
+dev = [
+    "ruff>=0.10",
+    "mypy>=1.15",
+    "pytest>=8.0",
+]
+
+# --- Ruff: linting + formatting in one tool ---------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# A sensible, non-noisy default set. Expand deliberately, not for its own sake.
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort (import ordering)
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+
+# --- mypy: strict static typing ---------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+
+# --- pytest -----------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
