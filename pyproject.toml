@@ -26,6 +26,11 @@ dev = [
     "pytest>=8.0",
     "pre-commit>=4.0",
 ]
+# Docs site toolchain. Not installed by default; CI and local docs builds opt in
+# with `uv sync --group docs` / `uv run --group docs mkdocs ...`.
+docs = [
+    "mkdocs-material>=9.5",
+]
 
 # --- Ruff: linting + formatting in one tool ---------------------------------
 [tool.ruff]
