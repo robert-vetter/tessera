@@ -1,0 +1,33 @@
+# Pre-commit hooks for Tessera — the local half of the "nothing unverified"
+# guarantee (CI is the remote half). Fast, every-commit gates only: format,
+# lint, secret scan, and basic file hygiene. Slower checks (mypy, pytest) live
+# in /verify and CI, not here.
+#
+# One-time local setup:  uv run pre-commit install
+# Run on demand:         uv run pre-commit run --all-files
+#
+# Revisions are pinned for reproducibility. ruff-pre-commit is kept in lockstep
+# with the ruff version in uv.lock so local, pre-commit, and CI never disagree.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff # lint (reads pyproject.toml — no rule duplication)
+        args: [--fix]
+      - id: ruff-format # format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks # secret scan (no baseline file)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-merge-conflict
