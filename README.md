@@ -45,6 +45,20 @@ Grounded RAG exists. Knowledge graphs exist. Entity resolution exists. What is r
 
 Designed to run on SAP's own AI infrastructure rather than around it — SAP AI Core and the Generative AI Hub for model orchestration, SAP HANA Cloud for the graph and vector layer, and a Joule-style conversational surface. Beyond answering, Tessera supports **grounded agentic workflows** and speaks **MCP** (consuming external tools and exposing its own grounded-query capability), in line with SAP's 2026 move toward agentic AI, Joule Studio, and Agent-to-Agent interoperability. Details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
+## Development setup
+
+The project uses [uv](https://docs.astral.sh/uv/) for Python environment and
+dependency management. From a fresh clone:
+
+```bash
+uv sync                      # create the environment from uv.lock
+uv run pre-commit install    # one-time: enable local commit gates
+```
+
+Run the quality gate at any time with `uv run pre-commit run --all-files`
+(format, lint, secret scan, hygiene). The fuller gate — types and tests —
+runs via `uv run mypy src tests` and `uv run pytest`.
+
 ## Repository map
 
 | File | What's in it |
