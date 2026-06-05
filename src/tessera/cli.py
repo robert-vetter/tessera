@@ -1,20 +1,21 @@
-"""Command-line surface for the Phase 0 hello-world.
+"""Command-line surface for the grounded-answer demo.
 
-A thin wrapper over :func:`tessera.grounding.answer`. With no arguments it
-answers the built-in demo question; pass a question to try your own (including
-one with no supporting evidence, to see the principled refusal).
+A thin wrapper over :func:`tessera.retrieval.answer`. With no arguments it answers
+the built-in demo question by retrieving relevant ingested evidence; pass a
+question to try your own (including one with no matching evidence, to see the
+principled refusal).
 
-    uv run tessera                       # the built-in demo question
-    uv run tessera "your question here"   # try your own
-    uv run tessera "Who is Acme's CEO?"   # unsupported -> principled refusal
+    uv run tessera                           # the built-in demo question
+    uv run tessera "your question here"       # try your own
+    uv run tessera "What colour is the sky?"  # no matching evidence -> refusal
 """
 
 from __future__ import annotations
 
 import argparse
 
-from tessera.grounding import answer
 from tessera.knowledge import DEMO_KB, DEMO_QUESTION
+from tessera.retrieval import answer
 
 
 def main(argv: list[str] | None = None) -> int:

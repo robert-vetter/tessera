@@ -119,28 +119,14 @@ class Claim:
 
 
 @dataclass(frozen=True)
-class Fact:
-    """A demo knowledge entry: a claim plus the question keywords that trigger it.
+class KnowledgeBase:
+    """The evidence an answer may draw on.
 
-    A fact matches when every keyword appears (case-insensitively) in the
-    question. This is an honest, deterministic matcher for the Phase 0 skeleton
-    — not natural-language understanding.
+    Answers are produced by *retrieving* over these records (see
+    :mod:`tessera.retrieval`); there is no hand-authored question-to-claim map.
     """
 
-    keywords: tuple[str, ...]
-    claim: Claim
-
-    def matches(self, question: str) -> bool:
-        haystack = question.lower()
-        return all(keyword.lower() in haystack for keyword in self.keywords)
-
-
-@dataclass(frozen=True)
-class KnowledgeBase:
-    """The evidence and facts an answer may draw on."""
-
     records: tuple[EvidenceRecord, ...]
-    facts: tuple[Fact, ...]
 
 
 @dataclass(frozen=True)
@@ -168,17 +154,7 @@ class Answer:
         for claim in self.claims:
             lines.append(f"- {claim.text}")
             for record in claim.support:
-                lines.append(f'    ↳ {record.source} — "{record.text}"')
+                # The claim text is the evidence snippet itself, so the
+                # provenance line shows where it came from, not a repeat of it.
+                lines.append(f"    ↳ {record.source}")
         return "\n".join(lines)
-
-
-def answer(question: str, kb: KnowledgeBase) -> Answer:
-    """Answer ``question`` using only what ``kb`` supports.
-
-    Collects the claims of every fact whose keywords match the question. If none
-    match, returns a principled refusal rather than guessing.
-    """
-    claims = tuple(fact.claim for fact in kb.facts if fact.matches(question))
-    if not claims:
-        return Answer(question=question, claims=(), refusal=REFUSAL_MESSAGE)
-    return Answer(question=question, claims=claims, refusal=None)
