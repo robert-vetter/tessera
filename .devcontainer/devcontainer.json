@@ -1,0 +1,22 @@
+{
+  // VS Code / Codespaces devcontainer for Tessera. Builds from the same
+  // Dockerfile as everything else (one definition, no drift) and re-syncs the
+  // environment on create, since the repo bind-mount shadows the image's .venv.
+  "name": "Tessera",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode",
+  "postCreateCommand": "uv sync --frozen",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker"
+      ]
+    }
+  }
+}
