@@ -1,0 +1,44 @@
+name: Feature / unit of work
+description: Propose a unit of work — a feature, capability, or improvement to take through the loop.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals become a `specs/` entry before code (docs/ENGINEERING.md §1).
+        Keep this at the level of *what* and *why*, not implementation detail.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: The need this serves, in plain language. Why now.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed unit of work
+      description: What you propose building, scoped to one thin, end-to-end slice.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance sketch
+      description: How we would know it is done (rough acceptance criteria).
+    validations:
+      required: false
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Roadmap phase
+      description: Which phase in docs/ROADMAP.md this belongs to.
+      options:
+        - Phase 0 — Foundation and frame
+        - Phase 1 — The thin vertical slice
+        - Phase 2 — Deepen trust and reasoning
+        - Phase 3 — Second vertical (DevEx)
+        - Phase 4 — Platform, polish, story
+        - Unsure / future work
+    validations:
+      required: true

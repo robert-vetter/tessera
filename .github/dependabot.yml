@@ -1,0 +1,46 @@
+# Dependabot keeps the project's pinned dependencies and SHA-pinned GitHub
+# Actions current. Weekly checks per ecosystem, with minor/patch updates grouped
+# into a single PR each to avoid flooding the PR list. Major updates come as
+# their own PRs so they get individual review.
+version: 2
+updates:
+  # GitHub Actions pinned by SHA in ci.yml / docs.yml. These updates also clear
+  # the Node-20 runtime deprecation by moving actions to current versions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        update-types:
+          - minor
+          - patch
+
+  # Python project: pyproject.toml + uv.lock (incl. dev and docs groups).
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+    groups:
+      python:
+        update-types:
+          - minor
+          - patch
+
+  # Base image pinned by digest in the Dockerfile.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    groups:
+      docker:
+        update-types:
+          - minor
+          - patch
