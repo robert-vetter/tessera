@@ -1,0 +1,64 @@
+{
+  "// note": "Project-scoped Claude Code settings for Tessera. Permissions pre-approve safe, frequent operations and deny destructive ones. Hooks validate at submit time, never mid-edit. Adapt command paths to your environment.",
+
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(uv run:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(pytest:*)",
+      "Bash(pnpm:*)",
+      "Bash(eslint:*)",
+      "Bash(prettier:*)",
+      "Bash(pre-commit:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)"
+    ]
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "// note": "Auto-format after edits. Non-blocking (always exits 0): format, never veto, so Claude's reasoning chain is not interrupted mid-task.",
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ruff format . >/dev/null 2>&1; prettier --write . >/dev/null 2>&1; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "// note": "Guardrail against destructive shell commands. Exit code 2 denies the call.",
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "grep -Eq 'rm -rf (/|~|\\$HOME)|git push (--force|-f)|:\\s*\\(\\)\\s*\\{' && { echo 'Blocked: destructive command pattern.' >&2; exit 2; } || exit 0"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "// note": "Reminder to wrap the session. Non-blocking.",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'Session ending — consider running /wrap to update docs/STATUS.md.' ; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
