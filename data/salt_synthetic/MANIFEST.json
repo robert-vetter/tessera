@@ -1,0 +1,14 @@
+{
+  "dataset": "salt_synthetic",
+  "synthetic": true,
+  "schema_reference": "SAP SALT (Sales Autocompletion Linked Business Tables), arXiv:2501.03413",
+  "generator": "scripts/generate_salt_synthetic.py",
+  "seed": 20260605,
+  "snapshot_date": "2026-06-05",
+  "row_counts": {
+    "I_Customer.csv": 40,
+    "I_AddrOrgNamePostalAddress.csv": 40,
+    "I_SalesDocument.csv": 82,
+    "I_SalesDocumentItem.csv": 169
+  }
+}
