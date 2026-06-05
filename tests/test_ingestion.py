@@ -8,8 +8,20 @@ Unit 4.
 
 from __future__ import annotations
 
-from tessera.ingestion import Ingester
+from tessera.ingestion import Ingester, chunk_text
 from tessera.sources.salt import SaltSyntheticSource
+
+
+def test_chunk_text_splits_on_blank_lines_with_line_ranges() -> None:
+    chunks = chunk_text("alpha\nbeta\n\ngamma\n")
+    assert [(c.start_line, c.end_line, c.text) for c in chunks] == [
+        (1, 2, "alpha\nbeta"),
+        (4, 4, "gamma"),
+    ]
+
+
+def test_chunk_text_empty_input() -> None:
+    assert chunk_text("") == []
 
 
 def test_source_satisfies_ingester_protocol() -> None:

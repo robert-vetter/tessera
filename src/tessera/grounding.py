@@ -47,6 +47,18 @@ class Locator:
         """Locator for a row of a structured table (1-based row number)."""
         return cls(kind="table-row", parts=(("table", table), ("row", str(row))))
 
+    @classmethod
+    def doc_span(cls, start_line: int, end_line: int, chunk: int) -> Locator:
+        """Locator for a span of a text document (1-based line range + chunk).
+
+        The unstructured counterpart to :meth:`table_row` — same ``Locator`` type,
+        a different ``kind``, no change to ``EvidenceRecord`` or any consumer.
+        """
+        return cls(
+            kind="doc-span",
+            parts=(("lines", f"{start_line}-{end_line}"), ("chunk", str(chunk))),
+        )
+
     def render(self) -> str:
         return ", ".join(f"{label} {value}" for label, value in self.parts)
 
