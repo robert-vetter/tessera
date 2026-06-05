@@ -1,0 +1,66 @@
+# CI — the remote half of the "nothing unverified" guarantee. Mirrors the local
+# /verify gate (format, lint, types, tests) plus a gitleaks secret scan, run
+# against the locked environment so CI and a fresh clone resolve identically.
+#
+# Once this is green on GitHub, enable branch protection on `main` requiring the
+# "gate" check (docs/SETUP.md A3) — a manual repo setting, not done here.
+#
+# Action `uses:` are pinned to commit SHAs (with version comments) for
+# supply-chain hygiene; dependabot keeps them current.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: CI only needs to read the repo.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref so only the latest commit is tested.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+
+      # --frozen fails the build if uv.lock has drifted from pyproject.toml.
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type-check
+        run: uv run mypy src tests
+
+      - name: Tests
+        run: uv run pytest
+
+      # Reuse the pinned gitleaks hook from .pre-commit-config.yaml (single
+      # source of truth) so secrets are caught even if a contributor skipped
+      # `pre-commit install`.
+      - name: Cache pre-commit environments
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Secret scan
+        run: uv run pre-commit run gitleaks --all-files
