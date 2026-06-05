@@ -3,6 +3,14 @@
 **A trust layer for enterprise AI agents.**
 Every answer traceable to its evidence — across structured *and* unstructured data — with a number that tells you how much to trust it.
 
+[![CI](https://github.com/robert-vetter/tessera/actions/workflows/ci.yml/badge.svg)](https://github.com/robert-vetter/tessera/actions/workflows/ci.yml)
+[![Docs](https://github.com/robert-vetter/tessera/actions/workflows/docs.yml/badge.svg)](https://robert-vetter.github.io/tessera/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<!-- Coverage and faithfulness/eval badges are deliberately omitted until Phase 1,
+     when the evaluation harness and coverage measurement exist. The faithfulness
+     badge is the headline signal — it ships only once the number is real. -->
+
 > *Working name. A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture. That is exactly what this system does with enterprise data. Rename freely.*
 
 ---
