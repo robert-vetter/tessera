@@ -77,3 +77,71 @@ Living session journal. Append a new dated entry at the end of every work sessio
 
 **State of the tree**
 - `main` green and in sync with `origin/main`; no open branches. Tagged `phase-0`.
+
+---
+
+## 2026-06-05 — Phase 1 Units 1 + 1b (structured ingestion + eval scaffold)
+
+**Done this session**
+- **Unit 1 — structured ingestion into a common representation** (PR #10,
+  squash-merge `9315da3`, spec 0010, ADR 0002):
+  - Engine grew a provenance core: `Origin{source, locator, ingested_at}` + a
+    **modality-agnostic, kind-tagged `Locator`**; `EvidenceRecord` now *requires*
+    an origin, so "no information without a retrievable origin" (Pillar 1) holds
+    by construction. The locator is shaped to also hold a document's
+    page/line/chunk (Unit 2) with no restructuring — proven in code by
+    `test_locator_is_modality_agnostic`. ADR 0002 records this with rejected
+    alternatives (bare `source:str`, flat optional fields, stringly-typed locator,
+    closed tagged union).
+  - `ingestion.py`: the vertical-neutral `Ingester` "one door" + a stdlib CSV
+    reader. `sources/salt.py`: a **schema-faithful** ingester (stable natural-key
+    ids). `knowledge.py` now *ingests* and wires the demo question to real rows —
+    **no hardcoded evidence remains**.
+  - **Data decision pivoted A→B.** Real SALT is access-gated on HF (HTTP 401) and
+    redistributing a derived sample is legally unclear + breaks clone-and-run, so
+    we generate **synthetic data on SALT's real schema** under `data/salt_synthetic/`
+    (331 rows, 4 tables, deterministic via `scripts/generate_salt_synthetic.py`,
+    stdlib). Names/addresses carry deliberate entity-resolution difficulty
+    (GmbH/Gmbh/G.m.b.H, umlaut folds, abbreviations, typos) for Unit 4. Ingesting
+    real SALT later is a documented drop-in (gated by HF access only). See
+    `data/salt_synthetic/NOTICE`; code MIT, synthetic data carries no encumbrance.
+- **Unit 1b — eval-harness scaffold** (PR #11, squash-merge `2289ac1`, spec 0011,
+  no ADR): `tessera.eval` (`GoldCase`/`EvalReport`/`load_gold_set`/`run_eval`) +
+  `tessera-eval` CLI, **wired as `/verify` step 5** (`.claude/commands/verify.md`
+  names the command; "no gold set evaluated yet" is an explicit pass). Honest by
+  design — it loads/counts gold cases but does **not** score; metrics stay `None`,
+  never fabricated. Gold set location `eval/gold/` (empty). Metric definitions +
+  gold set + computation deferred to Unit 6 (ADR-worthy there).
+
+**Current eval numbers**
+- Harness runnable; **0 gold cases → faithfulness / coverage / quality: n/a.**
+  This is the honest baseline; the first real number arrives in Unit 6.
+
+**Next**
+- **Unit 2 — unstructured ingestion.** Author a small set of agreement /
+  correspondence documents that reference the **actual** synthetic SALT customers
+  (reusing their real name/address variants, so the cross-source link and Unit 4
+  entity resolution are genuine), and ingest them through the **same** `Ingester`
+  door using the `doc-span` `Locator` kind the representation already supports
+  (page/line/chunk). No ADR expected. Start with `/spec`.
+- **Then Unit 3** (retrieval; ADR: lexical-first, embeddings deferred) →
+  **pause before Unit 4 `/plan`** for the maintainer to review the graph-store +
+  entity-resolution data model together → Unit 4 (graph + ER; ADR) → Unit 5
+  (cross-source answer composition) → Unit 6 (gold set + faithfulness metric; ADR).
+
+**Open questions / risks**
+- **Process gap (flagged, task spawned):** `/verify` verified format/lint via the
+  **pre-commit** ruff hook, but CI runs `uv run ruff format --check .` /
+  `uv run ruff check .` (uv.lock ruff CLI) — they diverged and CI went red after a
+  "green" local verify. Fixed forward this session; a separate task will align
+  `/verify` to run CI's exact ruff commands. Until then, run the CI-equivalent
+  commands in `/verify`, not only pre-commit.
+- The provenance representation (ADR 0002) is now load-bearing; watch that Unit 2
+  documents truly fit the `doc-span` locator without reshaping it (the forward-
+  compat test guards this).
+- Confirm SAP AI Core / HANA Cloud access path for later phases; not blocking.
+
+**State of the tree**
+- `main` green and in sync with `origin/main`; no open branches (stale remote-
+  tracking refs pruned). Units 1 + 1b merged. Not yet tagged (phase tag is for
+  end of Phase 1).
