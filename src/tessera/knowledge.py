@@ -1,54 +1,58 @@
-"""Demo knowledge for the Phase 0 hello-world.
+"""Demo knowledge for the conversational surface — now built from *ingested* data.
 
-This is hardcoded, illustrative data — *not* real ingestion. It exists only so
-the grounding engine has something to answer against end-to-end before Phase 1
-brings real sources, a knowledge graph, and entity resolution. Keeping it in its
-own module keeps the engine in :mod:`tessera.grounding` general and
+Phase 0 hardcoded its evidence here. As of Phase 1 Unit 1 there is **no hardcoded
+evidence**: the knowledge base is assembled by ingesting the synthetic,
+SALT-shaped dataset through :mod:`tessera.sources.salt`, so every record carries a
+real, traceable origin. What remains authored here is only the narrow demo
+*question → claim* mapping, and each claim cites specific ingested records by id —
+the claim text merely restates figures that literally appear in the cited rows.
+
+Real question understanding and retrieval (so claims need not be pre-authored)
+arrive in Unit 3; this module stays the thin, deterministic demo wiring until
+then. Keeping it separate keeps the engine in :mod:`tessera.grounding` general and
 vertical-neutral.
-
-The demo mirrors the business example from ``docs/PROJECT_BRIEF.md``: a question
-that needs more than one record to answer, with every claim traced to the rows
-behind it. The claim text is precomputed for the skeleton; nothing here pretends
-to compute over the data.
 """
 
 from __future__ import annotations
 
-from tessera.grounding import Claim, EvidenceRecord, Fact, KnowledgeBase
+from tessera.grounding import Claim, Fact, KnowledgeBase
+from tessera.sources.salt import SaltSyntheticSource
 
-# --- Evidence -----------------------------------------------------------------
-_ACME = EvidenceRecord(
-    id="contracts.csv:2",
-    source="contracts.csv, row 2",
-    text="Acme Corp — annual value $120,000, auto-renews 2026-08-01.",
-)
-_GLOBEX = EvidenceRecord(
-    id="contracts.csv:5",
-    source="contracts.csv, row 5",
-    text="Globex Inc — annual value $80,000, auto-renews 2026-09-15.",
-)
+# The demo question is grounded in the spotlight customer of the ingested
+# dataset: customer 0010000007, with two sales orders whose net values (EUR
+# 20,000.00 + EUR 25,000.00) sum to the figure the answer reports.
+DEMO_QUESTION = "What is the total net value of Müller Logistik GmbH's sales orders?"
 
-# --- Facts (claim + the question keywords that trigger it) --------------------
-_FACTS = (
-    Fact(
-        keywords=("auto-renew", "q3"),
-        claim=Claim(
-            text="Two contracts auto-renew in Q3 2026: Acme Corp and Globex Inc.",
-            support=(_ACME, _GLOBEX),
+
+def build_demo_kb() -> KnowledgeBase:
+    """Ingest the dataset and wire the narrow demo question to ingested evidence."""
+    records = tuple(SaltSyntheticSource().ingest())
+    by_id = {record.id: record for record in records}
+
+    customer = by_id["I_Customer:0010000007"]
+    order_1 = by_id["I_SalesDocument:0000500001"]
+    order_2 = by_id["I_SalesDocument:0000500002"]
+
+    facts = (
+        Fact(
+            keywords=("müller", "order"),
+            claim=Claim(
+                text=(
+                    "Müller Logistik GmbH (customer 0010000007) has two sales "
+                    "orders: 0000500001 and 0000500002."
+                ),
+                support=(customer, order_1, order_2),
+            ),
         ),
-    ),
-    Fact(
-        keywords=("combined", "value"),
-        claim=Claim(
-            text="Their combined annual value is $200,000.",
-            support=(_ACME, _GLOBEX),
+        Fact(
+            keywords=("müller", "total"),
+            claim=Claim(
+                text="The combined net value of those orders is EUR 45,000.00.",
+                support=(order_1, order_2),
+            ),
         ),
-    ),
-)
+    )
+    return KnowledgeBase(records=records, facts=facts)
 
-DEMO_KB = KnowledgeBase(records=(_ACME, _GLOBEX), facts=_FACTS)
 
-# The hardcoded question the hello-world answers out of the box.
-DEMO_QUESTION = (
-    "Which contracts auto-renew in Q3 2026, and what is their combined annual value?"
-)
+DEMO_KB = build_demo_kb()
