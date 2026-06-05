@@ -1,0 +1,29 @@
+SYNTHETIC DATA — NOT real SALT data.
+================================================================================
+
+Everything in this directory is SYNTHETIC, generated deterministically by
+`scripts/generate_salt_synthetic.py`. It contains NO real records from SAP's SALT
+dataset.
+
+Why synthetic: the real SALT dataset is access-gated on Hugging Face, and
+redistributing a derived sample of a gated dataset is legally and ethically
+unclear — and would break this repository's clone-and-run guarantee. So we
+instead generate our own data using SALT's *schema* as the reference.
+
+Schema reference (credit):
+  SALT — Sales Autocompletion Linked Business Tables (SAP AI Research)
+  Paper:   arXiv:2501.03413
+  Dataset: https://huggingface.co/datasets/SAP/SALT   (gated)
+
+This synthetic dataset reproduces SALT's table names, columns, and join keys
+(I_Customer, I_AddrOrgNamePostalAddress linked by AddressID; I_SalesDocument and
+I_SalesDocumentItem linked by SalesDocument; sales documents reference customers
+via the SoldToParty / ShipToParty / BillToParty / PayerParty roles). Because the
+ingester is written against this real schema, ingesting the *actual* SALT dataset
+is a documented drop-in — gated only by Hugging Face access — needing no change
+to the ingester, engine, or tests.
+
+License: this synthetic data is part of the Tessera project and is provided under
+the project's MIT license (see ../../LICENSE). It carries NO CC-BY-NC-SA
+encumbrance, because it contains no SALT data. The SALT license applies only to
+the real SALT dataset, which is not redistributed here.

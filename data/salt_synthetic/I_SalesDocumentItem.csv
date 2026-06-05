@@ -1,0 +1,170 @@
+SalesDocument,SalesDocumentItem,Material,SalesDocumentItemText,OrderQuantity,NetAmount,TransactionCurrency
+0000500001,10,MAT-5366,Forklift battery pack,4,12000.00,EUR
+0000500001,20,MAT-3933,Maintenance service contract,1,8000.00,EUR
+0000500002,10,MAT-9787,Conveyor belt segment,5,25000.00,EUR
+0000500003,10,MAT-1026,Safety inspection service,10,19000.00,CAD
+0000500003,20,MAT-9787,Conveyor belt segment,9,3500.00,CAD
+0000500003,30,MAT-7157,Cold-storage compressor,6,15000.00,CAD
+0000500004,10,MAT-9833,Logistics software licence,6,500.00,GBP
+0000500005,10,MAT-9833,Logistics software licence,10,18000.00,GBP
+0000500005,20,MAT-8231,Pallet racking unit,7,15500.00,GBP
+0000500006,10,MAT-3012,Steel shelving kit,6,6000.00,USD
+0000500006,20,MAT-9787,Conveyor belt segment,6,12000.00,USD
+0000500007,10,MAT-2039,Packaging line upgrade,1,16500.00,CAD
+0000500008,10,MAT-3447,Hydraulic lift module,5,6000.00,NOK
+0000500009,10,MAT-2039,Packaging line upgrade,1,15000.00,EUR
+0000500009,20,MAT-5366,Forklift battery pack,3,10000.00,EUR
+0000500009,30,MAT-5366,Forklift battery pack,4,18500.00,EUR
+0000500010,10,MAT-3933,Maintenance service contract,9,16500.00,USD
+0000500011,10,MAT-7157,Cold-storage compressor,7,6000.00,CHF
+0000500011,20,MAT-9833,Logistics software licence,3,4000.00,CHF
+0000500012,10,MAT-3447,Hydraulic lift module,7,19000.00,EUR
+0000500012,20,MAT-7157,Cold-storage compressor,5,2000.00,EUR
+0000500013,10,MAT-9787,Conveyor belt segment,10,2500.00,GBP
+0000500013,20,MAT-3447,Hydraulic lift module,6,16500.00,GBP
+0000500014,10,MAT-1026,Safety inspection service,1,18000.00,EUR
+0000500014,20,MAT-1026,Safety inspection service,11,14500.00,EUR
+0000500015,10,MAT-1026,Safety inspection service,4,6500.00,CHF
+0000500015,20,MAT-5366,Forklift battery pack,9,2500.00,CHF
+0000500015,30,MAT-5366,Forklift battery pack,8,6500.00,CHF
+0000500016,10,MAT-2039,Packaging line upgrade,2,3500.00,EUR
+0000500016,20,MAT-1026,Safety inspection service,4,1500.00,EUR
+0000500017,10,MAT-7157,Cold-storage compressor,9,16000.00,EUR
+0000500017,20,MAT-9833,Logistics software licence,5,3500.00,EUR
+0000500018,10,MAT-3012,Steel shelving kit,9,7500.00,GBP
+0000500019,10,MAT-2039,Packaging line upgrade,8,16500.00,EUR
+0000500019,20,MAT-3012,Steel shelving kit,11,16500.00,EUR
+0000500019,30,MAT-5366,Forklift battery pack,11,16500.00,EUR
+0000500020,10,MAT-3933,Maintenance service contract,2,1000.00,EUR
+0000500021,10,MAT-3012,Steel shelving kit,1,17000.00,NOK
+0000500021,20,MAT-3447,Hydraulic lift module,1,9000.00,NOK
+0000500022,10,MAT-7157,Cold-storage compressor,8,16500.00,EUR
+0000500022,20,MAT-9787,Conveyor belt segment,9,3500.00,EUR
+0000500023,10,MAT-7157,Cold-storage compressor,6,3500.00,CAD
+0000500023,20,MAT-2039,Packaging line upgrade,3,5000.00,CAD
+0000500024,10,MAT-7157,Cold-storage compressor,5,13500.00,EUR
+0000500024,20,MAT-3933,Maintenance service contract,3,5000.00,EUR
+0000500024,30,MAT-9787,Conveyor belt segment,11,7000.00,EUR
+0000500025,10,MAT-9787,Conveyor belt segment,9,8000.00,EUR
+0000500025,20,MAT-3933,Maintenance service contract,9,6500.00,EUR
+0000500026,10,MAT-5366,Forklift battery pack,2,12000.00,EUR
+0000500026,20,MAT-1026,Safety inspection service,5,15500.00,EUR
+0000500026,30,MAT-9833,Logistics software licence,8,9500.00,EUR
+0000500027,10,MAT-7157,Cold-storage compressor,8,2000.00,CAD
+0000500027,20,MAT-3012,Steel shelving kit,5,6500.00,CAD
+0000500027,30,MAT-5366,Forklift battery pack,4,13500.00,CAD
+0000500028,10,MAT-2039,Packaging line upgrade,8,13000.00,EUR
+0000500028,20,MAT-1026,Safety inspection service,8,11000.00,EUR
+0000500028,30,MAT-3012,Steel shelving kit,2,3000.00,EUR
+0000500029,10,MAT-3012,Steel shelving kit,10,8000.00,EUR
+0000500029,20,MAT-9787,Conveyor belt segment,11,8500.00,EUR
+0000500030,10,MAT-2039,Packaging line upgrade,6,500.00,EUR
+0000500031,10,MAT-9833,Logistics software licence,6,16500.00,EUR
+0000500031,20,MAT-3447,Hydraulic lift module,5,11500.00,EUR
+0000500032,10,MAT-9787,Conveyor belt segment,4,5500.00,EUR
+0000500033,10,MAT-3447,Hydraulic lift module,11,19000.00,EUR
+0000500034,10,MAT-2039,Packaging line upgrade,4,14000.00,EUR
+0000500034,20,MAT-7157,Cold-storage compressor,4,9000.00,EUR
+0000500035,10,MAT-9833,Logistics software licence,2,10500.00,EUR
+0000500035,20,MAT-5366,Forklift battery pack,4,11000.00,EUR
+0000500036,10,MAT-3447,Hydraulic lift module,6,6500.00,CHF
+0000500036,20,MAT-7157,Cold-storage compressor,8,19000.00,CHF
+0000500036,30,MAT-5366,Forklift battery pack,11,13000.00,CHF
+0000500037,10,MAT-9833,Logistics software licence,9,12500.00,EUR
+0000500038,10,MAT-3012,Steel shelving kit,8,5500.00,EUR
+0000500039,10,MAT-9787,Conveyor belt segment,8,9000.00,EUR
+0000500040,10,MAT-5366,Forklift battery pack,2,9500.00,NOK
+0000500040,20,MAT-3933,Maintenance service contract,7,1500.00,NOK
+0000500041,10,MAT-8231,Pallet racking unit,7,16500.00,CAD
+0000500042,10,MAT-7157,Cold-storage compressor,11,13000.00,EUR
+0000500042,20,MAT-3447,Hydraulic lift module,1,11000.00,EUR
+0000500043,10,MAT-3447,Hydraulic lift module,9,19000.00,USD
+0000500044,10,MAT-3447,Hydraulic lift module,2,1500.00,CHF
+0000500044,20,MAT-3012,Steel shelving kit,1,1000.00,CHF
+0000500045,10,MAT-3447,Hydraulic lift module,8,13500.00,EUR
+0000500045,20,MAT-3447,Hydraulic lift module,10,19000.00,EUR
+0000500045,30,MAT-3933,Maintenance service contract,9,13500.00,EUR
+0000500046,10,MAT-9833,Logistics software licence,8,10500.00,EUR
+0000500046,20,MAT-9833,Logistics software licence,11,9500.00,EUR
+0000500047,10,MAT-3933,Maintenance service contract,3,16000.00,EUR
+0000500047,20,MAT-9787,Conveyor belt segment,2,13500.00,EUR
+0000500048,10,MAT-7157,Cold-storage compressor,8,2500.00,EUR
+0000500049,10,MAT-2039,Packaging line upgrade,8,5500.00,USD
+0000500049,20,MAT-2039,Packaging line upgrade,9,16500.00,USD
+0000500050,10,MAT-8231,Pallet racking unit,3,8500.00,EUR
+0000500050,20,MAT-9833,Logistics software licence,8,15500.00,EUR
+0000500051,10,MAT-2039,Packaging line upgrade,10,10500.00,EUR
+0000500051,20,MAT-5366,Forklift battery pack,10,11500.00,EUR
+0000500052,10,MAT-5366,Forklift battery pack,8,10500.00,EUR
+0000500053,10,MAT-9787,Conveyor belt segment,2,9000.00,EUR
+0000500053,20,MAT-9833,Logistics software licence,5,3500.00,EUR
+0000500054,10,MAT-3447,Hydraulic lift module,4,5000.00,NOK
+0000500054,20,MAT-5366,Forklift battery pack,7,13000.00,NOK
+0000500054,30,MAT-3933,Maintenance service contract,4,9000.00,NOK
+0000500055,10,MAT-7157,Cold-storage compressor,3,5500.00,GBP
+0000500055,20,MAT-9787,Conveyor belt segment,10,10500.00,GBP
+0000500055,30,MAT-3447,Hydraulic lift module,8,10000.00,GBP
+0000500056,10,MAT-3012,Steel shelving kit,5,9500.00,CAD
+0000500057,10,MAT-3447,Hydraulic lift module,7,500.00,CHF
+0000500057,20,MAT-2039,Packaging line upgrade,4,8000.00,CHF
+0000500058,10,MAT-9833,Logistics software licence,2,19000.00,EUR
+0000500058,20,MAT-9833,Logistics software licence,2,8000.00,EUR
+0000500058,30,MAT-9787,Conveyor belt segment,10,4500.00,EUR
+0000500059,10,MAT-2039,Packaging line upgrade,9,11500.00,EUR
+0000500059,20,MAT-3933,Maintenance service contract,7,9000.00,EUR
+0000500059,30,MAT-9787,Conveyor belt segment,4,1500.00,EUR
+0000500060,10,MAT-5366,Forklift battery pack,1,500.00,EUR
+0000500060,20,MAT-3933,Maintenance service contract,5,4000.00,EUR
+0000500061,10,MAT-1026,Safety inspection service,8,17500.00,GBP
+0000500061,20,MAT-8231,Pallet racking unit,7,11000.00,GBP
+0000500061,30,MAT-3447,Hydraulic lift module,7,13000.00,GBP
+0000500062,10,MAT-3447,Hydraulic lift module,4,11000.00,GBP
+0000500062,20,MAT-9833,Logistics software licence,5,18500.00,GBP
+0000500063,10,MAT-1026,Safety inspection service,7,17000.00,NOK
+0000500063,20,MAT-5366,Forklift battery pack,2,3000.00,NOK
+0000500064,10,MAT-3933,Maintenance service contract,2,14000.00,USD
+0000500064,20,MAT-1026,Safety inspection service,7,14000.00,USD
+0000500064,30,MAT-1026,Safety inspection service,7,9500.00,USD
+0000500065,10,MAT-3447,Hydraulic lift module,11,4000.00,EUR
+0000500065,20,MAT-7157,Cold-storage compressor,1,11000.00,EUR
+0000500066,10,MAT-3012,Steel shelving kit,10,13500.00,GBP
+0000500066,20,MAT-7157,Cold-storage compressor,6,11000.00,GBP
+0000500066,30,MAT-1026,Safety inspection service,11,7000.00,GBP
+0000500067,10,MAT-3447,Hydraulic lift module,10,11500.00,CHF
+0000500067,20,MAT-9787,Conveyor belt segment,7,19500.00,CHF
+0000500067,30,MAT-9787,Conveyor belt segment,3,13500.00,CHF
+0000500068,10,MAT-1026,Safety inspection service,7,9500.00,EUR
+0000500068,20,MAT-3012,Steel shelving kit,10,10000.00,EUR
+0000500068,30,MAT-1026,Safety inspection service,7,9500.00,EUR
+0000500069,10,MAT-3012,Steel shelving kit,5,7000.00,EUR
+0000500069,20,MAT-9787,Conveyor belt segment,11,8000.00,EUR
+0000500069,30,MAT-3933,Maintenance service contract,8,6000.00,EUR
+0000500070,10,MAT-8231,Pallet racking unit,9,17500.00,EUR
+0000500070,20,MAT-3933,Maintenance service contract,10,18000.00,EUR
+0000500070,30,MAT-8231,Pallet racking unit,3,5500.00,EUR
+0000500071,10,MAT-5366,Forklift battery pack,7,11000.00,EUR
+0000500071,20,MAT-1026,Safety inspection service,6,10000.00,EUR
+0000500071,30,MAT-8231,Pallet racking unit,6,17500.00,EUR
+0000500072,10,MAT-3012,Steel shelving kit,8,4500.00,EUR
+0000500072,20,MAT-3012,Steel shelving kit,11,17500.00,EUR
+0000500072,30,MAT-3447,Hydraulic lift module,6,11500.00,EUR
+0000500073,10,MAT-1026,Safety inspection service,6,2500.00,CAD
+0000500073,20,MAT-1026,Safety inspection service,5,14500.00,CAD
+0000500073,30,MAT-9787,Conveyor belt segment,4,15000.00,CAD
+0000500074,10,MAT-2039,Packaging line upgrade,1,18000.00,NOK
+0000500075,10,MAT-3447,Hydraulic lift module,11,7500.00,CAD
+0000500075,20,MAT-5366,Forklift battery pack,7,14000.00,CAD
+0000500075,30,MAT-7157,Cold-storage compressor,4,1000.00,CAD
+0000500076,10,MAT-3447,Hydraulic lift module,3,11500.00,GBP
+0000500076,20,MAT-3447,Hydraulic lift module,6,13500.00,GBP
+0000500077,10,MAT-9833,Logistics software licence,8,500.00,CHF
+0000500077,20,MAT-3012,Steel shelving kit,7,500.00,CHF
+0000500078,10,MAT-3933,Maintenance service contract,4,17500.00,NOK
+0000500078,20,MAT-1026,Safety inspection service,5,3000.00,NOK
+0000500079,10,MAT-1026,Safety inspection service,5,17000.00,EUR
+0000500079,20,MAT-7157,Cold-storage compressor,11,12500.00,EUR
+0000500080,10,MAT-5366,Forklift battery pack,10,1000.00,EUR
+0000500081,10,MAT-3933,Maintenance service contract,11,16500.00,EUR
+0000500081,20,MAT-8231,Pallet racking unit,3,16500.00,EUR
+0000500082,10,MAT-9787,Conveyor belt segment,4,500.00,EUR
+0000500082,20,MAT-3012,Steel shelving kit,8,17000.00,EUR

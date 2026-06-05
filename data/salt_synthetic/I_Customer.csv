@@ -1,0 +1,41 @@
+Customer,CustomerName,AddressID,CustomerAccountGroup,Country
+0010000007,Müller Logistik GmbH,A0007,KUNA,DE
+0010001001,Maple eLaf Mining Corp.,A1001,KUNL,CA
+0010001002,Bayeriche Stahlwerke AG.,A1002,KUNL,DE
+0010001003,Bayersche Stahlwerke AG,A1003,CPD,DE
+0010001004,Maple Leaf Mining Corp.,A1004,CPD,CA
+0010001005,Lumiere Énergie SARL,A1005,KUNA,FR
+0010001006,Lumière Énergie S.A.R.L.,A1006,CPD,FR
+0010001007,Nordwind Logistik GmbH,A1007,CPD,DE
+0010001008,Nordwind Log. G.m.b.H,A1008,KUNA,DE
+0010001009,Orion Datentechnik GmbH,A1009,CPD,DE
+0010001010,Schäfer Paez.-technik GmbH,A1010,KUNA,DE
+0010001011,Nordc Timber A/S,A1011,KUNL,NO
+0010001012,Helvetia Finanz A.G.,A1012,CPD,CH
+0010001013,Helvetia Finanz A.G.,A1013,KUNA,CH
+0010001014,Catalana Textil S.A.,A1014,CPD,ES
+0010001015,Orion Datentechnik GMBH,A1015,KUNL,DE
+0010001016,Castor & Pollux Handels oHG,A1016,CPD,DE
+0010001017,Rheintal Pharma GmbH,A1017,KUNL,DE
+0010001018,Adriatica Marittima SPA,A1018,CPD,IT
+0010001019,Bayerische Stahlwerke AG,A1019,KUNL,DE
+0010001020,Bayerische Stahlwerke AG,A1020,KUNL,DE
+0010001021,Lumiere Énergie S.A.R.L.,A1021,KUNA,FR
+0010001022,Meridian Shipping Ltd,A1022,KUNL,GB
+0010001023,Meridian Shipping Ltd.,A1023,KUNA,GB
+0010001024,Nordic Timber A/S,A1024,CPD,NO
+0010001025,Noridc Timber A/S,A1025,KUNL,NO
+0010001026,Mapel Leaf Mining Corp,A1026,CPD,CA
+0010001027,Albion Foods Ltd,A1027,CPD,GB
+0010001028,Albion Foods Ltd,A1028,KUNA,GB
+0010001029,Vega Robotics GBH,A1029,KUNA,DE
+0010001030,Globex Technologies Inc,A1030,CPD,US
+0010001031,Castor & Pollux andels OHG,A1031,KUNL,DE
+0010001032,Meridian Shipping Ltd.,A1032,KUNL,GB
+0010001033,Maple Leaf Mining Corp.,A1033,CPD,CA
+0010001034,Maple Leaf Mining Corp.,A1034,KUNA,CA
+0010001035,Orion Datentechnik GmbH,A1035,CPD,DE
+0010001036,Helvetia Finanz A.G.,A1036,KUNA,CH
+0010001037,Iberia Logística SL,A1037,KUNL,ES
+0010001038,Iberia Log. S.L.,A1038,KUNA,ES
+0010001039,Globex Technologies Incorporated,A1039,CPD,US
