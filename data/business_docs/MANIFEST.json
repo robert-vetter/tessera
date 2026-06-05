@@ -1,0 +1,11 @@
+{
+  "dataset": "business_docs",
+  "synthetic": true,
+  "description": "Authored business documents (agreements/correspondence) referencing the synthetic SALT customers under their real name variants.",
+  "snapshot_date": "2026-06-05",
+  "documents": [
+    "bayerische_stahlwerke_terms.md",
+    "lumiere_energie_letter.md",
+    "mueller_logistik_msa.md"
+  ]
+}

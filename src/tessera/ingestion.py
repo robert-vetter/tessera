@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -29,6 +30,39 @@ class Ingester(Protocol):
     """Anything that can turn a source into origin-tagged evidence records."""
 
     def ingest(self) -> Iterable[EvidenceRecord]: ...
+
+
+@dataclass(frozen=True)
+class TextChunk:
+    """A paragraph-sized span of a text source, with its 1-based line range."""
+
+    start_line: int
+    end_line: int
+    text: str
+
+
+def chunk_text(text: str) -> list[TextChunk]:
+    """Split text into paragraph chunks separated by blank lines.
+
+    Source-neutral: any unstructured text source can reuse this to break a
+    document into citable spans while preserving the line range each span came
+    from (so a claim can point at the exact lines behind it). Deterministic — the
+    same text always yields the same chunks.
+    """
+    chunks: list[TextChunk] = []
+    buffer: list[str] = []
+    start = 0
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if line.strip():
+            if not buffer:
+                start = lineno
+            buffer.append(line)
+        elif buffer:
+            chunks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
+            buffer = []
+    if buffer:
+        chunks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
+    return chunks
 
 
 def read_csv_rows(path: Path) -> Iterator[dict[str, str]]:
