@@ -145,3 +145,68 @@ Living session journal. Append a new dated entry at the end of every work sessio
 - `main` green and in sync with `origin/main`; no open branches (stale remote-
   tracking refs pruned). Units 1 + 1b merged. Not yet tagged (phase tag is for
   end of Phase 1).
+
+---
+
+## 2026-06-05 — Phase 1 Units 2 + 3 (unstructured ingestion + lexical retrieval)
+
+**Done this session**
+- **Unit 2 — unstructured ingestion** (PR #13, squash-merge `f2e26b0`, spec 0012,
+  no ADR): documents arrive through the **same `Ingester` door** as structured
+  data. `ingestion.chunk_text()` (generic paragraph chunker), `Locator.doc_span()`
+  (line range + chunk — the unstructured counterpart to `table_row()`, **no**
+  `EvidenceRecord`/`Origin` change, cashing in ADR 0002's forward-compat), and
+  `sources/documents.py` `DocumentSource`. Corpus `data/business_docs/` (3 authored
+  agreements/correspondence) references the real synthetic customers under
+  **variant** forms — one ("Lumière Énergie") resolvable only by real ER — and
+  carries info the tables **lack** (renewal/terms/discounts). Both properties
+  tested.
+- **Unit 3 — lexical retrieval** (PR #14, squash-merge `bd4cb08`, spec 0013, ADR
+  0003): replaced the Phase-0 hand-authored question→claim map with a real
+  retriever. New `retrieval.py` — Okapi **BM25**, pure-stdlib, **deterministic, no
+  model/network**; `retrieve()` + `answer()` surface retrieved records as sourced
+  claims and **refuse** on zero content-token overlap (principled, threshold-free).
+  Removed `Fact`; `KnowledgeBase` is records-only; `answer()` moved out of
+  `grounding`. ADR 0003 records lexical-first with a measured **revisit trigger**
+  and rejected alternatives.
+
+**Current eval numbers**
+- Harness runnable; **0 gold cases → faithfulness / coverage / quality: n/a.**
+  Unchanged this session by design (gold set + metrics are Unit 6). Unit 3 is the
+  first behaviour the **coverage**/refusal metric will measure once it exists.
+
+**Honest behaviour note (not a regression)**
+- The answer now **surfaces retrieved, sourced evidence**; it does **not**
+  synthesise prose or compute aggregates (the precomputed "combined value EUR
+  45,000" is gone — that's multi-step reasoning, Phase 2). Term-frequency ranking
+  means leading a query with a customer name surfaces customer *rows* above the
+  substantive clause; tying entity *variants* to one identity is **Unit 4's** job.
+
+**Next**
+- **Unit 4 — knowledge graph + basic cross-source entity resolution.** Build a
+  minimal graph linking the same real-world entity across the two sources
+  (customer master ↔ address master ↔ document references under variant forms),
+  **recording each merge decision and its confidence so they stay inspectable and
+  reversible** (CAPABILITIES Pillar 2). SALT-KG metadata graph is a candidate
+  reference. Carries an **ADR** (graph-store choice + ER data model).
+  **PROCESS GATE:** before Unit 4's `/plan`, pause for a maintainer review of the
+  graph-store choice and the ER/merge-confidence data model *together* — no code
+  until that's settled. Flow: `/spec` → design review → `/plan` → implement.
+- Then **Unit 5** (single claim combining a row + a clause across sources) and
+  **Unit 6** (curated gold set + the faithfulness/coverage/quality metrics; ADR).
+
+**Open questions / risks**
+- **ER is the hard part.** Variant forms are deliberately nasty (typos, umlaut
+  folds, dropped legal forms, plus duplicate customers e.g. four "Bayerische
+  Stahlwerke" rows). Be honest about precision/recall; record merges as fallible.
+- **Retrieval revisit trigger (ADR 0003):** if Unit 6's coverage shows lexical
+  retrieval missing present evidence (vocabulary/variant mismatch not absorbed by
+  Unit 4), reconsider semantic/embedding retrieval.
+- **Process gap (still open, task spawned):** `/verify` uses the pre-commit ruff
+  hook; CI uses `uv run ruff format --check .` / `ruff check .`. Continue running
+  the CI-equivalent commands in `/verify` until the gate is aligned.
+- Confirm SAP AI Core / HANA Cloud access path for later phases; not blocking.
+
+**State of the tree**
+- `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3
+  merged (PRs #10–#14). Five of six Phase 1 units done. Not yet tagged.
