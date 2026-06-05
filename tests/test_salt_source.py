@@ -67,26 +67,30 @@ def test_entity_resolution_difficulty_is_present() -> None:
 
 
 def test_demo_answer_traces_to_ingested_salt_rows() -> None:
-    """Every claim in the demo answer is backed by ingested SALT-shaped records,
+    """The structured (sales) claims are backed by ingested SALT-shaped records,
     and the reported figures actually appear in the cited evidence."""
     kb = build_demo_kb()
     assert kb.facts  # the demo question is wired to at least one fact
 
-    cited = [rec for fact in kb.facts for rec in fact.claim.support]
-    assert cited
-    # All cited evidence is ingested from the synthetic SALT source.
-    assert all(rec.origin.source.startswith("salt_synthetic/") for rec in cited)
+    # The structured (sales) claims are backed only by ingested SALT-shaped rows.
+    # (The demo also has a document-grounded claim — covered in test_documents.py.)
+    combined = next(f for f in kb.facts if "combined net value" in f.claim.text)
+    assert all(
+        r.origin.source.startswith("salt_synthetic/") for r in combined.claim.support
+    )
 
     # The combined-value claim's figure is the sum of the figures in its evidence.
-    combined = next(f for f in kb.facts if "combined net value" in f.claim.text)
     order_texts = " ".join(r.text for r in combined.claim.support)
     assert "20,000.00" in order_texts
     assert "25,000.00" in order_texts
     assert "45,000.00" in combined.claim.text  # 20,000 + 25,000
 
-    # The spotlight customer name is genuinely in the ingested evidence.
-    names = " ".join(r.text for f in kb.facts for r in f.claim.support)
-    assert "Müller Logistik GmbH" in names
+    # The spotlight customer name is genuinely in the ingested SALT evidence.
+    orders = next(f for f in kb.facts if "two sales" in f.claim.text)
+    assert all(
+        r.origin.source.startswith("salt_synthetic/") for r in orders.claim.support
+    )
+    assert any("Müller Logistik GmbH" in r.text for r in orders.claim.support)
 
 
 def test_demo_kb_question_is_answerable() -> None:

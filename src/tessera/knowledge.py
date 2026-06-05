@@ -15,7 +15,8 @@ vertical-neutral.
 
 from __future__ import annotations
 
-from tessera.grounding import Claim, Fact, KnowledgeBase
+from tessera.grounding import Claim, EvidenceRecord, Fact, KnowledgeBase
+from tessera.sources.documents import DocumentSource
 from tessera.sources.salt import SaltSyntheticSource
 
 # The demo question is grounded in the spotlight customer of the ingested
@@ -25,13 +26,28 @@ DEMO_QUESTION = "What is the total net value of Müller Logistik GmbH's sales or
 
 
 def build_demo_kb() -> KnowledgeBase:
-    """Ingest the dataset and wire the narrow demo question to ingested evidence."""
-    records = tuple(SaltSyntheticSource().ingest())
-    by_id = {record.id: record for record in records}
+    """Ingest both sources and wire the narrow demo questions to ingested evidence.
 
+    Structured (SALT-shaped) rows and unstructured document chunks arrive through
+    the same ingestion path and live side by side in one knowledge base. The demo
+    facts cite ingested records directly; a single claim that combines a row and a
+    clause across the two sources is Unit 5 (it needs entity resolution first).
+    """
+    salt_records = tuple(SaltSyntheticSource().ingest())
+    doc_records = tuple(DocumentSource().ingest())
+    records = salt_records + doc_records
+
+    by_id = {record.id: record for record in salt_records}
     customer = by_id["I_Customer:0010000007"]
     order_1 = by_id["I_SalesDocument:0000500001"]
     order_2 = by_id["I_SalesDocument:0000500002"]
+
+    # The document-grounded fact cites the renewal clause of the master service
+    # agreement. Selecting the chunk by content here is demo wiring, not query-time
+    # retrieval (that arrives in Unit 3); the claim restates what the chunk says.
+    renewal_clause = _find(
+        doc_records, source_suffix="mueller_logistik_msa.md", contains="auto-renews"
+    )
 
     facts = (
         Fact(
@@ -51,8 +67,29 @@ def build_demo_kb() -> KnowledgeBase:
                 support=(order_1, order_2),
             ),
         ),
+        Fact(
+            keywords=("müller", "renew"),
+            claim=Claim(
+                text=(
+                    "Müller Logistik's master service agreement auto-renews "
+                    "annually on 1 August."
+                ),
+                support=(renewal_clause,),
+            ),
+        ),
     )
     return KnowledgeBase(records=records, facts=facts)
+
+
+def _find(
+    records: tuple[EvidenceRecord, ...], *, source_suffix: str, contains: str
+) -> EvidenceRecord:
+    """Return the one ingested record from a given source whose text contains
+    ``contains``. Raises if absent, so a drifted corpus fails loudly at build."""
+    for record in records:
+        if record.origin.source.endswith(source_suffix) and contains in record.text:
+            return record
+    raise LookupError(f"no chunk of {source_suffix!r} contains {contains!r}")
 
 
 DEMO_KB = build_demo_kb()
