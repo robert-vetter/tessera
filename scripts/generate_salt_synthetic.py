@@ -36,6 +36,7 @@ def _stable_hash(text: str) -> int:
     break the byte-for-byte reproducibility this generator promises."""
     return zlib.crc32(text.encode("utf-8"))
 
+
 # Deterministic knobs. SNAPSHOT_DATE is the dataset's honest "as of" date and
 # becomes every ingested record's ingestion timestamp (see sources/salt.py), so
 # provenance metadata stays deterministic rather than wall-clock.
@@ -228,7 +229,10 @@ def main() -> None:
         customer="0010000007",
         date="2026-02-10",
         currency="EUR",
-        lines=[("Forklift battery pack", "4", "12000.00"), ("Maintenance service contract", "1", "8000.00")],
+        lines=[
+            ("Forklift battery pack", "4", "12000.00"),
+            ("Maintenance service contract", "1", "8000.00"),
+        ],
     )
     _add_sales_doc(
         sales_docs,
@@ -247,8 +251,16 @@ def main() -> None:
     next_address = 1
     next_doc = 3
     currency_by_country = {
-        "DE": "EUR", "AT": "EUR", "FR": "EUR", "IT": "EUR", "ES": "EUR",
-        "CH": "CHF", "GB": "GBP", "US": "USD", "CA": "CAD", "NO": "NOK",
+        "DE": "EUR",
+        "AT": "EUR",
+        "FR": "EUR",
+        "IT": "EUR",
+        "ES": "EUR",
+        "CH": "CHF",
+        "GB": "GBP",
+        "US": "USD",
+        "CA": "CAD",
+        "NO": "NOK",
     }
 
     while len(customers) < TARGET_CUSTOMERS:
@@ -310,24 +322,60 @@ def main() -> None:
             lines=lines,
         )
 
-    _write_csv("I_Customer.csv", customers,
-               ["Customer", "CustomerName", "AddressID", "CustomerAccountGroup", "Country"])
-    _write_csv("I_AddrOrgNamePostalAddress.csv", addresses,
-               ["AddressID", "OrganizationName", "StreetName", "HouseNumber",
-                "PostalCode", "CityName", "Country"])
-    _write_csv("I_SalesDocument.csv", sales_docs,
-               ["SalesDocument", "SoldToParty", "ShipToParty", "BillToParty",
-                "PayerParty", "SalesDocumentDate", "TotalNetAmount", "TransactionCurrency"])
-    _write_csv("I_SalesDocumentItem.csv", items,
-               ["SalesDocument", "SalesDocumentItem", "Material",
-                "SalesDocumentItemText", "OrderQuantity", "NetAmount", "TransactionCurrency"])
+    _write_csv(
+        "I_Customer.csv",
+        customers,
+        ["Customer", "CustomerName", "AddressID", "CustomerAccountGroup", "Country"],
+    )
+    _write_csv(
+        "I_AddrOrgNamePostalAddress.csv",
+        addresses,
+        [
+            "AddressID",
+            "OrganizationName",
+            "StreetName",
+            "HouseNumber",
+            "PostalCode",
+            "CityName",
+            "Country",
+        ],
+    )
+    _write_csv(
+        "I_SalesDocument.csv",
+        sales_docs,
+        [
+            "SalesDocument",
+            "SoldToParty",
+            "ShipToParty",
+            "BillToParty",
+            "PayerParty",
+            "SalesDocumentDate",
+            "TotalNetAmount",
+            "TransactionCurrency",
+        ],
+    )
+    _write_csv(
+        "I_SalesDocumentItem.csv",
+        items,
+        [
+            "SalesDocument",
+            "SalesDocumentItem",
+            "Material",
+            "SalesDocumentItemText",
+            "OrderQuantity",
+            "NetAmount",
+            "TransactionCurrency",
+        ],
+    )
 
-    _write_manifest({
-        "I_Customer.csv": len(customers),
-        "I_AddrOrgNamePostalAddress.csv": len(addresses),
-        "I_SalesDocument.csv": len(sales_docs),
-        "I_SalesDocumentItem.csv": len(items),
-    })
+    _write_manifest(
+        {
+            "I_Customer.csv": len(customers),
+            "I_AddrOrgNamePostalAddress.csv": len(addresses),
+            "I_SalesDocument.csv": len(sales_docs),
+            "I_SalesDocumentItem.csv": len(items),
+        }
+    )
     total = len(customers) + len(addresses) + len(sales_docs) + len(items)
     print(f"Wrote {total} rows across 4 tables to {OUT_DIR}")
 
@@ -381,7 +429,9 @@ def _write_manifest(row_counts: dict[str, int]) -> None:
     manifest = {
         "dataset": "salt_synthetic",
         "synthetic": True,
-        "schema_reference": "SAP SALT (Sales Autocompletion Linked Business Tables), arXiv:2501.03413",
+        "schema_reference": (
+            "SAP SALT (Sales Autocompletion Linked Business Tables), arXiv:2501.03413"
+        ),
         "generator": "scripts/generate_salt_synthetic.py",
         "seed": SEED,
         "snapshot_date": SNAPSHOT_DATE,

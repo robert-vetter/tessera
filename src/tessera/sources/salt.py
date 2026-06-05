@@ -34,23 +34,23 @@ def _money(value: str, currency: str) -> str:
 def _customer_text(row: dict[str, str]) -> str:
     return (
         f'Customer {row["Customer"]}: "{row["CustomerName"]}" '
-        f'(account group {row["CustomerAccountGroup"]}, country {row["Country"]}); '
-        f'address {row["AddressID"]}.'
+        f"(account group {row['CustomerAccountGroup']}, country {row['Country']}); "
+        f"address {row['AddressID']}."
     )
 
 
 def _address_text(row: dict[str, str]) -> str:
     return (
         f'Address {row["AddressID"]}: "{row["OrganizationName"]}", '
-        f'{row["StreetName"]} {row["HouseNumber"]}, '
-        f'{row["PostalCode"]} {row["CityName"]}, {row["Country"]}.'
+        f"{row['StreetName']} {row['HouseNumber']}, "
+        f"{row['PostalCode']} {row['CityName']}, {row['Country']}."
     )
 
 
 def _sales_doc_text(row: dict[str, str]) -> str:
     amount = _money(row["TotalNetAmount"], row["TransactionCurrency"])
     return (
-        f'Sales document {row["SalesDocument"]}: sold-to party {row["SoldToParty"]}, '
+        f"Sales document {row['SalesDocument']}: sold-to party {row['SoldToParty']}, "
         f"net value {amount}, dated {row['SalesDocumentDate']}."
     )
 
@@ -58,9 +58,9 @@ def _sales_doc_text(row: dict[str, str]) -> str:
 def _sales_item_text(row: dict[str, str]) -> str:
     amount = _money(row["NetAmount"], row["TransactionCurrency"])
     return (
-        f'Item {row["SalesDocumentItem"]} of sales document {row["SalesDocument"]}: '
-        f'{row["SalesDocumentItemText"]} (material {row["Material"]}), '
-        f'quantity {row["OrderQuantity"]}, net {amount}.'
+        f"Item {row['SalesDocumentItem']} of sales document {row['SalesDocument']}: "
+        f"{row['SalesDocumentItemText']} (material {row['Material']}), "
+        f"quantity {row['OrderQuantity']}, net {amount}."
     )
 
 
