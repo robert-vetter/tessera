@@ -12,6 +12,11 @@ release, `v0.1.0`, is cut at the end of Phase 1).
 
 ### Added
 
+- **Grounded hello-world (`uv run tessera`).** The smallest end-to-end path —
+  question to grounded answer with claim-level provenance — answering a
+  hardcoded question against in-code evidence, and declining when no evidence
+  supports the question. Deterministic and model-free; it establishes the
+  provenance contract the Phase 1 faithfulness metric will measure.
 - **Python project (uv).** `pyproject.toml` managed by uv, with ruff
   (lint + format), mypy (strict), and pytest. Python pinned to 3.12 via
   `.python-version`, and `uv.lock` committed so the environment is reproducible

@@ -80,6 +80,23 @@ docker run --rm tessera-dev pytest     # run the test suite inside it
 Or open the folder in VS Code / GitHub Codespaces and "Reopen in Container" —
 the environment builds and syncs automatically.
 
+### Try the demo
+
+A tiny, deterministic hello-world proves the end-to-end shape — *question →
+evidence → grounded answer with provenance → render* — before any real data:
+
+```bash
+uv run tessera
+# Answers a built-in question; every claim shows the source records behind it.
+
+uv run tessera "Who is Acme's CEO?"
+# No supporting evidence → a principled refusal, not a guess.
+```
+
+This is a skeleton (hardcoded data, no model). It exists to demonstrate the two
+non-negotiables — **provenance is mandatory** and **the system can decline** —
+which the Phase 1 evaluation harness will then measure.
+
 ## Repository map
 
 | File | What's in it |
