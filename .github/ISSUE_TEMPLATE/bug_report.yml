@@ -1,0 +1,41 @@
+name: Bug report
+description: Something behaves incorrectly or breaks a guarantee (e.g. a claim without provenance).
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please be concrete — a small reproducible case
+        is worth more than a long description.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual behavior, including any error output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: The behavior you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps, commands, or input that trigger the issue.
+      placeholder: |
+        1. Run `uv run ...`
+        2. Ask "..."
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, and whether you ran locally or in the container.
+    validations:
+      required: false
