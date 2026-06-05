@@ -12,7 +12,7 @@ Run, in order, and report pass/fail for each:
 2. **Lint** — no lint errors (ruff / eslint).
 3. **Type-check** — no type errors (mypy/pyright; tsc strict).
 4. **Unit tests** — all green (pytest / vitest).
-5. **Eval harness** — run it and report the current **faithfulness, coverage, and quality** numbers, compared to the last recorded values in `docs/STATUS.md`.
+5. **Eval harness** — run `uv run tessera-eval` and report the **faithfulness, coverage, and quality** numbers it prints, compared to the last recorded values in `docs/STATUS.md`. Until the curated gold set and metrics land (Unit 6), it honestly reports `no gold set evaluated yet` (0 gold cases) — that is a **pass**, not a failure; do not treat the absent number as red.
 
 Rules:
 - If anything fails, **stop and fix it before proceeding.** Do not commit on red.
