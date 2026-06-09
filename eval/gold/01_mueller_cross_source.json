@@ -1,0 +1,17 @@
+{
+  "id": "01_mueller_cross_source",
+  "question": "Summarise Müller Logistik: its sales orders and agreement terms.",
+  "engine": "compose",
+  "kind": "answer",
+  "expected_support": [
+    "I_Customer:0010000007",
+    "I_AddrOrgNamePostalAddress:A0007",
+    "I_SalesDocument:0000500001",
+    "I_SalesDocument:0000500002",
+    "I_SalesDocument:0000500020",
+    "I_SalesDocument:0000500028",
+    "I_SalesDocument:0000500060",
+    "mueller_logistik_msa:chunk6"
+  ],
+  "expected_facts": ["EUR 77,500.00", "auto-renews"]
+}

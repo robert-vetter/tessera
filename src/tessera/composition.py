@@ -142,12 +142,15 @@ def compose(question: str, graph: KnowledgeGraph) -> Answer:
     name = _display_name(graph, cluster)
     claims: list[Claim] = []
 
-    # 1) Identity — grounded in the entity's customer row(s).
+    # 1) Identity — grounded in the entity's master records. The claim asserts
+    #    both customer and address counts, so it must cite BOTH (faithfulness).
     customers = [
         graph.node(nid) for nid in cluster if graph.node(nid).kind == "I_Customer"
     ]
     addresses = [
-        nid for nid in cluster if graph.node(nid).kind == "I_AddrOrgNamePostalAddress"
+        graph.node(nid)
+        for nid in cluster
+        if graph.node(nid).kind == "I_AddrOrgNamePostalAddress"
     ]
     if customers:
         claims.append(
@@ -156,7 +159,7 @@ def compose(question: str, graph: KnowledgeGraph) -> Answer:
                     f"'{name}' is one resolved entity spanning {len(customers)} "
                     f"customer record(s) and {len(addresses)} address record(s)."
                 ),
-                support=tuple(c.record for c in customers),
+                support=tuple(node.record for node in (*customers, *addresses)),
             )
         )
 

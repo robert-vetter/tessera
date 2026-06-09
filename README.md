@@ -117,13 +117,24 @@ Trust is measured, so the eval is runnable from the start:
 
 ```bash
 uv run tessera-eval
-# Reports faithfulness / coverage / quality. Today: "no gold set evaluated yet"
-# (0 gold cases) — the harness is honest rather than printing a fake number.
+# Eval over 6 gold case(s): faithfulness 1.000 (floor 1.000), coverage 0.929,
+# quality 1.000.
 ```
 
-The curated gold set and the metric computation arrive in a later unit; the
-scaffold exists now so every change runs the eval (`/verify` step 5) and it never
-bitrots. The gold set lives in [`eval/gold/`](eval/gold/).
+The numbers are real and **auditable**, scored against the answers the engine
+actually produces over a small, hand-curated gold set in [`eval/gold/`](eval/gold/):
+
+- **Faithfulness** — every emitted claim is deterministically supported by its
+  cited evidence. It is a **hard floor of 1.0** (an unsupported claim fails the
+  build) and is *provably able to fail*: a test injects a known-unfaithful claim
+  and confirms the metric catches it — so the 1.0 is earned, not tautological.
+- **Coverage** — how much of the available evidence the answers surface. Honestly
+  **below 1.0** (the Lumière agreement clause is a known mention miss), so there is
+  a real number to improve.
+- **Quality** — gold answers correct / refusals refused.
+
+Definition and what the number does (and does not) prove:
+[ADR 0005](docs/adr/0005-faithfulness-metric.md).
 
 ### Knowledge graph & entity resolution
 

@@ -1,17 +1,29 @@
 # Gold set
 
-Curated, human-checked evaluation cases — one `*.json` file per case, each a
-question with a known, fully-sourced correct answer. The eval harness
-(`tessera.eval`) loads every `*.json` here.
+Curated, human-checked evaluation cases — one `*.json` file per case — that
+`tessera.eval` scores into faithfulness / coverage / quality (see
+[`docs/adr/0005-faithfulness-metric.md`](../../docs/adr/0005-faithfulness-metric.md)).
+Small and hand-curated on purpose, so every number stays auditable.
 
-**This directory is intentionally empty for now.** The curated cases and the
-faithfulness / coverage / quality metrics that score them arrive in Unit 6 (see
-[`specs/0011-eval-harness-scaffold.md`](../../specs/0011-eval-harness-scaffold.md)
-and the roadmap). Until then `uv run tessera-eval` honestly reports
-"no gold set evaluated yet" rather than a fabricated number.
-
-Current minimal case shape (Unit 6 will extend it with expected-answer fields):
+Case format:
 
 ```json
-{ "question": "..." }
+{
+  "id": "unique_id",
+  "question": "...",
+  "engine": "compose" | "retrieve",
+  "kind": "answer" | "refuse",
+  "expected_support": ["evidence record ids a faithful answer should surface"],
+  "expected_facts": ["substrings a correct answer must contain"]
+}
 ```
+
+The current six cases exercise both answer paths and all three refusal kinds:
+cross-source composition (Müller), a retrieval lookup, the Lumière billing case
+(whose document clause is a **known coverage miss** — it keeps coverage honestly
+below 1.0), the Atlas mixed-currency refuse-to-sum, an ambiguous question, and an
+out-of-scope question.
+
+`expected_facts` and `expected_support` are checked against the answer the engine
+actually produces. Faithfulness is gated (must be 1.0); coverage and quality are
+reported as honest, improvable targets.

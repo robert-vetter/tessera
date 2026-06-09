@@ -1,51 +1,66 @@
-"""Tests for the eval-harness scaffold.
+"""Tests for the eval harness over the curated gold set.
 
-They pin the *honest* behaviour: with no gold set the harness says so and invents
-no number; with cases present it counts them but still reports metrics as unset
-until Unit 6 implements scoring. Exercising the harness here also keeps CI from
-letting it silently bitrot.
+Pins the headline guarantees: faithfulness is 1.0 on the real gold set, coverage
+is honestly below 1.0 (the Lumière miss), quality is reported, and the CLI fails
+the build when faithfulness drops below its floor.
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 
 from tessera.eval.cli import main
-from tessera.eval.harness import load_gold_set, run_eval
+from tessera.eval.harness import EvalReport, load_gold_set, run_eval
 
 
-def test_run_eval_reports_no_gold_set_yet() -> None:
-    report = run_eval()  # the real (empty) gold dir
-    assert report.gold_case_count == 0
+def test_gold_set_is_loaded() -> None:
+    cases = load_gold_set()
+    assert len(cases) == 6
+    assert {c.kind for c in cases} == {"answer", "refuse"}
+    assert {c.engine for c in cases} == {"compose", "retrieve"}  # both answer paths
+
+
+def test_faithfulness_is_one_on_the_gold_set() -> None:
+    """Every emitted claim is supported by its cited evidence — the earned 1.0."""
+    report = run_eval()
+    assert report.faithfulness == 1.0
+
+
+def test_coverage_is_honestly_below_one() -> None:
+    """The Lumière agreement clause is a known mention miss, so coverage < 1.0."""
+    report = run_eval()
+    assert report.coverage is not None
+    assert 0.0 < report.coverage < 1.0
+
+
+def test_quality_is_reported() -> None:
+    report = run_eval()
+    assert report.quality == 1.0  # all six gold cases answered/refused correctly
+
+
+def test_no_gold_set_reports_na(tmp_path: Path) -> None:
+    report = run_eval(tmp_path)  # empty directory
     assert not report.evaluated
-    # No fabricated numbers.
     assert report.faithfulness is None
-    assert report.coverage is None
-    assert report.quality is None
     assert "no gold set evaluated yet" in report.summary()
 
 
-def test_cli_runs_and_is_honest(capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_passes_on_faithful_gold_set() -> None:
+    assert main([]) == 0
+
+
+def test_cli_fails_when_faithfulness_below_floor(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The hard floor: faithfulness < 1.0 makes the eval exit non-zero."""
+    monkeypatch.setattr(
+        "tessera.eval.cli.run_eval",
+        lambda: EvalReport(
+            gold_case_count=1, faithfulness=0.5, coverage=1.0, quality=1.0
+        ),
+    )
     exit_code = main([])
-    out = capsys.readouterr().out
-    assert exit_code == 0
-    assert "no gold set evaluated yet" in out
-
-
-def test_load_gold_set_empty_when_absent(tmp_path: Path) -> None:
-    assert load_gold_set(tmp_path / "does-not-exist") == []
-
-
-def test_counts_cases_but_still_reports_metrics_unset(tmp_path: Path) -> None:
-    """Adding gold cases early must not fabricate metrics or crash the gate."""
-    (tmp_path / "case1.json").write_text(json.dumps({"question": "Q?"}), "utf-8")
-    cases = load_gold_set(tmp_path)
-    assert len(cases) == 1
-
-    report = run_eval(tmp_path)
-    assert report.gold_case_count == 1
-    assert report.faithfulness is None  # scoring is Unit 6
-    assert "scoring not implemented yet" in report.summary()
+    assert exit_code == 1
+    assert "FAIL" in capsys.readouterr().out
