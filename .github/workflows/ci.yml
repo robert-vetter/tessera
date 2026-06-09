@@ -41,17 +41,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Format check
-        run: uv run ruff format --check .
-
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Type-check
-        run: uv run mypy src tests
-
-      - name: Tests
-        run: uv run pytest
+      # Format, lint, type-check, tests — via the shared gate script that the
+      # local /verify command also runs, so the two can never disagree.
+      - name: Gate (format, lint, type-check, tests)
+        run: bash scripts/gate.sh
 
       # Reuse the pinned gitleaks hook from .pre-commit-config.yaml (single
       # source of truth) so secrets are caught even if a contributor skipped
