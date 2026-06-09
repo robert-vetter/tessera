@@ -1,0 +1,8 @@
+{
+  "id": "02_mueller_lookup_retrieve",
+  "question": "Müller Logistik GmbH customer record",
+  "engine": "retrieve",
+  "kind": "answer",
+  "expected_support": ["I_Customer:0010000007"],
+  "expected_facts": ["Müller Logistik GmbH"]
+}

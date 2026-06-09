@@ -12,7 +12,13 @@ from tessera.eval.harness import run_eval
 
 
 def main(argv: list[str] | None = None) -> int:
-    print(run_eval().summary())
+    report = run_eval()
+    print(report.summary())
+    # Faithfulness is the one hard floor: an unsupported claim fails the build
+    # (ADR 0005). Coverage and quality are reported as honest, improvable targets.
+    if report.faithfulness is not None and report.faithfulness < 1.0:
+        print("FAIL: faithfulness < 1.000 — a claim is unsupported by its evidence.")
+        return 1
     return 0
 
 

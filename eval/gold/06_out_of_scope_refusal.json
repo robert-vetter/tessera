@@ -1,0 +1,8 @@
+{
+  "id": "06_out_of_scope_refusal",
+  "question": "What colour is the sky?",
+  "engine": "compose",
+  "kind": "refuse",
+  "expected_support": [],
+  "expected_facts": []
+}

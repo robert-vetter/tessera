@@ -1,0 +1,8 @@
+{
+  "id": "05_ambiguous_refusal",
+  "question": "Logistik",
+  "engine": "compose",
+  "kind": "refuse",
+  "expected_support": [],
+  "expected_facts": []
+}
