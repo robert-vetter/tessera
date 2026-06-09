@@ -125,6 +125,21 @@ The curated gold set and the metric computation arrive in a later unit; the
 scaffold exists now so every change runs the eval (`/verify` step 5) and it never
 bitrots. The gold set lives in [`eval/gold/`](eval/gold/).
 
+### Knowledge graph & entity resolution
+
+The ingested records are assembled into an in-process knowledge graph, and a
+**non-destructive** resolution layer recognizes when records across the two
+sources name the same real entity — e.g. the customer master's "Müller Logistik
+GmbH", the address master's "Mueller Logistik Gmbh", and the agreement that names
+the same firm. Resolution is **additive and reversible**: a same-entity assertion
+records *why* (the matched names + a similarity score) and a confidence, and
+withdrawing it leaves the raw records untouched — merges are never destructive.
+Matching is deterministic name-similarity (umlaut/case fold + edit-distance), with
+a tunable threshold; it is honest about precision/recall and about known misses
+(a reference that drops a legal form isn't linked yet). Design and trade-offs:
+[ADR 0004](docs/adr/0004-graph-and-entity-resolution.md). Composing a cross-source
+*answer* over the graph is the next unit.
+
 ### Data
 
 Both modalities arrive through one ingestion path:
