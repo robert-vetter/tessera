@@ -349,3 +349,58 @@ Living session journal. Append a new dated entry at the end of every work sessio
 - `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
   4, 5 merged (PRs #10–#18). Phase 1 milestone met; Unit 6 (eval metrics) remains.
   Not yet tagged.
+
+---
+
+## 2026-06-09 — Phase 1 COMPLETE (Unit 6: eval metrics + gold set; first real numbers)
+
+**Done this session**
+- Closed the **`/verify`-vs-CI gate gap** (PR #20, `f34f367`, spec 0016): a shared
+  `scripts/gate.sh` is the single source of truth both `/verify` and CI run, so
+  local green == CI green. (Done before the first eval number, deliberately.)
+- **Unit 6 — evaluation harness v1** (PR #21, squash-merge `a3064b1`, spec 0017,
+  ADR 0005): the first real, auditable trust numbers.
+  - `eval/metrics.py` `is_supported()` — a deterministic, four-shape faithfulness
+    verifier (snippet/clause containment, aggregate recomputation, count match,
+    refuse-to-sum condition), written **first** with its adversarial test: an
+    injected unfaithful claim is caught, so a 1.0 is **earned, not tautological**.
+  - `eval/harness.py` scores faithfulness/coverage/quality over six curated gold
+    cases (both answer paths + all three refusal kinds); `eval/cli.py` reports them
+    and **exits non-zero if faithfulness < 1.0** (the one hard floor).
+  - Fixed the composition **identity claim** to cite the address records it asserts
+    — the under-citation the verifier caught. The eval did its job.
+
+**Current eval numbers (first real baseline)**
+- **Faithfulness 1.000** (gated; provably able to fail).
+- **Coverage 0.929** (honest — the documented Lumière document-mention miss; a real
+  number to improve).
+- **Quality 1.000** (gold answers correct / refusals refused).
+
+**Phase 1 — DONE.** The whole engine runs end-to-end and is measured: ingest both
+modalities through one door → one knowledge graph with non-destructive,
+reversible cross-source entity resolution → deterministic lexical retrieval with
+principled refusal → cross-source composed answers with claim-level provenance and
+a fully-sourced aggregate → faithfulness/coverage/quality with a gated faithfulness
+floor. Tagged `phase-1`.
+
+**Next — Phase 2 (deepen trust and reasoning).** Per ROADMAP: question routing
+(simple vs. multi-step), multi-step reasoning across several entities and both
+modalities, principled refusal under insufficient evidence, **synthetic data
+generation** feeding the harness (including ambiguous entities, missing evidence,
+conflicting sources), and the trust metrics automated and tracked over time. The
+ADR-recorded revisit triggers come due here: embeddings/semantic retrieval (ADR
+0003), embeddings/ML + multi-field entity resolution (ADR 0004), and LLM-judged
+faithfulness (ADR 0005) — each to be reconsidered when the metric shows the
+deterministic approach missing. Start Phase 2 with a roadmap re-read + `/spec`.
+
+**Open questions / risks**
+- The Phase-1 metrics are an honest *baseline*, not a ceiling: faithfulness is a
+  structural (not semantic) check; coverage 0.929 reflects real, named gaps. Phase
+  2 should grow coverage/quality and, when justified, upgrade the methods per the
+  revisit triggers.
+- Confirm SAP AI Core / HANA Cloud access path for Phase 4 deployment; not blocking.
+
+**State of the tree**
+- `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
+  4, 5, 6 + the gate unit merged (PRs #10–#21). **Phase 1 complete; tagged
+  `phase-1`.**
