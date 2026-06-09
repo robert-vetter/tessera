@@ -281,3 +281,71 @@ Living session journal. Append a new dated entry at the end of every work sessio
 - `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
   4 merged (PRs #10–#16). Five of six Phase 1 units done. Not yet tagged (tag at
   end of Phase 1).
+
+---
+
+## 2026-06-09 — Phase 1 Unit 5 (cross-source answer composition — the milestone)
+
+**Done this session**
+- **Unit 5 — cross-source answer composition** (PR #18, squash-merge `a041154`,
+  spec 0015, no ADR). This is the **Phase 1 milestone**: a person asks one
+  realistic cross-source question and gets a sourced answer.
+  - `src/tessera/composition.py` (vertical-neutral): `resolve_entity()` (longest
+    normalized-name overlap, best-match, **refuse on a tie** between distinct
+    entities) + `compose()` (identity row-claim + sourced aggregate + document
+    clauses). A **separate** `tessera-compose` entry point — no routing from the
+    main CLI (routing is Phase 2).
+  - `graph.py`: generic `Node.attributes` + `attr()`, and `sources_of()` /
+    `mentions_of()` traversal helpers, so composition stays schema-neutral.
+  - `sources/salt.py`: `node_attributes()` exposes each sales doc's `net_amount`
+    + `currency`. `knowledge.build_demo_graph()` attaches them.
+  - data/generator: appended a deterministic **mixed-currency** entity (Atlas
+    Trading, one EUR + one USD order); existing rows byte-identical.
+  - **Bounded, honest synthesis:** the entity's total net order value is summed
+    over its sales rows with **every summand cited — and exactly those rows**;
+    across currencies it does **not** invent a total but reports per-currency
+    subtotals and states "Refused to sum across EUR and USD". General multi-step /
+    multi-entity reasoning and routing remain Phase 2.
+  - Two key tests pinned: aggregate == sum of exactly the cited rows (Müller: 5
+    orders → EUR 77,500.00); mixed-currency refuses to sum and says why. Plus
+    cross-source (row + renewal clause), ambiguous-question refusal, no-entity
+    refusal.
+  - **Process note:** Unit 5 was first committed on `main` by mistake (forgot to
+    branch); branch protection rejected the push — commit moved to a feature
+    branch, local `main` reset. Guardrail worked; branch *first* next time.
+
+**Current eval numbers**
+- Harness runnable; **0 gold cases → faithfulness / coverage / quality: n/a.**
+  Unchanged by design (Unit 6). Unit 5 produced the multi-source answer shape the
+  faithfulness metric will score.
+
+**Phase 1 engine status**
+- **Complete end-to-end and demonstrable on the milestone question**: ingest both
+  modalities → one graph with resolved entities → retrieval / refusal → cross-source
+  composed answer with provenance and a fully-sourced aggregate. Units 1, 1b, 2, 3,
+  4, 5 done.
+
+**Next**
+- **Interstitial small unit — close the `/verify`-vs-CI ruff gap.** Make `/verify`
+  run the exact CI commands (`uv run ruff format --check .` / `uv run ruff check .`),
+  and confirm the `ruff` pin in `.pre-commit-config.yaml` matches `uv.lock`. Done
+  **before** Unit 6 so the gate is identical and trustworthy before the first real
+  eval number lands. (Spec → fix → verify → PR.)
+- **Then Unit 6 — close Phase 1:** curated gold set + the faithfulness / coverage /
+  quality metrics, turning `tessera-eval`'s "n/a" into a real number over the
+  composed answers. **Carries an ADR** (the faithfulness-metric definition — the
+  project's central auditable contract). Tag `phase-1` at the end.
+
+**Open questions / risks**
+- ER precision/recall remains honest-not-maximal (ADR 0004); composition inherits
+  it (e.g. an entity whose document reference was a Unit-4 miss has no clause to
+  show).
+- Retrieval revisit trigger (ADR 0003) still stands for Unit 6 coverage.
+- The `/verify`-vs-CI ruff gap is being closed next (above), retiring that
+  long-standing open item.
+- Confirm SAP AI Core / HANA Cloud access path for later phases; not blocking.
+
+**State of the tree**
+- `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
+  4, 5 merged (PRs #10–#18). Phase 1 milestone met; Unit 6 (eval metrics) remains.
+  Not yet tagged.
