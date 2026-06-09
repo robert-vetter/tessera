@@ -28,15 +28,27 @@ from tessera.resolution import (
 
 @dataclass(frozen=True)
 class Node:
-    """A graph node wrapping one ingested record. Provenance lives on the record."""
+    """A graph node wrapping one ingested record. Provenance lives on the record.
+
+    ``attributes`` is a small, vertical-neutral bag of structured facts a source
+    chooses to expose for a node (e.g. a sales document's ``net_amount`` and
+    ``currency``), so downstream engine code can use them without parsing text.
+    """
 
     record: EvidenceRecord
     kind: str
     name: str | None = None  # the organization name, for name-bearing nodes
+    attributes: tuple[tuple[str, str], ...] = ()
 
     @property
     def id(self) -> str:
         return self.record.id
+
+    def attr(self, key: str) -> str | None:
+        for k, value in self.attributes:
+            if k == key:
+                return value
+        return None
 
 
 @dataclass(frozen=True)
@@ -124,6 +136,17 @@ class KnowledgeGraph:
     def name_nodes(self) -> list[Node]:
         """Nodes that carry an organization name (the resolution candidates)."""
         return [node for node in self._nodes.values() if node.name]
+
+    def sources_of(self, dst_ids: set[str], relation: str) -> list[str]:
+        """Ids of nodes pointing into ``dst_ids`` via ``relation`` (e.g. the sales
+        documents ``sold_to`` a set of customer nodes)."""
+        return [
+            e.src for e in self._edges if e.relation == relation and e.dst in dst_ids
+        ]
+
+    def mentions_of(self, node_ids: set[str]) -> list[Mention]:
+        """Document mentions that point at any of ``node_ids``."""
+        return [m for m in self._mentions if m.node in node_ids]
 
     # --- resolution layer -----------------------------------------------------
     def resolve_entities(self, threshold: float = DEFAULT_RESOLUTION_THRESHOLD) -> None:

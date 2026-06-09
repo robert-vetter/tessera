@@ -142,6 +142,18 @@ class SaltSyntheticSource:
             ]
         return names
 
+    def node_attributes(self) -> dict[str, tuple[tuple[str, str], ...]]:
+        """Structured facts to attach to nodes: each sales document's net amount
+        and currency, so the graph can aggregate without parsing rendered text.
+        Schema knowledge stays here, in the source."""
+        attrs: dict[str, tuple[tuple[str, str], ...]] = {}
+        for row in read_csv_rows(self.data_dir / "I_SalesDocument.csv"):
+            attrs[f"I_SalesDocument:{row['SalesDocument']}"] = (
+                ("net_amount", row["TotalNetAmount"]),
+                ("currency", row["TransactionCurrency"]),
+            )
+        return attrs
+
     def structural_edges(self) -> list[tuple[str, str, str]]:
         """Deterministic (src_id, dst_id, relation) edges from the foreign keys.
 

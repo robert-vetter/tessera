@@ -322,6 +322,49 @@ def main() -> None:
             lines=lines,
         )
 
+    # --- Mixed-currency entity: a multinational that transacts in two currencies. -
+    # Fixed (no RNG) and appended last, so it cannot perturb the deterministic rows
+    # above. It exists so the cross-source aggregate has a real "refuse to sum
+    # across currencies" case (a single customer with both an EUR and a USD order).
+    customers.append(
+        {
+            "Customer": "0010000008",
+            "CustomerName": "Atlas Trading GmbH",
+            "AddressID": "A0008",
+            "CustomerAccountGroup": "KUNA",
+            "Country": "DE",
+        }
+    )
+    addresses.append(
+        {
+            "AddressID": "A0008",
+            "OrganizationName": "Atlas Trading GmbH",
+            "StreetName": "Handelsweg",
+            "HouseNumber": "3",
+            "PostalCode": "60311",
+            "CityName": "Frankfurt",
+            "Country": "DE",
+        }
+    )
+    _add_sales_doc(
+        sales_docs,
+        items,
+        doc_id="0000500900",
+        customer="0010000008",
+        date="2026-02-20",
+        currency="EUR",
+        lines=[("Pallet racking unit", "10", "15000.00")],
+    )
+    _add_sales_doc(
+        sales_docs,
+        items,
+        doc_id="0000500901",
+        customer="0010000008",
+        date="2026-04-02",
+        currency="USD",
+        lines=[("Packaging line upgrade", "1", "18000.00")],
+    )
+
     _write_csv(
         "I_Customer.csv",
         customers,

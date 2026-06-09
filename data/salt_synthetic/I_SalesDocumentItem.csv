@@ -168,3 +168,5 @@ SalesDocument,SalesDocumentItem,Material,SalesDocumentItemText,OrderQuantity,Net
 0000500081,20,MAT-8231,Pallet racking unit,3,16500.00,EUR
 0000500082,10,MAT-9787,Conveyor belt segment,4,500.00,EUR
 0000500082,20,MAT-3012,Steel shelving kit,8,17000.00,EUR
+0000500900,10,MAT-8231,Pallet racking unit,10,15000.00,EUR
+0000500901,10,MAT-2039,Packaging line upgrade,1,18000.00,USD

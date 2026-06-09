@@ -14,6 +14,7 @@ dependencies = []
 [project.scripts]
 tessera = "tessera.cli:main"
 tessera-eval = "tessera.eval.cli:main"
+tessera-compose = "tessera.composition:main"
 
 [build-system]
 requires = ["hatchling"]
