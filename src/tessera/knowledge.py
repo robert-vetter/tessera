@@ -36,11 +36,19 @@ def build_demo_graph(
     layers. Answering over the graph is Unit 5 — not done here."""
     salt = SaltSyntheticSource()
     org_names = salt.org_names()
+    node_attrs = salt.node_attributes()
 
     graph = KnowledgeGraph()
     for record in salt.ingest():
         kind = record.id.split(":", 1)[0]  # the SALT table name
-        graph.add_node(Node(record=record, kind=kind, name=org_names.get(record.id)))
+        graph.add_node(
+            Node(
+                record=record,
+                kind=kind,
+                name=org_names.get(record.id),
+                attributes=node_attrs.get(record.id, ()),
+            )
+        )
     for record in DocumentSource().ingest():
         graph.add_node(Node(record=record, kind="document"))
 
