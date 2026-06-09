@@ -137,8 +137,25 @@ withdrawing it leaves the raw records untouched — merges are never destructive
 Matching is deterministic name-similarity (umlaut/case fold + edit-distance), with
 a tunable threshold; it is honest about precision/recall and about known misses
 (a reference that drops a legal form isn't linked yet). Design and trade-offs:
-[ADR 0004](docs/adr/0004-graph-and-entity-resolution.md). Composing a cross-source
-*answer* over the graph is the next unit.
+[ADR 0004](docs/adr/0004-graph-and-entity-resolution.md).
+
+### Cross-source answers
+
+Composing over that graph gives the Phase 1 payoff — one grounded answer that
+combines a database **row** and a document **clause** about the *same* resolved
+entity:
+
+```bash
+uv run tessera-compose "Summarise Müller Logistik: its sales orders and agreement terms."
+# Resolves the entity, then answers with its sales total AND its agreement's
+# renewal terms — each claim traced to a row or a clause.
+```
+
+The one synthesis it performs — the entity's total net order value — is summed
+over its sales rows with **every summand cited**, and it **refuses to sum across
+different currencies** rather than invent a number (try
+`uv run tessera-compose "What is Atlas Trading's total order value?"`). General
+multi-step reasoning and question routing are a later phase.
 
 ### Data
 
