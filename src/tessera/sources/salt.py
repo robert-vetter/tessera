@@ -126,3 +126,51 @@ class SaltSyntheticSource:
                     )
                 )
         return records
+
+    def org_names(self) -> dict[str, str]:
+        """Map each name-bearing record id to its organization name.
+
+        These are the resolution candidates; the schema knowledge of *which*
+        columns hold a name lives here, in the source, not in the graph engine.
+        """
+        names: dict[str, str] = {}
+        for row in read_csv_rows(self.data_dir / "I_Customer.csv"):
+            names[f"I_Customer:{row['Customer']}"] = row["CustomerName"]
+        for row in read_csv_rows(self.data_dir / "I_AddrOrgNamePostalAddress.csv"):
+            names[f"I_AddrOrgNamePostalAddress:{row['AddressID']}"] = row[
+                "OrganizationName"
+            ]
+        return names
+
+    def structural_edges(self) -> list[tuple[str, str, str]]:
+        """Deterministic (src_id, dst_id, relation) edges from the foreign keys.
+
+        Ids match the ingested record ids, so edges connect the same nodes.
+        """
+        edges: list[tuple[str, str, str]] = []
+        for row in read_csv_rows(self.data_dir / "I_Customer.csv"):
+            edges.append(
+                (
+                    f"I_Customer:{row['Customer']}",
+                    f"I_AddrOrgNamePostalAddress:{row['AddressID']}",
+                    "has_address",
+                )
+            )
+        for row in read_csv_rows(self.data_dir / "I_SalesDocument.csv"):
+            edges.append(
+                (
+                    f"I_SalesDocument:{row['SalesDocument']}",
+                    f"I_Customer:{row['SoldToParty']}",
+                    "sold_to",
+                )
+            )
+        for row in read_csv_rows(self.data_dir / "I_SalesDocumentItem.csv"):
+            doc = row["SalesDocument"]
+            edges.append(
+                (
+                    f"I_SalesDocumentItem:{doc}-{row['SalesDocumentItem']}",
+                    f"I_SalesDocument:{doc}",
+                    "line_of",
+                )
+            )
+        return edges
