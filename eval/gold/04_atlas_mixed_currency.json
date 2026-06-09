@@ -1,0 +1,13 @@
+{
+  "id": "04_atlas_mixed_currency",
+  "question": "What is Atlas Trading's total order value?",
+  "engine": "compose",
+  "kind": "answer",
+  "expected_support": [
+    "I_Customer:0010000008",
+    "I_AddrOrgNamePostalAddress:A0008",
+    "I_SalesDocument:0000500900",
+    "I_SalesDocument:0000500901"
+  ],
+  "expected_facts": ["Refused to sum across EUR and USD"]
+}
