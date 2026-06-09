@@ -210,3 +210,74 @@ Living session journal. Append a new dated entry at the end of every work sessio
 **State of the tree**
 - `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3
   merged (PRs #10–#14). Five of six Phase 1 units done. Not yet tagged.
+
+---
+
+## 2026-06-09 — Phase 1 Unit 4 (knowledge graph + non-destructive entity resolution)
+
+**Done this session**
+- **Unit 4 — knowledge graph + basic cross-source entity resolution** (PR #16,
+  squash-merge `c74dad7`, spec 0014, ADR 0004). Reviewed the graph-store choice
+  and ER/merge model with the maintainer before any code (the standing gate), with
+  four fixed design constraints:
+  - **Embedded / in-process graph** (`src/tessera/graph.py`) — `KnowledgeGraph`
+    with `Node`/`Edge`/`Resolution`/`Mention`. No Neo4j/HANA; HANA persistence is
+    ADR future work. SALT foreign keys become deterministic structural edges
+    (`sources/salt.py` now exposes `org_names()` + `structural_edges()`, keeping
+    schema knowledge in the source, engine vertical-neutral).
+  - **Non-destructive resolution layer** — a `Resolution` is an *additive*
+    assertion that two org-name nodes co-refer, carrying a reason (matched
+    normalized forms + score) and a confidence. Resolved entities are connected
+    components, **derived not stored**; `remove_resolution()` re-splits a cluster
+    and leaves raw records intact. Nothing is collapsed/overwritten. Document
+    references link via additive `Mention`s.
+  - **Deterministic, explainable, name-only matching** (`src/tessera/resolution.py`)
+    — umlaut/case fold + `difflib` similarity, with a named/tunable
+    `DEFAULT_RESOLUTION_THRESHOLD = 0.85`. No embeddings/ML. Confidence is the
+    similarity score used as a **proxy, not a calibrated probability**.
+  - **Scope ended at graph + resolution** — answer composition is Unit 5.
+  - Proof tests (all green): Bayerische/Bayersche/Bayerische (customers +
+    addresses) → one entity w/ reasons+confidence; Müller customer + Mueller
+    address → one entity; Müller vs Nordwind ("… Logistik GmbH") stay separate;
+    assertion withdrawal re-splits with raw data intact; MSA chunk links
+    cross-source to the Müller entity; Lumière letter is a documented, tested known
+    recall miss.
+
+**Current eval numbers**
+- Harness runnable; **0 gold cases → faithfulness / coverage / quality: n/a.**
+  Unchanged by design (metrics are Unit 6). Unit 4 builds the entity layer the
+  Unit 6 metrics (and a possible ER precision/recall check) will measure.
+
+**Phase 1 engine status**
+- End-to-end now exists: ingest both modalities → one graph with resolved entities
+  → deterministic lexical retrieval with provenance → principled refusal → runnable
+  eval. Five of six units done (1, 1b, 2, 3, 4).
+
+**Next**
+- **Unit 5 — cross-source answer composition.** Compose a single grounded answer
+  that combines a database **row** and a document **clause** about the *same
+  resolved entity* — e.g. Müller Logistik's sales orders (SALT rows) *and* its
+  master service agreement's renewal terms (MSA clause) — each claim still carrying
+  claim-level provenance, traversing the graph's resolved-entity clusters +
+  `Mention` links built in Unit 4. This brings back the synthesis Unit 3 honestly
+  deferred. Likely no ADR (builds on 0002/0003/0004); confirm at `/spec`.
+- **Then Unit 6** — curated gold set + the faithfulness/coverage/quality metrics
+  (ADR-worthy), turning `tessera-eval`'s "n/a" into a real number and closing
+  Phase 1.
+
+**Open questions / risks**
+- **ER precision/recall is honest, not maximal** (ADR 0004): single name-similarity
+  threshold; transitive-closure over-merge possible; name-only (multi-field is
+  additive future work); document-mention recall misses forms absent from master
+  data (the Lumière case). Unit 6's metric is the revisit trigger for the threshold
+  and for embeddings/ML.
+- **Retrieval revisit trigger (ADR 0003)** still stands for Unit 6 coverage.
+- **Process gap (open, task spawned):** `/verify` uses the pre-commit ruff hook; CI
+  runs `uv run ruff format --check .` / `ruff check .`. Keep running the
+  CI-equivalent commands in `/verify` until the gate is aligned.
+- Confirm SAP AI Core / HANA Cloud access path for later phases; not blocking.
+
+**State of the tree**
+- `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
+  4 merged (PRs #10–#16). Five of six Phase 1 units done. Not yet tagged (tag at
+  end of Phase 1).
