@@ -51,6 +51,15 @@ class _Entity:
     match: int  # longest common run with the question
 
 
+def _display(names: list[str | None]) -> str:
+    """The most complete member name, with a DETERMINISTIC tie-break.
+
+    ``(len, n)`` matters: equal-length variants (e.g. 'GmbH' vs 'GMBH') would
+    otherwise be chosen by frozenset iteration order, which is hash-seeded and
+    differs between processes — a real flake this codebase has met."""
+    return max((n for n in names if n), key=lambda n: (len(n), n))
+
+
 def _longest_common(a: str, b: str) -> int:
     if not a or not b:
         return 0
@@ -80,7 +89,7 @@ def find_named_entities(question: str, graph: KnowledgeGraph) -> list[_Entity]:
             if run >= MIN_NAME_MATCH and run / len(norm) >= NAME_MATCH_RATIO:
                 best = max(best, run)
         if best:
-            display = max((n for n in names if n), key=len)
+            display = _display(names)
             found.append(_Entity(cluster=cluster, name=display, match=best))
     found.sort(key=lambda e: (-e.match, e.name))
     return found
@@ -206,7 +215,7 @@ def superlative(question: str, graph: KnowledgeGraph) -> Answer:
             continue
         rows.sort(key=lambda n: n.id)
         total = sum((Decimal(n.attr("net_amount") or "0") for n in rows), Decimal("0"))
-        display = max((n for n in names if n), key=len)
+        display = _display(names)
         ranked.append((total, display, rows))
     if not ranked:
         return Answer(

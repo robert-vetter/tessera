@@ -51,7 +51,12 @@ def _longest_common(a: str, b: str) -> int:
 def _display_name(graph: KnowledgeGraph, cluster: frozenset[str]) -> str:
     """The most complete member name — a stable label for the entity."""
     names = [graph.node(nid).name for nid in cluster if graph.node(nid).name]
-    return max((n for n in names if n), key=len, default="(unnamed entity)")
+    # (len, n) tie-break: equal-length variants (e.g. 'GmbH' vs 'GMBH') would
+    # otherwise be chosen by frozenset iteration order, which is hash-seeded
+    # and therefore nondeterministic across processes.
+    return max(
+        (n for n in names if n), key=lambda n: (len(n), n), default="(unnamed entity)"
+    )
 
 
 def resolve_entity(question: str, graph: KnowledgeGraph) -> EntityMatch:
