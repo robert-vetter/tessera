@@ -1,0 +1,6 @@
+{
+  "id": "05_passed_run_refusal",
+  "question": "Why did run R-1041 fail?",
+  "engine": "route",
+  "kind": "refuse"
+}

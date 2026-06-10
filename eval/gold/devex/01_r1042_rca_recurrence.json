@@ -1,0 +1,18 @@
+{
+  "id": "01_r1042_rca_recurrence",
+  "question": "Why did run R-1042 fail, and has this happened before?",
+  "engine": "rca",
+  "kind": "answer",
+  "expected_support": [
+    "Run:R-1042",
+    "run_R-1042:chunk5",
+    "run_R-0987:chunk5",
+    "Ticket:DEVEX-187"
+  ],
+  "expected_facts": [
+    "TimeoutError: connection to payments-db timed out after 30s",
+    "Recurring failure:",
+    "Documented incident:",
+    "DEVEX-187"
+  ]
+}
