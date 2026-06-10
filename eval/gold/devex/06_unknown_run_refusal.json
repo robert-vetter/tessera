@@ -1,0 +1,6 @@
+{
+  "id": "06_unknown_run_refusal",
+  "question": "Why did run R-9999 fail?",
+  "engine": "route",
+  "kind": "refuse"
+}

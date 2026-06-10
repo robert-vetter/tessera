@@ -1,0 +1,18 @@
+{
+  "id": "02_pr201_change_summary",
+  "question": "What does PR-201 actually change, and why?",
+  "engine": "summary",
+  "kind": "answer",
+  "expected_support": [
+    "PR:PR-201",
+    "PR-201.diff:hunk1",
+    "PR-201.diff:hunk2",
+    "PR-201.diff:hunk3",
+    "Ticket:DEVEX-204"
+  ],
+  "expected_facts": [
+    "Motivating ticket:",
+    "DEVEX-204",
+    "retry with exponential backoff"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "07_out_of_scope_refusal",
+  "question": "What colour is the sky?",
+  "engine": "route",
+  "kind": "refuse"
+}
