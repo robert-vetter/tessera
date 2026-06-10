@@ -404,3 +404,72 @@ deterministic approach missing. Start Phase 2 with a roadmap re-read + `/spec`.
 - `main` green and in sync with `origin/main`; no open branches. Units 1, 1b, 2, 3,
   4, 5, 6 + the gate unit merged (PRs #10–#21). **Phase 1 complete; tagged
   `phase-1`.**
+
+---
+
+## 2026-06-10 — Phase 2 COMPLETE (autonomous run: trust deepened and measured over time)
+
+**Mode note:** this phase ran **autonomously** per the new CLAUDE.md
+"Autonomous phase execution" section (spec 0018): one kickoff, all units through
+spec → implement → gate → PR → CI → merge, decisions recorded in specs/ADRs
+instead of asked.
+
+**Done this session (7 units, PRs #23–#29)**
+- **Process + drift** (spec 0018, `a6cf512`): autonomous mode codified; ADRs
+  0002–0005 added to the docs nav; CHANGELOG rolled into phase-tag sections
+  with the missing Phase 1 entries.
+- **Multi-step reasoning** (spec 0019, ADR 0006, `a75fba9`): compare two named
+  entities + currency-scoped superlative, fully sourced, refusing on
+  incomparability; faithfulness verifier recomputes both conclusion shapes
+  over the graph, adversarially tested. Also fixed a real hash-seed flake
+  (display-name tie-break depended on frozenset iteration order).
+- **Question routing** (spec 0020, `23c8a1c`): `uv run tessera` is one routed
+  door (multi / entity / lookup), printing route + reason; `--engine`
+  overrides; harness accepts `engine: route`.
+- **Conflicting evidence** (spec 0021, `c9a03a8`): deliberate renewal-date
+  conflict in the corpus (MSA 1 August vs Amendment 1 February); composition
+  surfaces a conflict claim citing both sides and refuses a single date;
+  verifier covers the shape; gold case 07.
+- **Synthetic battery** (spec 0022, ADR 0007, `1fe51a0`): ~52 cases enumerated
+  deterministically from the graph at eval time; expectations data-derived
+  (anti-tautology); gold and synthetic scored separately; floor gates both.
+- **Metrics over time** (spec 0023, `c7950b6`): append-only
+  `eval/history.jsonl` + `tessera-eval --record --note`; the README
+  faithfulness badge ships (earned since Phase 1; green only while the floor
+  holds).
+- **Coverage gap closed** (spec 0024, ADR 0004 addendum, `8035a2f`): NFKD
+  diacritic folding + suffix-tolerant document mentions (confidence 0.9,
+  reason annotated) link the Lumière letter.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **Gold (7 cases): faithfulness 1.000 (gated) · coverage 1.000 · quality 1.000.**
+- **Synthetic (52 cases): faithfulness 1.000 (gated) · coverage 1.000 · quality 1.000.**
+- Trend: coverage **0.929 → 0.938 → 1.000** — the milestone's "visibly
+  improved since Phase 1", literally visible in the journal.
+
+**Phase 2 milestone check (ROADMAP)**
+- Routing distinguishes lookups from multi-step ✓; multi-entity reasoning ✓
+  (compare/superlative over structured rows; the document side participates
+  via composition and conflict surfacing — deeper *mixed-modality multi-hop in
+  one question* is an honest gap, natural Phase 3+ work); principled refusal
+  across five kinds ✓; synthetic generation incl. tricky cases ✓; metrics
+  defined, automated, tracked ✓. **Milestone met.** Tagged `phase-2`.
+
+**Open questions / risks**
+- Synthetic battery is green across the board — ADR 0007's saturation trigger
+  is one phase away; Phase 3's new vertical (DevEx) will stress it naturally.
+- ADR 0006/0003 LLM/embedding triggers: still not fired (deterministic layer
+  has no measured miss). Revisit when DevEx log/diff phrasing arrives.
+- Confirm SAP AI Core / HANA Cloud access for Phase 4; not blocking.
+
+**Next — Phase 3 (second vertical: DevEx Copilot).** Per ROADMAP: ingest CI/CD
+logs, PR diffs, and ticket history **through the same doors**; root-cause
+hypotheses for failed pipelines grounded in logs and linked to prior
+incidents; PR change-summaries tying diffs to tickets; the eval harness
+extended to the new vertical. The engine must stay general (principle 5) —
+phase success is *two genuinely different verticals on one unchanged core,
+both measured*.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #23–#29 merged. Tagged
+  `phase-2`.
