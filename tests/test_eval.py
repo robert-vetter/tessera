@@ -1,8 +1,9 @@
-"""Tests for the eval harness over the curated gold set.
+"""Tests for the eval harness over the curated gold set(s).
 
-Pins the headline guarantees: faithfulness is 1.0 on the real gold set, coverage
-is honestly below 1.0 (the Lumière miss), quality is reported, and the CLI fails
-the build when faithfulness drops below its floor.
+Pins the headline guarantees: business faithfulness is 1.0 on the real gold
+set, coverage/quality are reported, the CLI fails the build when any
+battery's faithfulness drops below the floor, and the battery refactor
+(spec 0032) reproduced the Phase 2 numbers exactly.
 """
 
 from __future__ import annotations
@@ -11,57 +12,94 @@ from pathlib import Path
 
 import pytest
 
+from tessera.eval.battery import Battery
 from tessera.eval.cli import main
-from tessera.eval.harness import EvalReport, load_gold_set, run_eval
+from tessera.eval.harness import BatteryResult, EvalReport, load_gold_set, run_eval
+from tessera.eval.registry import GOLD_ROOT, batteries, business_battery
 
 
-def test_gold_set_is_loaded() -> None:
-    cases = load_gold_set()
+def test_business_gold_set_is_loaded() -> None:
+    cases = load_gold_set(GOLD_ROOT / "business")
     assert len(cases) == 7
     assert {c.kind for c in cases} == {"answer", "refuse"}
     assert {c.engine for c in cases} == {"compose", "retrieve"}  # both answer paths
 
 
-def test_faithfulness_is_one_on_the_gold_set() -> None:
-    """Every emitted claim is supported by its cited evidence — the earned 1.0."""
-    report = run_eval()
-    assert report.faithfulness == 1.0
+def _business_result() -> BatteryResult:
+    report = run_eval([business_battery()])
+    (result,) = report.batteries
+    return result
 
 
-def test_coverage_is_complete_after_spec_0024() -> None:
-    """Coverage reached 1.0 when the Lumière mention miss was closed (diacritic
-    folding + suffix-tolerant mentions, spec 0024). The climb 0.929 -> 0.938 ->
-    1.000 is recorded in eval/history.jsonl — the metric drove the fix."""
-    report = run_eval()
-    assert report.coverage == 1.0
+def test_business_numbers_reproduce_phase_2_exactly() -> None:
+    """The battery refactor moved the scoring; it must not have moved the
+    scores (spec 0032): gold 7 and synthetic 52, all three metrics 1.0."""
+    result = _business_result()
+    assert result.gold_case_count == 7
+    assert result.faithfulness == 1.0
+    assert result.coverage == 1.0
+    assert result.quality == 1.0
+    assert result.synthetic_case_count == 52
+    assert result.synthetic_faithfulness == 1.0
+    assert result.synthetic_coverage == 1.0
+    assert result.synthetic_quality == 1.0
 
 
-def test_quality_is_reported() -> None:
-    report = run_eval()
-    assert report.quality == 1.0  # all six gold cases answered/refused correctly
-
-
-def test_no_gold_set_reports_na(tmp_path: Path) -> None:
-    report = run_eval(tmp_path)  # empty directory
+def test_empty_gold_dir_reports_na(tmp_path: Path) -> None:
+    battery = Battery(
+        name="empty",
+        gold_dir=tmp_path,
+        build_graph=business_battery().build_graph,
+        build_kb=business_battery().build_kb,
+        answer=business_battery().answer,
+        synthetic=business_battery().synthetic,
+    )
+    report = run_eval([battery])
     assert not report.evaluated
-    assert report.faithfulness is None
+    assert report.batteries[0].faithfulness is None
     assert "no gold set evaluated yet" in report.summary()
 
 
-def test_cli_passes_on_faithful_gold_set() -> None:
+def test_every_registered_battery_is_named_in_the_summary() -> None:
+    report = run_eval()
+    summary = report.summary()
+    for battery in batteries():
+        assert f"[{battery.name}]" in summary
+
+
+def test_cli_passes_on_faithful_gold_sets() -> None:
     assert main([]) == 0
 
 
-def test_cli_fails_when_faithfulness_below_floor(
+def test_cli_fails_when_any_battery_breaks_the_floor(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The hard floor: faithfulness < 1.0 makes the eval exit non-zero."""
+    """The hard floor spans batteries: one unfaithful battery fails the build."""
+    faithful = BatteryResult(
+        name="business", gold_case_count=1, faithfulness=1.0, coverage=1.0, quality=1.0
+    )
+    broken = BatteryResult(
+        name="devex", gold_case_count=1, faithfulness=0.5, coverage=1.0, quality=1.0
+    )
     monkeypatch.setattr(
         "tessera.eval.cli.run_eval",
-        lambda: EvalReport(
-            gold_case_count=1, faithfulness=0.5, coverage=1.0, quality=1.0
-        ),
+        lambda: EvalReport(batteries=(faithful, broken)),
     )
     exit_code = main([])
     assert exit_code == 1
     assert "FAIL" in capsys.readouterr().out
+
+
+def test_floor_also_gates_synthetic_faithfulness() -> None:
+    report = EvalReport(
+        batteries=(
+            BatteryResult(
+                name="x",
+                gold_case_count=1,
+                faithfulness=1.0,
+                synthetic_case_count=1,
+                synthetic_faithfulness=0.9,
+            ),
+        )
+    )
+    assert not report.floor_holds

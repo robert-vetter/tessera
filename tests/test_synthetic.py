@@ -68,6 +68,7 @@ def test_missing_evidence_templates_are_vocabulary_checked(
 def test_synthetic_floor_holds_end_to_end() -> None:
     """The full battery runs through the harness with the faithfulness floor."""
     report = run_eval()
-    assert report.synthetic_case_count > 40
-    assert report.synthetic_faithfulness == 1.0
+    business = next(b for b in report.batteries if b.name == "business")
+    assert business.synthetic_case_count > 40
+    assert business.synthetic_faithfulness == 1.0
     assert report.floor_holds

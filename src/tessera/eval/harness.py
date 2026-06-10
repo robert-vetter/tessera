@@ -1,57 +1,40 @@
-"""The eval harness: load the curated gold set, run the engine, score three metrics.
+"""The eval harness: score every battery's gold + synthetic cases, one way.
 
-- **Faithfulness** — fraction of emitted claims deterministically supported by
-  their cited evidence (see :mod:`tessera.eval.metrics`). A hard floor: < 1.0 is a
-  build failure (enforced by the CLI). The check is provably able to fail (ADR
-  0005); ``test_metrics`` injects an unfaithful claim and confirms it is caught.
-- **Coverage** — fraction of each answerable case's *expected* supporting evidence
-  the answer actually surfaces. Reported, not gated; expected < 1.0 (e.g. the
-  Lumière document-mention miss).
-- **Quality** — fraction of gold cases answered correctly (answerable: the expected
-  facts appear; refusal: the system refuses). Reported, not gated.
+Scoring is a single, vertical-neutral function over whatever batteries the
+registry provides (ADR 0009): for each battery, the curated gold set (the
+human-checked anchor) and the generated synthetic battery (scale) are scored
+into the same three metrics —
+
+- **Faithfulness** — fraction of emitted claims deterministically supported
+  by their cited evidence (:mod:`tessera.eval.metrics`). The one hard floor:
+  any battery's gold *or* synthetic faithfulness < 1.0 is a build failure
+  (enforced by the CLI). Provably able to fail (ADR 0005).
+- **Coverage** — fraction of each answerable case's *expected* supporting
+  evidence the answer actually surfaces. Reported, not gated.
+- **Quality** — fraction of cases answered correctly (answerable: the
+  expected facts appear; refusal: the system refuses). Reported, not gated.
 """
 
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from tessera.composition import compose
+from tessera.eval.battery import Battery, GoldCase
 from tessera.eval.metrics import is_supported
-from tessera.graph import KnowledgeGraph
-from tessera.grounding import Answer
-from tessera.knowledge import DEMO_KB, build_demo_graph
-from tessera.retrieval import answer as retrieve_answer
-from tessera.routing import route
+from tessera.graph import KnowledgeGraph, Node
+from tessera.grounding import KnowledgeBase
 
-GOLD_DIR = Path(__file__).resolve().parents[3] / "eval" / "gold"
+__all__ = ["BatteryResult", "EvalReport", "GoldCase", "load_gold_set", "run_eval"]
 
 
 @dataclass(frozen=True)
-class GoldCase:
-    """One curated, human-checked evaluation case.
+class BatteryResult:
+    """One battery's scores: gold and synthetic, kept separate (ADR 0007)."""
 
-    ``kind`` is ``"answer"`` or ``"refuse"``; ``engine`` is ``"compose"`` or
-    ``"retrieve"``. ``expected_support`` are the evidence ids a faithful answer
-    should surface (coverage); ``expected_facts`` are substrings a correct answer
-    must contain (quality).
-    """
-
-    id: str
-    question: str
-    engine: str
-    kind: str
-    expected_support: tuple[str, ...] = ()
-    expected_facts: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class EvalReport:
-    """The outcome of an eval run: the curated gold set (the human-checked
-    anchor) and the synthetic battery (scale; ADR 0007), scored separately.
-    Gold metrics are ``None`` only when there is no gold set to score."""
-
+    name: str
     gold_case_count: int
     faithfulness: float | None = None
     coverage: float | None = None
@@ -65,41 +48,58 @@ class EvalReport:
     def evaluated(self) -> bool:
         return self.gold_case_count > 0
 
+    def summary(self) -> str:
+        if not self.evaluated:
+            return f"[{self.name}] no gold set evaluated yet (0 gold cases)."
+        text = (
+            f"[{self.name}] gold ({self.gold_case_count} case(s)): "
+            f"faithfulness {_fmt(self.faithfulness)} (floor 1.000), "
+            f"coverage {_fmt(self.coverage)}, quality {_fmt(self.quality)}."
+        )
+        if self.synthetic_case_count:
+            text += (
+                f"\n[{self.name}] synthetic ({self.synthetic_case_count} "
+                f"case(s)): faithfulness {_fmt(self.synthetic_faithfulness)} "
+                f"(floor 1.000), coverage {_fmt(self.synthetic_coverage)}, "
+                f"quality {_fmt(self.synthetic_quality)}."
+            )
+        return text
+
+
+@dataclass(frozen=True)
+class EvalReport:
+    """The outcome of an eval run: every measured vertical, scored alike."""
+
+    batteries: tuple[BatteryResult, ...]
+
+    @property
+    def evaluated(self) -> bool:
+        return any(battery.evaluated for battery in self.batteries)
+
     @property
     def floor_holds(self) -> bool:
-        """The one hard gate: every measured faithfulness is 1.0."""
-        for value in (self.faithfulness, self.synthetic_faithfulness):
-            if value is not None and value < 1.0:
-                return False
+        """The one hard gate: every measured faithfulness — gold and
+        synthetic, every battery — is 1.0."""
+        for battery in self.batteries:
+            for value in (battery.faithfulness, battery.synthetic_faithfulness):
+                if value is not None and value < 1.0:
+                    return False
         return True
 
     def summary(self) -> str:
         if not self.evaluated:
             return (
                 "Eval: no gold set evaluated yet — "
-                "faithfulness/coverage/quality: n/a (0 gold cases). "
-                "The gold set and metrics arrive in Unit 6 (see specs/0011)."
+                "faithfulness/coverage/quality: n/a (0 gold cases)."
             )
-        lines = (
-            f"Eval over {self.gold_case_count} gold case(s): "
-            f"faithfulness {_fmt(self.faithfulness)} (floor 1.000), "
-            f"coverage {_fmt(self.coverage)}, quality {_fmt(self.quality)}."
-        )
-        if self.synthetic_case_count:
-            lines += (
-                f"\nSynthetic battery ({self.synthetic_case_count} generated "
-                f"case(s)): faithfulness {_fmt(self.synthetic_faithfulness)} "
-                f"(floor 1.000), coverage {_fmt(self.synthetic_coverage)}, "
-                f"quality {_fmt(self.synthetic_quality)}."
-            )
-        return lines
+        return "\n".join(battery.summary() for battery in self.batteries)
 
 
 def _fmt(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.3f}"
 
 
-def load_gold_set(gold_dir: Path = GOLD_DIR) -> list[GoldCase]:
+def load_gold_set(gold_dir: Path) -> list[GoldCase]:
     """Load every gold case (one ``*.json`` per case), ordered by filename."""
     if not gold_dir.is_dir():
         return []
@@ -119,18 +119,12 @@ def load_gold_set(gold_dir: Path = GOLD_DIR) -> list[GoldCase]:
     return cases
 
 
-def _answer_for(case: GoldCase, graph: KnowledgeGraph) -> Answer:
-    if case.engine == "compose":
-        return compose(case.question, graph)
-    if case.engine == "route":
-        return route(case.question, graph, DEMO_KB)[1]
-    return retrieve_answer(case.question, DEMO_KB)
-
-
 def _score(
     cases: list[GoldCase],
+    battery: Battery,
     graph: KnowledgeGraph,
-    nodes: dict[str, object],
+    kb: KnowledgeBase,
+    nodes: dict[str, Node],
 ) -> tuple[float, float, float]:
     """Faithfulness, coverage, quality over a case list (shared semantics)."""
     total_claims = supported_claims = 0
@@ -138,7 +132,7 @@ def _score(
     correct = 0
 
     for case in cases:
-        answer = _answer_for(case, graph)
+        answer = battery.answer(case, graph, kb)
 
         if case.kind == "refuse":
             if not answer.is_grounded:
@@ -148,7 +142,7 @@ def _score(
         # Answerable case: faithfulness, coverage, quality.
         for claim in answer.claims:
             total_claims += 1
-            if is_supported(claim, nodes, graph):  # type: ignore[arg-type]
+            if is_supported(claim, nodes, graph):
                 supported_claims += 1
 
         cited = {rec.id for claim in answer.claims for rec in claim.support}
@@ -168,23 +162,23 @@ def _score(
     )
 
 
-def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
-    """Score the curated gold set and the generated synthetic battery."""
-    cases = load_gold_set(gold_dir)
+def _run_battery(battery: Battery) -> BatteryResult:
+    cases = load_gold_set(battery.gold_dir)
     if not cases:
-        return EvalReport(gold_case_count=0)
+        return BatteryResult(name=battery.name, gold_case_count=0)
 
-    # Imported here to avoid a circular import (synthetic builds GoldCase).
-    from tessera.eval.synthetic import generate_cases
+    graph = battery.build_graph()
+    kb = battery.build_kb()
+    nodes: dict[str, Node] = {node.id: node for node in graph.nodes}
 
-    graph = build_demo_graph()
-    nodes: dict[str, object] = {node.id: node for node in graph.nodes}
+    faithfulness, coverage, quality = _score(cases, battery, graph, kb, nodes)
+    synthetic = battery.synthetic(graph, kb)
+    syn_faithfulness, syn_coverage, syn_quality = _score(
+        synthetic, battery, graph, kb, nodes
+    )
 
-    faithfulness, coverage, quality = _score(cases, graph, nodes)
-    synthetic = generate_cases(graph, DEMO_KB)
-    syn_faithfulness, syn_coverage, syn_quality = _score(synthetic, graph, nodes)
-
-    return EvalReport(
+    return BatteryResult(
+        name=battery.name,
         gold_case_count=len(cases),
         faithfulness=faithfulness,
         coverage=coverage,
@@ -194,3 +188,12 @@ def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
         synthetic_coverage=syn_coverage,
         synthetic_quality=syn_quality,
     )
+
+
+def run_eval(batteries: Sequence[Battery] | None = None) -> EvalReport:
+    """Score every battery (defaults to the registry's measured set)."""
+    if batteries is None:
+        from tessera.eval.registry import batteries as registered
+
+        batteries = registered()
+    return EvalReport(batteries=tuple(_run_battery(battery) for battery in batteries))
