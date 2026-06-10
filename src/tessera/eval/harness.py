@@ -126,7 +126,7 @@ def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
         # Answerable case: faithfulness, coverage, quality.
         for claim in answer.claims:
             total_claims += 1
-            if is_supported(claim, nodes):
+            if is_supported(claim, nodes, graph):
                 supported_claims += 1
 
         cited = {rec.id for claim in answer.claims for rec in claim.support}
