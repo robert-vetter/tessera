@@ -1,8 +1,8 @@
 {
-  "id": "04_notifications_oncall_known_miss",
+  "id": "04_notifications_oncall",
   "question": "Who is on call for notifications-service?",
   "engine": "route",
   "kind": "answer",
   "expected_support": ["Component:SVC-NOTIF", "Owner:notif-svc"],
-  "expected_facts": ["Comms"]
+  "expected_facts": ["Comms", "Aiko Tanaka"]
 }

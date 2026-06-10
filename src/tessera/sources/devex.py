@@ -34,10 +34,21 @@ DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "devex_synthetic"
 
 
 def _component_text(row: dict[str, str]) -> str:
+    # A declared alias is part of the catalog row's evidence text on purpose:
+    # the claim that "notif-svc" names this service must be citable to the
+    # record that declares it (spec 0036).
+    alias_note = ""
+    if row.get("Aliases"):
+        listed = ", ".join(f'"{alias}"' for alias in _split_aliases(row["Aliases"]))
+        alias_note = f" (alias {listed})"
     return (
-        f'Component {row["Component"]}: "{row["Name"]}" — '
+        f'Component {row["Component"]}: "{row["Name"]}"{alias_note} — '
         f"team {row['Team']}, repo {row['Repo']}."
     )
+
+
+def _split_aliases(raw: str) -> tuple[str, ...]:
+    return tuple(alias.strip() for alias in raw.split(";") if alias.strip())
 
 
 def _owner_text(row: dict[str, str]) -> str:
@@ -259,10 +270,26 @@ class DevExSource:
             names[f"Owner:{row['Service']}"] = row["Service"]
         return names
 
+    def declared_aliases(self) -> dict[str, tuple[str, ...]]:
+        """Map each catalog record id to the alias names it *declares*.
+
+        The deterministic remediation for abbreviation variants similarity
+        cannot bridge (spec 0036 / ADR 0010): an alias is catalog data —
+        declared, reviewable, and citable to its row — not an inference.
+        """
+        return {
+            f"Component:{row['Component']}": aliases
+            for row in read_csv_rows(self.data_dir / "components.csv")
+            if (aliases := _split_aliases(row.get("Aliases", "")))
+        }
+
     def node_attributes(self) -> dict[str, tuple[tuple[str, str], ...]]:
         """Structured facts for nodes, so answer paths need not parse text:
-        a run's outcome, a ticket's type/status, a PR's merged commit."""
+        a run's outcome, a ticket's type/status, a PR's merged commit, a
+        catalog row's declared aliases (one ``alias`` entry each)."""
         attrs: dict[str, tuple[tuple[str, str], ...]] = {}
+        for record_id, aliases in self.declared_aliases().items():
+            attrs[record_id] = tuple(("alias", alias) for alias in aliases)
         for row in read_csv_rows(self.data_dir / "runs.csv"):
             attrs[f"Run:{row['Run']}"] = (
                 ("status", row["Status"]),
