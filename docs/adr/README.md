@@ -16,3 +16,11 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 
 ## Index
 - [0001](0001-record-architecture-decisions.md) — Record architecture decisions
+- [0002](0002-ingestion-provenance-representation.md) — Ingestion & provenance representation
+- [0003](0003-lexical-first-retrieval.md) — Lexical-first retrieval; semantic deferred
+- [0004](0004-graph-and-entity-resolution.md) — In-process graph + non-destructive entity resolution
+- [0005](0005-faithfulness-metric.md) — The faithfulness metric
+- [0006](0006-deterministic-reasoning-llm-deferral.md) — Deterministic question understanding; LLM deferred
+- [0007](0007-synthetic-scenario-generation.md) — Synthetic eval scenarios, enumerated from the graph
+- [0008](0008-vertical-boundary.md) — The core/vertical boundary (Phase 3)
+- [0009](0009-multi-vertical-eval-batteries.md) — Eval batteries: how verticals are measured
