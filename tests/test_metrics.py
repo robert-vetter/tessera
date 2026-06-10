@@ -5,10 +5,10 @@ must be caught (is_supported -> False), so a reported 1.0 is earned.
 
 from __future__ import annotations
 
+from tessera.business.knowledge import build_demo_graph
 from tessera.eval.metrics import is_supported
 from tessera.graph import Node
 from tessera.grounding import Claim, EvidenceRecord
-from tessera.knowledge import build_demo_graph
 
 
 def _nodes() -> dict[str, Node]:

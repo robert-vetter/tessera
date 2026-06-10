@@ -2,7 +2,8 @@
 
 This module is deliberately general and data-free: it defines what evidence, a
 claim, and an answer *are*, and how a question becomes a grounded answer. The
-demo data lives in :mod:`tessera.knowledge` so the engine stays vertical-neutral
+demo data lives with the verticals (:mod:`tessera.business.knowledge`,
+:mod:`tessera.devex.knowledge`) so the engine stays vertical-neutral
 (see the principles in ``CLAUDE.md``).
 
 Two non-negotiable principles are enforced here, not just hoped for:

@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from tessera.business.reasoning import find_named_entities
 from tessera.eval.harness import GoldCase
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import KnowledgeBase
-from tessera.reasoning import find_named_entities
 from tessera.retrieval import _tokenize
 
 # Questions whose content tokens must be absent from the corpus — the

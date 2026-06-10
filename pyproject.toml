@@ -12,9 +12,9 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.scripts]
-tessera = "tessera.cli:main"
+tessera = "tessera.business.cli:main"
 tessera-eval = "tessera.eval.cli:main"
-tessera-compose = "tessera.composition:main"
+tessera-compose = "tessera.business.composition:main"
 tessera-devex = "tessera.devex.cli:main"
 
 [build-system]

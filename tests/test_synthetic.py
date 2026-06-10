@@ -2,11 +2,11 @@
 
 import pytest
 
+from tessera.business.knowledge import DEMO_KB, build_demo_graph
+from tessera.business.synthetic import generate_cases
 from tessera.eval.harness import run_eval
-from tessera.eval.synthetic import generate_cases
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import KnowledgeBase
-from tessera.knowledge import DEMO_KB, build_demo_graph
 
 
 @pytest.fixture(scope="module")
