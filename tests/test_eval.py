@@ -17,7 +17,7 @@ from tessera.eval.harness import EvalReport, load_gold_set, run_eval
 
 def test_gold_set_is_loaded() -> None:
     cases = load_gold_set()
-    assert len(cases) == 6
+    assert len(cases) == 7
     assert {c.kind for c in cases} == {"answer", "refuse"}
     assert {c.engine for c in cases} == {"compose", "retrieve"}  # both answer paths
 

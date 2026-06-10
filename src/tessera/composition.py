@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from difflib import SequenceMatcher
 
+from tessera.conflicts import find_renewal_conflict
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import Answer, Claim
 from tessera.resolution import normalize
@@ -188,6 +189,13 @@ def compose(question: str, graph: KnowledgeGraph) -> Answer:
     ]
     for node in sorted(clause_nodes, key=lambda n: n.id):
         claims.append(Claim(text=node.record.text, support=(node.record,)))
+
+    # 4) Conflicting evidence is SURFACED, never silently resolved: if the
+    #    entity's clauses disagree on the renewal date, say so, citing both
+    #    sides (spec 0021).
+    conflict = find_renewal_conflict([n.record for n in clause_nodes])
+    if conflict is not None:
+        claims.append(conflict)
 
     if not claims:
         return Answer(question=question, claims=(), refusal=NO_ENTITY_REFUSAL)

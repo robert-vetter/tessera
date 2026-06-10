@@ -180,6 +180,19 @@ def is_supported(
         ):
             return True
 
+    # 4b) Conflict disclosure: every quoted value must really be stated by a
+    #     DISTINCT cited clause, and the values must actually disagree.
+    if "disagree on the renewal date" in text:
+        from tessera.conflicts import renewal_date_of
+
+        quoted = re.findall(r"'(\d{1,2} [A-Z][a-z]+)'", text)
+        cited_dates = {date for rec in claim.support if (date := renewal_date_of(rec))}
+        return (
+            len(set(quoted)) >= 2
+            and set(quoted) == cited_dates
+            and len(claim.support) >= 2
+        )
+
     # 4) Refuse-to-sum: the cited rows must actually span the named currencies.
     refuse = _REFUSE.search(text)
     if refuse:
