@@ -44,8 +44,13 @@ See [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md) for the explicit, location-
 
 The same core engine powers two deliberately different demonstrations, to prove the engine generalizes:
 
-- **Business Data Copilot** — ask questions across a company's structured records and documents and get grounded, cited answers. *(Speaks to Palo Alto / Singapore.)*
-- **DevEx Copilot** — point it at CI/CD logs, pull-request diffs, and ticket history; get root-cause hypotheses for failed pipelines and grounded summaries of what a change actually does. *(Speaks to Newport Beach.)*
+- **Business Data Copilot** — ask questions across a company's structured records and documents and get grounded, cited answers. *(Speaks to Palo Alto / Singapore.)* — `uv run tessera`
+- **DevEx Copilot** — point it at CI/CD logs, pull-request diffs, and ticket history; get root-cause hypotheses for failed pipelines and grounded summaries of what a change actually does. *(Speaks to Newport Beach.)* — `uv run tessera-devex`
+
+As of Phase 3 **both verticals run and both are measured** — on a core whose
+files are byte-identical between the `phase-2` and `phase-3` tags
+([ADR 0008](docs/adr/0008-vertical-boundary.md)): the generalization claim is
+an empty `git diff`, not a promise.
 
 ## What makes it genuinely hard (the honest version)
 
@@ -114,25 +119,39 @@ what keeps the trust numbers below auditable.
 
 ### The eval harness
 
-Trust is measured, so the eval is runnable from the start:
+Trust is measured, so the eval is runnable from the start — and since Phase 3
+it scores **both verticals** as separate batteries
+([ADR 0009](docs/adr/0009-multi-vertical-eval-batteries.md)):
 
 ```bash
 uv run tessera-eval
-# Eval over 6 gold case(s): faithfulness 1.000 (floor 1.000), coverage 0.929,
-# quality 1.000.
+# [business] gold (7):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business] synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [devex]    gold (7):      faithfulness 1.000 (floor), coverage 0.917, quality 1.000
+# [devex]    synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 ```
 
 The numbers are real and **auditable**, scored against the answers the engine
-actually produces over a small, hand-curated gold set in [`eval/gold/`](eval/gold/):
+actually produces over hand-curated gold sets in [`eval/gold/`](eval/gold/)
+plus per-vertical synthetic batteries enumerated from the data:
 
 - **Faithfulness** — every emitted claim is deterministically supported by its
-  cited evidence. It is a **hard floor of 1.0** (an unsupported claim fails the
-  build) and is *provably able to fail*: a test injects a known-unfaithful claim
-  and confirms the metric catches it — so the 1.0 is earned, not tautological.
-- **Coverage** — how much of the available evidence the answers surface. Honestly
-  **below 1.0** (the Lumière agreement clause is a known mention miss), so there is
-  a real number to improve.
+  cited evidence. It is a **hard floor of 1.0** for every battery (an
+  unsupported claim fails the build) and is *provably able to fail*: tests
+  inject known-unfaithful claims — including a fabricated "recurring failure"
+  — and confirm the metric catches them, so the 1.0 is earned, not
+  tautological.
+- **Coverage** — how much of the available evidence the answers surface. The
+  DevEx number is honestly **below 1.0**: its gap is a *named* miss (the
+  `notif-svc` on-call row, whose abbreviated name resolves at 0.429 and shares
+  no retrieval token with the question) — planted in the corpus, predicted in
+  the spec before the battery first ran, and kept as the measured trigger for
+  the next improvement loop. The business vertical's equivalent (the Lumière
+  miss) was closed the same way in Phase 2: metric first, then the fix.
 - **Quality** — gold answers correct / refusals refused.
+
+The README badge shows the **minimum** gold faithfulness across batteries —
+a regression in either vertical turns it red.
 
 Definition and what the number does (and does not) prove:
 [ADR 0005](docs/adr/0005-faithfulness-metric.md).
@@ -169,6 +188,30 @@ different currencies** rather than invent a number (try
 `uv run tessera-compose "What is Atlas Trading's total order value?"`). General
 multi-step reasoning and question routing are a later phase.
 
+### The DevEx Copilot
+
+The same engine, pointed at developer/operations data (Phase 3):
+
+```bash
+uv run tessera-devex
+# "Why did run R-1042 fail?" → the run's outcome row, the exact failing log
+# lines, a recurrence link to the earlier run with the same error signature,
+# and the incident ticket that documented it — every claim cited.
+
+uv run tessera-devex "What does PR-201 actually change?"
+# The PR's metadata, the diff hunk by hunk, and a verified link to the
+# motivating ticket (DEVEX-204).
+
+uv run tessera-devex "Why did run R-1041 fail?"
+# That run PASSED — the premise is refused, not confabulated.
+```
+
+The interesting honesty cases are behaviours, not prose: the *first*
+occurrence of a failure gets no recurrence claim (there is nothing prior); a
+PR that names no ticket gets a summary without one; cross-source assertions
+("this same signature appeared before") are emitted in a grammar the
+faithfulness verifier recomputes against every cited record.
+
 ### Data
 
 Both modalities arrive through one ingestion path:
@@ -186,8 +229,16 @@ Both modalities arrive through one ingestion path:
   of authored agreements/correspondence that reference the same synthetic
   customers under *variant* name forms (so entity resolution is genuine) and carry
   information the tables lack (renewal clauses, terms, special conditions).
+- **DevEx** — [`data/devex_synthetic/`](data/devex_synthetic/), the second
+  vertical's corpus: pipeline runs + logs, PRs + unified diffs, tickets, a
+  service catalog, and an on-call export. Generated by
+  `scripts/generate_devex_synthetic.py` with **no RNG** — every record a fixed,
+  reviewable literal — including recurring failure signatures across runs and
+  an incident ticket, PR↔ticket references, and service-name variants with
+  *measured* resolution outcomes (two of which deliberately do not resolve).
 
-Both deliberately contain entity-resolution difficulty for later phases.
+All of it deliberately contains entity-resolution difficulty, and every planted
+miss is named in the data's README rather than hidden.
 
 ## Repository map
 
