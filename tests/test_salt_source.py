@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import re
 
+from tessera.business.knowledge import DEMO_KB, DEMO_QUESTION
 from tessera.ingestion import read_csv_rows
-from tessera.knowledge import DEMO_KB, DEMO_QUESTION
 from tessera.retrieval import answer
 from tessera.sources.salt import DATA_DIR
 

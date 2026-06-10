@@ -2,7 +2,7 @@
 
 import pytest
 
-from tessera.cli import main
+from tessera.business.cli import main
 from tessera.grounding import REFUSAL_MESSAGE
 
 

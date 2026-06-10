@@ -1,6 +1,6 @@
 """Assemble the DevEx knowledge base and graph from the ingested corpus.
 
-The DevEx counterpart to :mod:`tessera.knowledge`, built with the **same,
+The DevEx counterpart to :mod:`tessera.business.knowledge`, built with the **same,
 unchanged** engine machinery (spec 0028): nodes wrap ingested records,
 foreign keys become structural edges, then the additive resolution layer
 asserts which catalog/on-call names co-refer and the mention pass links log

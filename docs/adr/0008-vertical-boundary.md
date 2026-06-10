@@ -86,6 +86,16 @@ carries.
 - Where the core still cannot express something, the rule stands: record the
   finding (spec/ADR), refuse honestly at runtime — never leak.
 
+## Addendum (2026-06-10, spec 0037)
+
+The scheduled relocation happened: the business answer layer now lives in
+`tessera/business/` (`cli`, `knowledge`, `composition`, `reasoning`,
+`conflicts`, `routing`, `synthetic`), symmetric with `tessera/devex/`; the
+core `tessera/routing.py` keeps only the shared `Route` contract. Both
+batteries' numbers reproduced exactly through the move. The remaining
+recorded leak — business claim shapes in `eval/metrics.py` — is relocated
+separately (spec 0038 / ADR 0011).
+
 ## Alternatives considered
 
 - **Generalize `composition`/`reasoning` now** (parameterize kinds/relations

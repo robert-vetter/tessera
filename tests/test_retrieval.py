@@ -7,6 +7,7 @@ is refused, and every surfaced claim carries provenance.
 
 from __future__ import annotations
 
+from tessera.business.knowledge import DEMO_KB
 from tessera.grounding import (
     REFUSAL_MESSAGE,
     EvidenceRecord,
@@ -14,7 +15,6 @@ from tessera.grounding import (
     Locator,
     Origin,
 )
-from tessera.knowledge import DEMO_KB
 from tessera.retrieval import answer, retrieve
 
 

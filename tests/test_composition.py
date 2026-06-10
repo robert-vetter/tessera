@@ -10,8 +10,8 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from tessera.composition import compose, resolve_entity
-from tessera.knowledge import build_demo_graph
+from tessera.business.composition import compose, resolve_entity
+from tessera.business.knowledge import build_demo_graph
 
 MUELLER = "I_Customer:0010000007"
 

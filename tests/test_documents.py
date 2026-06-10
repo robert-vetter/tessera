@@ -12,8 +12,8 @@ from __future__ import annotations
 import csv
 import re
 
+from tessera.business.knowledge import DEMO_KB
 from tessera.ingestion import Ingester
-from tessera.knowledge import DEMO_KB
 from tessera.retrieval import answer
 from tessera.sources.documents import DATA_DIR, DocumentSource
 from tessera.sources.salt import DATA_DIR as SALT_DIR

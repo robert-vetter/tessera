@@ -2,11 +2,11 @@
 
 import pytest
 
-from tessera.cli import main
+from tessera.business.cli import main
+from tessera.business.knowledge import DEMO_KB, build_demo_graph
+from tessera.business.routing import classify, route
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import REFUSAL_MESSAGE, KnowledgeBase
-from tessera.knowledge import DEMO_KB, build_demo_graph
-from tessera.routing import classify, route
 
 
 @pytest.fixture(scope="module")

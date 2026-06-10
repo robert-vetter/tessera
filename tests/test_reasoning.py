@@ -8,11 +8,11 @@ data generator changes, these change loudly — that is intended.
 
 import pytest
 
+from tessera.business.knowledge import build_demo_graph
+from tessera.business.reasoning import NOT_MULTI_REFUSAL, find_named_entities, reason
 from tessera.eval.metrics import is_supported
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Claim
-from tessera.knowledge import build_demo_graph
-from tessera.reasoning import NOT_MULTI_REFUSAL, find_named_entities, reason
 
 
 @pytest.fixture(scope="module")

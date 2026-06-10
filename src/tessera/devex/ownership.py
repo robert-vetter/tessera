@@ -12,7 +12,7 @@ but the graph now does.
 Matching is whole-name normalized containment (never similarity), the best
 match wins by needle length, and a tie between *distinct* entities is
 refused as ambiguous rather than guessed — the same discipline as
-``tessera.composition.resolve_entity``.
+``tessera.business.composition.resolve_entity``.
 """
 
 from __future__ import annotations

@@ -211,7 +211,7 @@ def is_supported(
     # 4b) Conflict disclosure: every quoted value must really be stated by a
     #     DISTINCT cited clause, and the values must actually disagree.
     if "disagree on the renewal date" in text:
-        from tessera.conflicts import renewal_date_of
+        from tessera.business.conflicts import renewal_date_of
 
         quoted = re.findall(r"'(\d{1,2} [A-Z][a-z]+)'", text)
         cited_dates = {date for rec in claim.support if (date := renewal_date_of(rec))}
