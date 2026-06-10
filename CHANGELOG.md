@@ -11,6 +11,58 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
+*(nothing yet)*
+
+## [phase-3] — 2026-06-10
+
+### Added
+
+- **The DevEx Copilot — a second vertical on a provably unchanged core.**
+  CI/CD runs with full logs, PR diffs, ticket history, a service catalog,
+  and an on-call export (deterministic synthetic corpus,
+  `data/devex_synthetic/`, generated with **no RNG** — every record a
+  reviewable literal) arrive through the *same* `Ingester` door, with two
+  new locator kinds (`log-span`, `diff-hunk`) riding the unchanged
+  kind-tagged `Locator`. The phase-close audit shows every frozen core file
+  **byte-identical to `phase-2`** (ADR 0008) — the milestone "two genuinely
+  different verticals run on one unchanged core" as an empty diff, not an
+  assertion.
+- **Root-cause analysis grounded in log lines** (`uv run tessera-devex`):
+  the failing run's outcome row and error log sections verbatim, a
+  *recurrence* claim when the same error signature appears in an earlier
+  run's log, and a *documented incident* claim when a ticket quotes it.
+  First occurrences get no recurrence claim; passed runs are refused
+  premises; unknown runs are refused by name.
+- **PR change-summaries tied to motivating tickets**: the diff itself,
+  hunk by hunk, plus a verifiable link claim (the ticket id appears in both
+  the PR row and the ticket row). A PR that names no ticket gets a summary
+  without one — honest omission.
+- **One vertical-neutral verifier shape** (the only verifier change, ADR
+  0008): a shared-fragment claim — `"FRAGMENT" appears in 'A' and 'B'` —
+  verified by recomputation (≥2 citations, named sources == cited origins
+  exactly, fragment present in every cited record), adversarially tested
+  with vertical-free fixtures.
+- **Eval batteries (ADR 0009).** The harness scores any number of verticals
+  with one shared, unchanged scoring function; verticals are bound in one
+  registry line. History gains append-only v2 lines; the badge becomes the
+  *minimum* gold faithfulness across batteries. The refactor reproduced the
+  business numbers exactly (gold 7 / synthetic 52, all 1.000).
+- **First two-vertical numbers** (recorded in `eval/history.jsonl`):
+  business gold/synthetic and devex synthetic all **1.000**; devex gold
+  **faithfulness 1.000, coverage 0.917, quality 1.000** — the coverage gap
+  is the *named* `notif-svc` on-call miss (similarity 0.429; no shared
+  retrieval token), planted in the corpus, predicted in spec 0033 before
+  the battery ran, and kept as the measured trigger for the next trust
+  loop (ADRs 0003/0004).
+
+### Fixed
+
+- Doc drift: the ADR index (`docs/adr/README.md`) and the mkdocs nav now
+  list every ADR; the Phase 2 changelog entries below are rolled into their
+  phase section (they had lingered under "Unreleased" past the tag).
+
+## [phase-2] — 2026-06-10
+
 ### Added
 
 - **The Lumière coverage gap is closed — gold coverage 1.000.** Diagnosis
