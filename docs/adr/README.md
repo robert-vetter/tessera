@@ -26,3 +26,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0009](0009-multi-vertical-eval-batteries.md) — Eval batteries: how verticals are measured
 - [0010](0010-declared-aliases-before-embeddings.md) — Declared aliases before embeddings (Phase 4)
 - [0011](0011-vertical-owned-claim-grammars.md) — Vertical-owned claim grammars
+- [0012](0012-sap-deployment-path.md) — SAP deployment path: docs + tested seams
