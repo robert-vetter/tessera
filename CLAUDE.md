@@ -63,3 +63,27 @@ The full operating manual is [`docs/ENGINEERING.md`](docs/ENGINEERING.md). The e
 - Hooks auto-format after edits and guard against destructive shell commands; they never block mid-edit. Don't move logic that belongs here into hooks.
 
 When a session starts cold, the reading order is: this file → `docs/STATUS.md` → the relevant `specs/` entry → the relevant `docs/`.
+
+### Autonomous phase execution
+
+From Phase 2 onward, a whole roadmap phase may run **autonomously** from a single
+kickoff prompt. The discipline does not change — only the interactive stops do:
+
+- **Same artifacts, no approval pauses.** Every unit still gets its `specs/`
+  entry before code, an ADR when a choice is hard to reverse, a green gate
+  (`scripts/gate.sh` + eval), and a branch → PR → CI-green → merge. The agent
+  approves its own spec/plan and **records the decision and its rationale in the
+  spec/ADR** instead of asking.
+- **Branch first, always.** Create the unit's feature branch before any commit
+  (branch protection enforces this; it has caught violations before).
+- **Decide upfront, then execute.** At phase start, read `docs/STATUS.md`, the
+  roadmap phase, and the ADR revisit-triggers; fix the phase's unit breakdown and
+  key decisions; record them as the phase proceeds.
+- **Ask only project-shaping questions.** Interrupt the maintainer only for
+  decisions that change what the project *is* (scope, licensing, external
+  services/spend, anything irreversible at project level). Everything else:
+  decide, record, proceed.
+- **Honesty rules still bind.** Never weaken the gate or the eval to keep the
+  phase moving; a unit that cannot be finished honestly is reported, not faked.
+- **Close the phase.** `/wrap` STATUS, update the CHANGELOG, tag `phase-N`, and
+  hand back a summary plus a paste-ready kickoff prompt for the next phase.
