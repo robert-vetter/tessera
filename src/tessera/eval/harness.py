@@ -48,17 +48,30 @@ class GoldCase:
 
 @dataclass(frozen=True)
 class EvalReport:
-    """The outcome of an eval run. Metrics are ``None`` only when there is no gold
-    set to score."""
+    """The outcome of an eval run: the curated gold set (the human-checked
+    anchor) and the synthetic battery (scale; ADR 0007), scored separately.
+    Gold metrics are ``None`` only when there is no gold set to score."""
 
     gold_case_count: int
     faithfulness: float | None = None
     coverage: float | None = None
     quality: float | None = None
+    synthetic_case_count: int = 0
+    synthetic_faithfulness: float | None = None
+    synthetic_coverage: float | None = None
+    synthetic_quality: float | None = None
 
     @property
     def evaluated(self) -> bool:
         return self.gold_case_count > 0
+
+    @property
+    def floor_holds(self) -> bool:
+        """The one hard gate: every measured faithfulness is 1.0."""
+        for value in (self.faithfulness, self.synthetic_faithfulness):
+            if value is not None and value < 1.0:
+                return False
+        return True
 
     def summary(self) -> str:
         if not self.evaluated:
@@ -67,11 +80,19 @@ class EvalReport:
                 "faithfulness/coverage/quality: n/a (0 gold cases). "
                 "The gold set and metrics arrive in Unit 6 (see specs/0011)."
             )
-        return (
+        lines = (
             f"Eval over {self.gold_case_count} gold case(s): "
             f"faithfulness {_fmt(self.faithfulness)} (floor 1.000), "
             f"coverage {_fmt(self.coverage)}, quality {_fmt(self.quality)}."
         )
+        if self.synthetic_case_count:
+            lines += (
+                f"\nSynthetic battery ({self.synthetic_case_count} generated "
+                f"case(s)): faithfulness {_fmt(self.synthetic_faithfulness)} "
+                f"(floor 1.000), coverage {_fmt(self.synthetic_coverage)}, "
+                f"quality {_fmt(self.synthetic_quality)}."
+            )
+        return lines
 
 
 def _fmt(value: float | None) -> str:
@@ -106,15 +127,12 @@ def _answer_for(case: GoldCase, graph: KnowledgeGraph) -> Answer:
     return retrieve_answer(case.question, DEMO_KB)
 
 
-def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
-    """Score faithfulness, coverage, and quality over the curated gold set."""
-    cases = load_gold_set(gold_dir)
-    if not cases:
-        return EvalReport(gold_case_count=0)
-
-    graph = build_demo_graph()
-    nodes = {node.id: node for node in graph.nodes}
-
+def _score(
+    cases: list[GoldCase],
+    graph: KnowledgeGraph,
+    nodes: dict[str, object],
+) -> tuple[float, float, float]:
+    """Faithfulness, coverage, quality over a case list (shared semantics)."""
     total_claims = supported_claims = 0
     expected_total = expected_found = 0
     correct = 0
@@ -130,7 +148,7 @@ def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
         # Answerable case: faithfulness, coverage, quality.
         for claim in answer.claims:
             total_claims += 1
-            if is_supported(claim, nodes, graph):
+            if is_supported(claim, nodes, graph):  # type: ignore[arg-type]
                 supported_claims += 1
 
         cited = {rec.id for claim in answer.claims for rec in claim.support}
@@ -143,9 +161,36 @@ def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
         if answer.is_grounded and all(fact in rendered for fact in case.expected_facts):
             correct += 1
 
+    return (
+        (supported_claims / total_claims) if total_claims else 1.0,
+        (expected_found / expected_total) if expected_total else 1.0,
+        correct / len(cases) if cases else 1.0,
+    )
+
+
+def run_eval(gold_dir: Path = GOLD_DIR) -> EvalReport:
+    """Score the curated gold set and the generated synthetic battery."""
+    cases = load_gold_set(gold_dir)
+    if not cases:
+        return EvalReport(gold_case_count=0)
+
+    # Imported here to avoid a circular import (synthetic builds GoldCase).
+    from tessera.eval.synthetic import generate_cases
+
+    graph = build_demo_graph()
+    nodes: dict[str, object] = {node.id: node for node in graph.nodes}
+
+    faithfulness, coverage, quality = _score(cases, graph, nodes)
+    synthetic = generate_cases(graph, DEMO_KB)
+    syn_faithfulness, syn_coverage, syn_quality = _score(synthetic, graph, nodes)
+
     return EvalReport(
         gold_case_count=len(cases),
-        faithfulness=(supported_claims / total_claims) if total_claims else 1.0,
-        coverage=(expected_found / expected_total) if expected_total else 1.0,
-        quality=correct / len(cases),
+        faithfulness=faithfulness,
+        coverage=coverage,
+        quality=quality,
+        synthetic_case_count=len(synthetic),
+        synthetic_faithfulness=syn_faithfulness,
+        synthetic_coverage=syn_coverage,
+        synthetic_quality=syn_quality,
     )

@@ -13,6 +13,13 @@ then the phase tags are the releases.
 
 ### Added
 
+- **Synthetic eval battery.** Fifty-plus cases enumerated deterministically
+  from the graph at eval time (no RNG, no LLM): per-entity lookups and
+  aggregates, multi-step compares, per-currency superlatives, and refusal
+  cases (ambiguous tokens, missing evidence, currency mixing). Expectations
+  are computed from the data — never from engine output — so passing means
+  something (ADR 0007). Gold and synthetic are reported separately; the
+  faithfulness floor gates both.
 - **Conflicting evidence is surfaced, never silently mixed.** The corpus now
   contains a deliberate conflict (an amendment moves a renewal date against
   the MSA); the engine detects disagreeing renewal dates among an entity's
