@@ -58,6 +58,18 @@ particular, relevant records lost to vocabulary mismatch or entity-variant
 phrasing that entity resolution (Unit 4) does not already absorb. The decision is
 explicitly provisional and measured, not permanent.
 
+## Addendum (2026-06-10, spec 0036)
+
+The revisit trigger **fired**: devex gold coverage 0.917 — the `notif-svc`
+abbreviation is exactly the "entity-variant phrasing that entity resolution
+does not absorb" this ADR named. Resolution: the variant was *declared* (a
+catalog alias, ADR 0010) and a graph-aware service route now answers
+ownership questions from the resolved entity, so the lexical retriever is no
+longer asked to bridge the variant at all. Coverage returned to 1.000 with
+no semantic retrieval. Embeddings remain deferred under ADR 0010's refreshed
+trigger (a measured miss that no declarable data could fix); the lexical
+path remains the portable local mode either way.
+
 ## Alternatives considered
 
 - **Semantic / embedding retrieval now.** Rejected as premature: it adds a model

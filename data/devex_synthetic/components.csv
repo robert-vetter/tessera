@@ -1,7 +1,7 @@
-Component,Name,Team,Repo
-SVC-PAY,payments-service,Payments,src/payments
-SVC-CHK,checkout-service,Storefront,src/checkout
-SVC-AUTH,auth-service,Identity,src/auth
-SVC-SRCH,search-service,Discovery,src/search
-SVC-NOTIF,notifications-service,Comms,src/notifications
-SVC-INV,inventory-service,Warehouse,src/inventory
+Component,Name,Team,Repo,Aliases
+SVC-PAY,payments-service,Payments,src/payments,
+SVC-CHK,checkout-service,Storefront,src/checkout,
+SVC-AUTH,auth-service,Identity,src/auth,
+SVC-SRCH,search-service,Discovery,src/search,
+SVC-NOTIF,notifications-service,Comms,src/notifications,notif-svc
+SVC-INV,inventory-service,Warehouse,src/inventory,

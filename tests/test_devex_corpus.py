@@ -117,6 +117,15 @@ def test_pr_ticket_references() -> None:
             assert referenced and referenced <= tickets
 
 
+def test_alias_declarations_are_exactly_as_designed() -> None:
+    """SVC-NOTIF declares its abbreviation (the spec 0036 remediation for the
+    measured miss); SVC-CHK deliberately declares none — `checkout-svc`
+    stays the named, undeclared near-miss (ADR 0010)."""
+    aliases = {row["Component"]: row["Aliases"] for row in _rows("components.csv")}
+    assert aliases["SVC-NOTIF"] == "notif-svc"
+    assert all(value == "" for comp, value in aliases.items() if comp != "SVC-NOTIF")
+
+
 def test_payments_pipeline_has_a_passing_run_between_failures() -> None:
     """R-1041 passed after the mitigation and before the recurrence — the
     'why did this run fail?' refusal target is real, not hypothetical."""
