@@ -45,6 +45,7 @@ nav:
   - Capabilities: CAPABILITIES.md
   - Roadmap: ROADMAP.md
   - SAP Alignment: SAP_ALIGNMENT.md
+  - Deployment (SAP): DEPLOYMENT.md
   - Engineering: ENGINEERING.md
   - Setup: SETUP.md
   - Status: STATUS.md
@@ -61,6 +62,7 @@ nav:
       - 0009 Multi-vertical eval batteries: adr/0009-multi-vertical-eval-batteries.md
       - 0010 Declared aliases before embeddings: adr/0010-declared-aliases-before-embeddings.md
       - 0011 Vertical-owned claim grammars: adr/0011-vertical-owned-claim-grammars.md
+      - 0012 SAP deployment path: adr/0012-sap-deployment-path.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
