@@ -1,0 +1,7 @@
+diff --git a/src/payments/db_client.py b/src/payments/db_client.py
+--- a/src/payments/db_client.py
++++ b/src/payments/db_client.py
+@@ -18,7 +18,7 @@ class PaymentsDbClient:
+     def connect(self) -> Connection:
+-        return self._pool.acquire(timeout=10)
++        return self._pool.acquire(timeout=30)

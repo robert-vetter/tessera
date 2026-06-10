@@ -1,0 +1,15 @@
+Run,Pipeline,Commit,Branch,Status,StartedAt,FailedJob
+R-0987,PIPE-PAY,bd66dca0,main,failed,2026-05-12T09:14:00Z,integration-tests
+R-1001,PIPE-AUTH,2bb1af77,main,passed,2026-05-15T11:02:00Z,
+R-1004,PIPE-NOTIF,5bdb5bf8,main,passed,2026-05-18T08:25:00Z,
+R-1007,PIPE-INV,c2d20a42,main,passed,2026-05-20T19:41:00Z,
+R-1012,PIPE-AUTH,aba3cf8c,main,failed,2026-05-23T07:58:00Z,build
+R-1015,PIPE-PAY,35c75a2f,main,passed,2026-05-26T10:33:00Z,
+R-1018,PIPE-CHK,4b762692,main,failed,2026-05-29T16:40:00Z,unit-tests
+R-1023,PIPE-SRCH,f789acd9,main,failed,2026-06-01T13:07:00Z,integration-tests
+R-1026,PIPE-CHK,87e35856,main,passed,2026-06-02T09:55:00Z,
+R-1031,PIPE-SRCH,009cfcb4,main,failed,2026-06-04T15:12:00Z,integration-tests
+R-1035,PIPE-INV,07f138ad,main,passed,2026-06-05T12:20:00Z,
+R-1041,PIPE-PAY,4fdd6a73,main,passed,2026-06-07T09:01:00Z,
+R-1042,PIPE-PAY,d6d43bc9,main,failed,2026-06-08T14:02:11Z,integration-tests
+R-1044,PIPE-NOTIF,3fb79efc,main,passed,2026-06-09T17:45:00Z,

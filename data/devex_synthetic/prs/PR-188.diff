@@ -1,0 +1,23 @@
+diff --git a/src/checkout/totals.py b/src/checkout/totals.py
+--- a/src/checkout/totals.py
++++ b/src/checkout/totals.py
+@@ -41,9 +41,14 @@ def basket_total(items: list[Item]) -> Money:
+     subtotal = sum(item.price * item.quantity for item in items)
+-    return Money(subtotal)
++    band = _discount_band(len(items))
++    if band is not None:
++        subtotal -= subtotal * band.rate
++    return Money(subtotal)
++
++def _discount_band(count: int) -> Band | None:
++    return BANDS.get_band(count) if count >= 3 else None
+diff --git a/tests/checkout/test_totals.py b/tests/checkout/test_totals.py
+--- a/tests/checkout/test_totals.py
++++ b/tests/checkout/test_totals.py
+@@ -12,6 +12,12 @@ def test_basket_total_plain():
+     assert basket_total(two_items()).amount == 3998
++
++def test_basket_total_discounted():
++    items = three_items()
++    total = basket_total(items)
++    assert total.amount < undiscounted(items).amount

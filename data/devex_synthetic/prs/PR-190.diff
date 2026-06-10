@@ -1,0 +1,8 @@
+diff --git a/src/notifications/footer.html b/src/notifications/footer.html
+--- a/src/notifications/footer.html
++++ b/src/notifications/footer.html
+@@ -3,5 +3,5 @@
+ <footer>
+-  <p>Sent by {{ compny_name }}</p>
++  <p>Sent by {{ company_name }}</p>
+ </footer>

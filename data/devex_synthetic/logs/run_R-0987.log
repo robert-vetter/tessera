@@ -1,0 +1,20 @@
+=== run R-0987 | pipeline payments-service CI | commit bd66dca0 | branch main | started 2026-05-12T09:14:00Z ===
+
+--- job: checkout ---
+09:15 INFO  fetching sources at bd66dca0
+09:15 INFO  checkout complete
+
+--- job: build ---
+09:17 INFO  building payments-service image
+09:17 INFO  image built
+
+--- job: unit-tests ---
+09:19 INFO  running payments-service unit suite
+09:19 INFO  unit suite passed
+
+--- job: integration-tests ---
+09:21 INFO  starting payments-service integration suite
+09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s
+09:21 ERROR job integration-tests failed
+
+=== result: FAILED (job integration-tests) | run R-0987 ===

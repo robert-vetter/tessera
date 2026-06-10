@@ -1,0 +1,12 @@
+=== run R-1012 | pipeline auth-service CI | commit aba3cf8c | branch main | started 2026-05-23T07:58:00Z ===
+
+--- job: checkout ---
+07:59 INFO  fetching sources at aba3cf8c
+07:59 INFO  checkout complete
+
+--- job: build ---
+08:01 INFO  building auth-service image
+08:01 ERROR auth-service: ImportError: cannot import name 'verify_token' from 'auth.jwt'
+08:01 ERROR job build failed
+
+=== result: FAILED (job build) | run R-1012 ===
