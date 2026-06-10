@@ -55,6 +55,10 @@ nav:
       - 0003 Lexical-first retrieval: adr/0003-lexical-first-retrieval.md
       - 0004 Graph & entity resolution: adr/0004-graph-and-entity-resolution.md
       - 0005 Faithfulness metric: adr/0005-faithfulness-metric.md
+      - 0006 Deterministic reasoning, LLM deferred: adr/0006-deterministic-reasoning-llm-deferral.md
+      - 0007 Synthetic scenario generation: adr/0007-synthetic-scenario-generation.md
+      - 0008 The core/vertical boundary: adr/0008-vertical-boundary.md
+      - 0009 Multi-vertical eval batteries: adr/0009-multi-vertical-eval-batteries.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
