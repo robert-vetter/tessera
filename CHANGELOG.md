@@ -13,6 +13,65 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [phase-4] — 2026-06-10
+
+### Added
+
+- **The first full trust loop closed on a public number (ADR 0010).** The
+  measured devex coverage gap (0.917 — the named `notif-svc` miss, similarity
+  0.429) is fixed the way a real organization would: the service catalog
+  **declares the alias**, the vertical asserts it as an ordinary reversible
+  `Resolution` (confidence 1.0, reason naming the declaration), and a new
+  graph-aware **service route** answers on-call/ownership questions from the
+  resolved entity. Devex gold coverage **0.917 → 1.000**, recorded.
+  Embeddings were reassessed and deferred again with a refreshed trigger (a
+  measured miss no declarable data could fix); `checkout-svc` (0.846) stays
+  deliberately undeclared as the mechanism's visible boundary.
+- **The Joule-style session — `uv run tessera-chat` (ADR 0013).** One
+  conversational door over both verticals: explainable routing, numbered
+  claims, `:show N` walks a claim to its records, locators, snapshot date,
+  and resolution/mention assertions; `:trust` shows the recorded battery
+  numbers; every answer is re-verified live by the same verifier the eval
+  uses. Optional LLM narration renders below the canonical claims under a
+  visible label, behind a deterministic novelty guard (fabricated numbers/ids
+  are discarded with a notice); refusals are never narrated; no key — no
+  narration, and nothing changes.
+- **The SAP deployment path (ADR 0012).** `docs/DEPLOYMENT.md` maps each
+  component to its SAP service (GenAI Hub on AI Core for models; HANA Cloud
+  as the documented graph/vector target; BTP runbook) and separates what CI
+  verifies from what needs credentials. `tessera/platform/` is the only
+  cloud-aware code: env-derived config defaulting to local mode and two
+  stdlib-HTTP `ModelProvider` adapters (SAP GenAI Hub; Anthropic as the
+  locally demoable fallback), contract-tested against fakes. No provisioning
+  (asked and declined); CI stays key-free; zero new dependencies.
+- **The technical write-up** (`docs/WRITEUP.md`): problem, architecture, how
+  the metrics are earned, the recorded coverage trail (business
+  0.929 → 0.938 → 1.000; devex 0.917 → 1.000), the generality proof,
+  limitations at full prominence, deferred future work, and the
+  reproduce-everything commands.
+
+### Changed
+
+- **The namespace asymmetry ADR 0008 recorded is repaired.** The business
+  answer layer moved to `tessera/business/` beside `tessera/devex/` (the
+  business synthetic generator left its misleading `eval/synthetic.py` home);
+  core `tessera/routing.py` keeps only the shared `Route` contract. Both
+  batteries' numbers reproduced exactly.
+- **Verticals own their claim grammars (ADR 0011).** The six business
+  verifier shapes moved from `eval/metrics.py` to `tessera/business/claims.py`
+  and reach the verifier via `Battery.claim_shapes`; the metric core keeps
+  only the generic grammars (verbatim containment, shared fragment) and a
+  leak-guard test pins it vertical-free. The devex battery declares no
+  grammars — its claims need only the generic ones.
+
+### Fixed
+
+- README front-door drift: stale pre-fix eval output, a missing
+  `tessera-chat`, and one **overclaim** (agentic workflows / MCP support
+  asserted as present) corrected to the truthful future-work framing.
+- Changelog footer compare-links: `phase-2`/`phase-3` were missing and
+  `Unreleased` still compared against `phase-1`.
+
 ## [phase-3] — 2026-06-10
 
 ### Added
@@ -158,6 +217,9 @@ then the phase tags are the releases.
   to GitHub Pages via GitHub Actions, with strict builds so broken links fail.
 - **This changelog.**
 
-[Unreleased]: https://github.com/robert-vetter/tessera/compare/phase-1...HEAD
+[Unreleased]: https://github.com/robert-vetter/tessera/compare/phase-4...HEAD
+[phase-4]: https://github.com/robert-vetter/tessera/compare/phase-3...phase-4
+[phase-3]: https://github.com/robert-vetter/tessera/compare/phase-2...phase-3
+[phase-2]: https://github.com/robert-vetter/tessera/compare/phase-1...phase-2
 [phase-1]: https://github.com/robert-vetter/tessera/compare/phase-0...phase-1
 [phase-0]: https://github.com/robert-vetter/tessera/releases/tag/phase-0
