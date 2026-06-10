@@ -68,7 +68,7 @@ COMPONENTS: tuple[tuple[str, str, str, str], ...] = (
 #   "Payments Service"  -> 1.000  (punctuation/case fold)     resolves
 #   "checkout-svc"      -> 0.846  (abbreviation, NEAR miss)   does not resolve
 #   "auth-service"      -> 1.000  (exact)                     resolves
-#   "search-servce"     -> 0.963  (typo)                      resolves
+#   "search-servce"     -> 0.960  (typo)                      resolves
 #   "notif-svc"         -> 0.429  (heavy abbreviation, miss)  does not resolve
 #   "inventory service" -> 1.000  (punctuation fold)          resolves
 OWNERS: tuple[tuple[str, str, str], ...] = (
