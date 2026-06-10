@@ -96,6 +96,18 @@ calibrated probability, and should not be read as one.
   Rejected: pairwise links carry a per-pair reason + confidence and make
   reversibility granular; clusters are cleanly derived as connected components.
 
+## Addendum (2026-06-10, spec 0036)
+
+The "embeddings / ML matching" trigger **fired** with Phase 3's measured
+devex coverage of 0.917 (`notif-svc`, similarity 0.429). Resolved
+deterministically: **declared catalog aliases** asserted as ordinary
+additive `Resolution`s (confidence 1.0, reason naming the declaration) —
+see ADR 0010, which also records why embeddings stay deferred and what
+would now justify them. The non-destructive assertion model needed no
+change to express this; `checkout-svc` (0.846) is deliberately retained as
+the named near-miss. The earlier addendum below (spec 0024) covers the
+diacritic/legal-suffix refinements.
+
 ## Addendum (2026-06-10, spec 0024)
 
 The coverage metric did what this ADR said it would: it identified the

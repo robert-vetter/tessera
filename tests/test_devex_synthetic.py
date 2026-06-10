@@ -70,10 +70,11 @@ def test_unreferenced_pr_case_expects_no_ticket(
     assert "Ticket:DEVEX-204" in pr201.expected_support
 
 
-def test_two_vertical_eval_floor_holds_and_misses_are_named() -> None:
-    """The Phase 3 milestone, as a test: both verticals scored by the same
-    harness; faithfulness 1.0 everywhere; the devex gold coverage gap is the
-    *named* notif-svc miss (0.917), not an anonymous shortfall."""
+def test_two_vertical_eval_floor_holds_and_coverage_loop_is_closed() -> None:
+    """Both verticals scored by the same harness; faithfulness 1.0
+    everywhere; and the Phase 3 coverage gap (the named notif-svc miss,
+    0.917) is now closed by the declared catalog alias (spec 0036) — the
+    first full trust loop: measure → name the miss → fix → re-measure."""
     report = run_eval()
     by_name = {b.name: b for b in report.batteries}
     assert set(by_name) == {"business", "devex"}
@@ -81,5 +82,5 @@ def test_two_vertical_eval_floor_holds_and_misses_are_named() -> None:
     business, devex = by_name["business"], by_name["devex"]
     assert business.faithfulness == 1.0 and business.synthetic_faithfulness == 1.0
     assert devex.faithfulness == 1.0 and devex.synthetic_faithfulness == 1.0
-    assert devex.coverage == pytest.approx(11 / 12, abs=0.001)  # the named miss
+    assert devex.coverage == 1.0  # was 11/12 — the alias closed the named miss
     assert devex.quality == 1.0

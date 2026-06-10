@@ -59,6 +59,7 @@ nav:
       - 0007 Synthetic scenario generation: adr/0007-synthetic-scenario-generation.md
       - 0008 The core/vertical boundary: adr/0008-vertical-boundary.md
       - 0009 Multi-vertical eval batteries: adr/0009-multi-vertical-eval-batteries.md
+      - 0010 Declared aliases before embeddings: adr/0010-declared-aliases-before-embeddings.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

@@ -1,9 +1,10 @@
 """The DevEx vertical's routed door: ``uv run tessera-devex "<question>"``.
 
 The second vertical's counterpart to ``uv run tessera`` (spec 0031): the
-router decides between root-cause analysis, a change summary, and lexical
-lookup — and says so, because *why a question went where* is part of an
-explainable answer. ``--engine`` forces a path.
+router decides between root-cause analysis, a change summary, a
+service-ownership lookup (spec 0036), and lexical lookup — and says so,
+because *why a question went where* is part of an explainable answer.
+``--engine`` forces a path.
 
     uv run tessera-devex                                  # flagship RCA demo
     uv run tessera-devex "What does PR-201 change?"
@@ -39,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--engine",
-        choices=("auto", "retrieve", "rca", "summary"),
+        choices=("auto", "retrieve", "rca", "summary", "service"),
         default="auto",
         help="Force a specific answer path instead of auto-routing.",
     )
@@ -60,6 +61,11 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.devex.summaries import summarize_change
 
         print(summarize_change(args.question, graph).render())
+        return 0
+    if args.engine == "service":
+        from tessera.devex.ownership import service_lookup
+
+        print(service_lookup(args.question, graph).render())
         return 0
 
     decision: Route

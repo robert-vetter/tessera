@@ -10,16 +10,19 @@ the engine's ``document`` kind — "document" means *unstructured chunk node*
 
 The resolution outcomes on this corpus are measured, not assumed: the
 catalog↔on-call variants for payments/auth/search/inventory merge at the
-0.85 threshold; ``checkout-svc`` (similarity 0.846) and ``notif-svc``
-(0.429) deliberately stay unresolved — the vertical's *named* recall misses
-(spec 0026), left for the eval to see before anything "fixes" them.
+0.85 threshold. Phase 3 left two abbreviations unresolved as *named* recall
+misses (spec 0026); the eval measured ``notif-svc`` (similarity 0.429) as
+the 0.917 coverage gap, and the catalog now closes it with a **declared
+alias** asserted here as an ordinary, reversible :class:`Resolution`
+(spec 0036 / ADR 0010). ``checkout-svc`` (0.846) stays undeclared and
+unresolved — aliases only fix what someone declares.
 """
 
 from __future__ import annotations
 
-from tessera.graph import Edge, KnowledgeGraph, Node
+from tessera.graph import Edge, KnowledgeGraph, Node, Resolution
 from tessera.grounding import KnowledgeBase
-from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD
+from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD, normalize
 from tessera.sources.devex import DevExSource
 
 # The kinds that arrive as unstructured chunks (and so participate in the
@@ -61,5 +64,39 @@ def build_devex_graph(
         graph.add_edge(Edge(src=src, dst=dst, relation=relation))
 
     graph.resolve_entities(threshold)
+    _assert_declared_aliases(graph, source.declared_aliases())
     graph.link_document_mentions()
     return graph
+
+
+def _assert_declared_aliases(
+    graph: KnowledgeGraph, declared: dict[str, tuple[str, ...]]
+) -> None:
+    """Assert same-entity for every name-bearing node a catalog alias names.
+
+    Deliberately vertical-side (the engine stays untouched until a second
+    vertical needs alias data — spec 0036) and deliberately *exact*: an alias
+    matches by normalized equality, never similarity, so a declaration cannot
+    transitively bridge two distinct services. Each assertion is an ordinary
+    additive :class:`~tessera.graph.Resolution` — confidence 1.0 because it is
+    declared catalog data, with a reason naming the declaration — so it stays
+    inspectable and reversible like every other merge decision.
+    """
+    for component_id, aliases in sorted(declared.items()):
+        for alias in aliases:
+            needle = normalize(alias)
+            for node in graph.name_nodes():
+                assert node.name is not None
+                if node.id != component_id and normalize(node.name) == needle:
+                    graph.add_resolution(
+                        Resolution(
+                            node_a=component_id,
+                            node_b=node.id,
+                            score=1.0,
+                            confidence=1.0,
+                            reason=(
+                                f"declared catalog alias: {alias!r} is listed "
+                                f"for {component_id} in components.csv"
+                            ),
+                        )
+                    )

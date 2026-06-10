@@ -76,12 +76,34 @@ def test_oncall_variants_resolve_to_their_catalog_components(
         assert owner in _cluster_of(graph, component), (component, owner)
 
 
-def test_abbreviated_oncall_rows_are_named_misses(graph: KnowledgeGraph) -> None:
-    """checkout-svc (0.846) and notif-svc (0.429) stay unresolved — the
-    vertical's honest recall gaps, to be *measured* by the eval before any
-    fix (specs 0026/0028)."""
+def test_undeclared_abbreviation_stays_a_named_miss(graph: KnowledgeGraph) -> None:
+    """checkout-svc (0.846) is deliberately NOT declared as an alias and stays
+    unresolved — aliases only fix what someone declares (spec 0036/ADR 0010):
+    the honest boundary of the mechanism, kept measurable."""
     assert _cluster_of(graph, "Owner:checkout-svc") == frozenset({"Owner:checkout-svc"})
-    assert _cluster_of(graph, "Owner:notif-svc") == frozenset({"Owner:notif-svc"})
+
+
+def test_declared_alias_resolves_the_measured_miss(graph: KnowledgeGraph) -> None:
+    """notif-svc (similarity 0.429 — pinned above) was Phase 3's measured
+    coverage miss; the catalog's declared alias now resolves it, with a
+    reason naming the declaration and confidence 1.0 (declared data, not an
+    inference)."""
+    assert "Owner:notif-svc" in _cluster_of(graph, "Component:SVC-NOTIF")
+    (alias_resolution,) = [
+        r for r in graph.resolutions if "declared catalog alias" in r.reason
+    ]
+    assert {alias_resolution.node_a, alias_resolution.node_b} == {
+        "Component:SVC-NOTIF",
+        "Owner:notif-svc",
+    }
+    assert alias_resolution.confidence == 1.0
+    assert "'notif-svc'" in alias_resolution.reason
+
+
+def test_alias_declaration_is_citable_evidence(graph: KnowledgeGraph) -> None:
+    """The declaring catalog row itself states the alias, so a claim about
+    the co-reference can cite the record that declares it."""
+    assert 'alias "notif-svc"' in graph.node("Component:SVC-NOTIF").record.text
 
 
 def test_different_services_never_merge(graph: KnowledgeGraph) -> None:
@@ -93,7 +115,12 @@ def test_different_services_never_merge(graph: KnowledgeGraph) -> None:
 def test_resolutions_carry_reason_and_confidence(graph: KnowledgeGraph) -> None:
     assert graph.resolutions
     for resolution in graph.resolutions:
-        assert "name match" in resolution.reason
+        # Two assertion regimes (ADR 0010): similarity matches carry the
+        # matched forms + score; declared aliases carry the declaration.
+        assert (
+            "name match" in resolution.reason
+            or "declared catalog alias" in resolution.reason
+        )
         assert 0.85 <= resolution.confidence <= 1.0
 
 
@@ -158,6 +185,17 @@ def test_log_chunks_mention_the_services_they_name(graph: KnowledgeGraph) -> Non
     mentioning_chunks = {m.chunk for m in graph.mentions_of(set(payments))}
     assert any(chunk.startswith("run_R-1042:") for chunk in mentioning_chunks)
     assert any(chunk.startswith("run_R-0987:") for chunk in mentioning_chunks)
+
+
+def test_alias_resolution_is_reversible_like_any_other() -> None:
+    """A declared alias is an ordinary additive assertion: withdrawing it
+    re-splits the cluster and leaves the raw records untouched."""
+    graph = build_devex_graph()
+    for resolution in [
+        r for r in graph.resolutions if "declared catalog alias" in r.reason
+    ]:
+        graph.remove_resolution(resolution)
+    assert _cluster_of(graph, "Owner:notif-svc") == frozenset({"Owner:notif-svc"})
 
 
 def test_resolution_withdrawal_resplits_without_data_loss() -> None:

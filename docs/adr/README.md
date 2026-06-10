@@ -24,3 +24,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0007](0007-synthetic-scenario-generation.md) — Synthetic eval scenarios, enumerated from the graph
 - [0008](0008-vertical-boundary.md) — The core/vertical boundary (Phase 3)
 - [0009](0009-multi-vertical-eval-batteries.md) — Eval batteries: how verticals are measured
+- [0010](0010-declared-aliases-before-embeddings.md) — Declared aliases before embeddings (Phase 4)
