@@ -5,10 +5,42 @@ All notable changes to Tessera are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries are curated by hand from the project's [Conventional Commits](https://www.conventionalcommits.org/)
-and rolled into a dated, versioned section at each roadmap-phase tag (the first
-release, `v0.1.0`, is cut at the end of Phase 1).
+and rolled into a dated section at each roadmap-phase tag. Semantic version
+numbers (`v0.x`) begin when the engine has its first external consumer; until
+then the phase tags are the releases.
 
 ## [Unreleased]
+
+## [phase-1] — 2026-06-09
+
+### Added
+
+- **Evaluation harness v1 with first real trust numbers.** A deterministic
+  faithfulness verifier (provably able to fail), a six-case curated gold set,
+  and `uv run tessera-eval` reporting faithfulness (gated at 1.0), coverage,
+  and quality. First baseline: faithfulness 1.000, coverage 0.929, quality 1.000.
+- **Cross-source answer composition (`uv run tessera-compose`).** One grounded
+  answer combining structured rows and document clauses for a resolved entity,
+  including a fully-sourced aggregate that refuses to sum across currencies.
+- **Knowledge graph with non-destructive entity resolution.** An in-process
+  graph over all ingested records; deterministic name matching asserts
+  reversible, confidence-carrying same-entity links; document mentions connect
+  text to master data.
+- **Lexical retrieval.** Deterministic BM25 over all ingested evidence (both
+  modalities), refusing when nothing relevant exists; replaced the hand-authored
+  question-to-claim map.
+- **Universal ingestion (both modalities).** SALT-schema synthetic ERP tables
+  and authored business documents enter through one ingestion door into a
+  common, origin-tagged representation (modality-agnostic locators).
+- **Shared quality gate.** `scripts/gate.sh` is the single source of truth run
+  by both `/verify` and CI.
+
+### Changed
+
+- **`uv run tessera` answers from ingested data via retrieval** instead of the
+  Phase 0 hardcoded knowledge.
+
+## [phase-0] — 2026-06-05
 
 ### Added
 
@@ -35,4 +67,6 @@ release, `v0.1.0`, is cut at the end of Phase 1).
   to GitHub Pages via GitHub Actions, with strict builds so broken links fail.
 - **This changelog.**
 
-[Unreleased]: https://github.com/robert-vetter/tessera/commits/main
+[Unreleased]: https://github.com/robert-vetter/tessera/compare/phase-1...HEAD
+[phase-1]: https://github.com/robert-vetter/tessera/compare/phase-0...phase-1
+[phase-0]: https://github.com/robert-vetter/tessera/releases/tag/phase-0
