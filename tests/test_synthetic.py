@@ -31,7 +31,7 @@ def test_battery_composition(graph: KnowledgeGraph, kb: KnowledgeBase) -> None:
     cases = generate_cases(graph, kb)
     by_kind = {c.id.split("_")[1] for c in cases}
     assert by_kind == {"lookup", "aggregate", "compare", "superlative", "refuse"}
-    assert len(cases) == 51
+    assert len(cases) == 52
     assert sum(1 for c in cases if c.kind == "refuse") == 7
 
 

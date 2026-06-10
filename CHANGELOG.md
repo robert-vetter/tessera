@@ -13,6 +13,12 @@ then the phase tags are the releases.
 
 ### Added
 
+- **The Lumière coverage gap is closed — gold coverage 1.000.** Diagnosis
+  showed two deterministic causes (diacritics deleted instead of folded;
+  master names carry a legal suffix the letter drops). `normalize()` now
+  NFKD-folds diacritics, and document mentions tolerate a stripped legal
+  suffix at reduced confidence (0.9, reason annotated). The climb
+  0.929 → 0.938 → 1.000 is recorded in `eval/history.jsonl`.
 - **Trust metrics tracked over time + the earned faithfulness badge.**
   `tessera-eval --record --note "why"` appends gold + synthetic numbers to the
   append-only `eval/history.jsonl` and regenerates `eval/badge.json`; the

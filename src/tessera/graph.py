@@ -23,6 +23,7 @@ from tessera.resolution import (
     DEFAULT_RESOLUTION_THRESHOLD,
     normalize,
     similarity,
+    strip_legal_suffix,
 )
 
 
@@ -179,8 +180,11 @@ class KnowledgeGraph:
     def link_document_mentions(self) -> None:
         """Link document chunks to org-name nodes by normalized name containment.
 
-        Deterministic and additive. Honest limitation: a reference whose form is
-        absent from the master data (e.g. a dropped legal suffix) is not matched.
+        Deterministic and additive. Two needle forms are tried per name: the
+        full normalized name (confidence 1.0) and, failing that, the name with
+        its legal suffix stripped (confidence 0.9 — documents routinely drop
+        the legal form, spec 0024); each mention's reason names the matched
+        form, so the assertion stays inspectable.
         """
         documents = [n for n in self._nodes.values() if n.kind == "document"]
         for doc in documents:
@@ -189,13 +193,26 @@ class KnowledgeGraph:
                 assert candidate.name is not None
                 needle = normalize(candidate.name)
                 if needle and needle in haystack:
-                    reason = f"document text contains {needle!r}"
                     self.add_mention(
                         Mention(
                             chunk=doc.id,
                             node=candidate.id,
                             confidence=1.0,
-                            reason=reason,
+                            reason=f"document text contains {needle!r}",
+                        )
+                    )
+                    continue
+                stripped = strip_legal_suffix(candidate.name)
+                if stripped and stripped in haystack:
+                    self.add_mention(
+                        Mention(
+                            chunk=doc.id,
+                            node=candidate.id,
+                            confidence=0.9,
+                            reason=(
+                                f"document text contains {stripped!r} "
+                                "(legal suffix stripped)"
+                            ),
                         )
                     )
 
