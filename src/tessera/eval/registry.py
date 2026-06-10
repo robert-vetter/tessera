@@ -22,9 +22,9 @@ GOLD_ROOT = Path(__file__).resolve().parents[3] / "eval" / "gold"
 def _business_answer(
     case: GoldCase, graph: KnowledgeGraph, kb: KnowledgeBase
 ) -> Answer:
-    from tessera.composition import compose
+    from tessera.business.composition import compose
+    from tessera.business.routing import route
     from tessera.retrieval import answer as retrieve_answer
-    from tessera.routing import route
 
     if case.engine == "compose":
         return compose(case.question, graph)
@@ -34,8 +34,8 @@ def _business_answer(
 
 
 def business_battery() -> Battery:
-    from tessera.eval.synthetic import generate_cases
-    from tessera.knowledge import build_demo_graph, build_demo_kb
+    from tessera.business.knowledge import build_demo_graph, build_demo_kb
+    from tessera.business.synthetic import generate_cases
 
     return Battery(
         name="business",

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from difflib import SequenceMatcher
 
-from tessera.conflicts import find_renewal_conflict
+from tessera.business.conflicts import find_renewal_conflict
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import Answer, Claim
 from tessera.resolution import normalize
@@ -205,7 +205,7 @@ def compose(question: str, graph: KnowledgeGraph) -> Answer:
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
-    from tessera.knowledge import build_demo_graph
+    from tessera.business.knowledge import build_demo_graph
 
     parser = argparse.ArgumentParser(
         prog="tessera-compose",

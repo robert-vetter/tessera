@@ -6,7 +6,7 @@ sources to its entity.
 
 from __future__ import annotations
 
-from tessera.knowledge import build_demo_graph
+from tessera.business.knowledge import build_demo_graph
 
 MUELLER = "I_Customer:0010000007"
 MUELLER_ADDR = "I_AddrOrgNamePostalAddress:A0007"

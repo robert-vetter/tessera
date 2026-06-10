@@ -2,12 +2,12 @@
 
 import pytest
 
-from tessera.composition import compose
-from tessera.conflicts import find_renewal_conflict, renewal_date_of
+from tessera.business.composition import compose
+from tessera.business.conflicts import find_renewal_conflict, renewal_date_of
+from tessera.business.knowledge import build_demo_graph
 from tessera.eval.metrics import is_supported
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Claim, EvidenceRecord, Locator, Origin
-from tessera.knowledge import build_demo_graph
 
 
 def _clause(rid: str, source: str, text: str) -> EvidenceRecord:

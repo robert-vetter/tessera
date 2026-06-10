@@ -58,6 +58,12 @@ A regression in *either* vertical turns the README red.
 - Accepted cost: `eval/synthetic.py` (the business generator) keeps its
   misleadingly generic name until the Phase 4 relocation (ADR 0008).
 
+## Addendum (2026-06-10, spec 0037)
+
+The accepted naming cost is paid off: the business generator moved from
+`eval/synthetic.py` to `tessera/business/synthetic.py` in the Phase 4
+relocation, mirroring `tessera/devex/synthetic.py`. Numbers unchanged.
+
 ## Alternatives considered
 
 - **A second, parallel harness for DevEx.** Rejected: forks the metric

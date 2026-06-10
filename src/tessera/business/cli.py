@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import argparse
 
-from tessera.knowledge import DEMO_KB, DEMO_QUESTION, build_demo_graph
+from tessera.business.knowledge import DEMO_KB, DEMO_QUESTION, build_demo_graph
+from tessera.business.routing import route
 from tessera.retrieval import answer as retrieve_answer
-from tessera.routing import Route, route
+from tessera.routing import Route
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,12 +51,12 @@ def main(argv: list[str] | None = None) -> int:
 
     graph = build_demo_graph()
     if args.engine == "compose":
-        from tessera.composition import compose
+        from tessera.business.composition import compose
 
         print(compose(args.question, graph).render())
         return 0
     if args.engine == "reason":
-        from tessera.reasoning import reason
+        from tessera.business.reasoning import reason
 
         print(reason(args.question, graph).render())
         return 0
