@@ -33,7 +33,7 @@ NAME_MATCH_RATIO = 0.6
 # alone cannot sweep in every firm sharing them).
 MIN_NAME_MATCH = 6
 
-_SUPERLATIVE_WORDS = ("highest", "largest", "biggest", "most", "top")
+SUPERLATIVE_WORDS = ("highest", "largest", "biggest", "most", "top")
 _CURRENCY = re.compile(r"\b([A-Z]{3})\b")
 
 NOT_MULTI_REFUSAL = (
@@ -253,6 +253,6 @@ def reason(question: str, graph: KnowledgeGraph) -> Answer:
             ),
         )
     lowered = question.lower()
-    if any(word in lowered for word in _SUPERLATIVE_WORDS):
+    if any(word in lowered for word in SUPERLATIVE_WORDS):
         return superlative(question, graph)
     return Answer(question=question, claims=(), refusal=NOT_MULTI_REFUSAL)

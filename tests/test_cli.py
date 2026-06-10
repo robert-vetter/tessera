@@ -7,13 +7,14 @@ from tessera.grounding import REFUSAL_MESSAGE
 
 
 def test_cli_demo_outputs_provenance(capsys: pytest.CaptureFixture[str]) -> None:
-    """Running with no args answers the demo question by surfacing retrieved,
-    sourced evidence."""
+    """With no args, the demo question is auto-routed (to one-entity
+    composition) and every claim is traced to an ingested source row."""
     exit_code = main([])
     out = capsys.readouterr().out
     assert exit_code == 0
-    # The spotlight customer is surfaced, traced to an ingested SALT source row.
-    assert "Müller Logistik GmbH" in out
+    # The route is explained, the entity is resolved, provenance is visible.
+    assert "[route: entity" in out
+    assert "Mueller Logistik Gmbh" in out
     assert "salt_synthetic/" in out
 
 
