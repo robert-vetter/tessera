@@ -1,0 +1,2 @@
+{"recorded": "2026-06-09", "note": "phase-1 baseline (recorded retroactively from docs/STATUS.md; no synthetic battery yet)", "gold": {"cases": 6, "faithfulness": 1.0, "coverage": 0.929, "quality": 1.0}, "synthetic": {"cases": 0, "faithfulness": null, "coverage": null, "quality": null}}
+{"recorded": "2026-06-10", "note": "phase 2 mid-point: routing + multi-step + conflict surfacing + synthetic battery (51 cases)", "gold": {"cases": 7, "faithfulness": 1.0, "coverage": 0.9375, "quality": 1.0}, "synthetic": {"cases": 51, "faithfulness": 1.0, "coverage": 1.0, "quality": 1.0}}
