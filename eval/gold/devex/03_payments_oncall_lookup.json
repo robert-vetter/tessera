@@ -1,0 +1,8 @@
+{
+  "id": "03_payments_oncall_lookup",
+  "question": "Who is on call for payments-service?",
+  "engine": "route",
+  "kind": "answer",
+  "expected_support": ["Owner:Payments Service"],
+  "expected_facts": ["Dana Petrov"]
+}

@@ -47,7 +47,36 @@ def business_battery() -> Battery:
     )
 
 
+def _devex_answer(case: GoldCase, graph: KnowledgeGraph, kb: KnowledgeBase) -> Answer:
+    from tessera.devex.rca import explain_failure
+    from tessera.devex.routing import route
+    from tessera.devex.summaries import summarize_change
+    from tessera.retrieval import answer as retrieve_answer
+
+    if case.engine == "rca":
+        return explain_failure(case.question, graph)
+    if case.engine == "summary":
+        return summarize_change(case.question, graph)
+    if case.engine == "route":
+        return route(case.question, graph, kb)[1]
+    return retrieve_answer(case.question, kb)
+
+
+def devex_battery() -> Battery:
+    from tessera.devex.knowledge import build_devex_graph, build_devex_kb
+    from tessera.devex.synthetic import generate_cases
+
+    return Battery(
+        name="devex",
+        gold_dir=GOLD_ROOT / "devex",
+        build_graph=build_devex_graph,
+        build_kb=build_devex_kb,
+        answer=_devex_answer,
+        synthetic=generate_cases,
+    )
+
+
 def batteries() -> tuple[Battery, ...]:
-    """Every measured vertical. The DevEx battery lands in Unit 8 (spec
-    0033); until then the tuple is honest about what is measured."""
-    return (business_battery(),)
+    """Every measured vertical — the Phase 3 milestone in one line: two
+    genuinely different verticals, one unchanged engine, both measured."""
+    return (business_battery(), devex_battery())
