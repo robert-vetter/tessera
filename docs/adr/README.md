@@ -27,3 +27,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0010](0010-declared-aliases-before-embeddings.md) — Declared aliases before embeddings (Phase 4)
 - [0011](0011-vertical-owned-claim-grammars.md) — Vertical-owned claim grammars
 - [0012](0012-sap-deployment-path.md) — SAP deployment path: docs + tested seams
+- [0013](0013-narration-boundary.md) — The narration boundary: rephrase, never add
