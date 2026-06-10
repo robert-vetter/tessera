@@ -1,0 +1,16 @@
+{
+  "id": "07_mueller_renewal_conflict",
+  "question": "When does Müller Logistik's agreement renew?",
+  "engine": "compose",
+  "kind": "answer",
+  "expected_support": [
+    "mueller_logistik_msa:chunk6",
+    "mueller_logistik_amendment:chunk4"
+  ],
+  "expected_facts": [
+    "disagree on the renewal date",
+    "1 August",
+    "1 February",
+    "No single renewal date can be asserted"
+  ]
+}
