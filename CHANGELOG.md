@@ -11,6 +11,20 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-step reasoning.** Compare two named entities' total net order value
+  (per-entity sourced step claims plus a conclusion citing both row sets) and
+  currency-scoped superlative ranking — never across currencies. The
+  faithfulness verifier recomputes both conclusion shapes over the graph and is
+  adversarially tested to catch a wrong winner, a flipped direction, and a
+  wrong entity count.
+- **Question routing.** `uv run tessera` is now one routed door: the router
+  classifies a question as lookup, one-entity composition, or multi-step
+  reasoning — deterministically, and it prints the route and its reason above
+  the answer. `--engine` forces a path; `"engine": "route"` is available to
+  eval cases.
+
 ## [phase-1] — 2026-06-09
 
 ### Added
