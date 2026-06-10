@@ -1,0 +1,16 @@
+=== run R-1018 | pipeline checkout-service CI | commit 4b762692 | branch main | started 2026-05-29T16:40:00Z ===
+
+--- job: checkout ---
+16:41 INFO  fetching sources at 4b762692
+16:41 INFO  checkout complete
+
+--- job: build ---
+16:43 INFO  building checkout-service image
+16:43 INFO  image built
+
+--- job: unit-tests ---
+16:45 INFO  running checkout-service unit suite
+16:45 ERROR checkout-service: AssertionError: test_checkout_totals expected 3 items, got 2
+16:45 ERROR job unit-tests failed
+
+=== result: FAILED (job unit-tests) | run R-1018 ===

@@ -1,0 +1,23 @@
+=== run R-1044 | pipeline notifications-service CI | commit 3fb79efc | branch main | started 2026-06-09T17:45:00Z ===
+
+--- job: checkout ---
+17:46 INFO  fetching sources at 3fb79efc
+17:46 INFO  checkout complete
+
+--- job: build ---
+17:48 INFO  building notifications-service image
+17:48 INFO  image built
+
+--- job: unit-tests ---
+17:50 INFO  running notifications-service unit suite
+17:50 INFO  unit suite passed
+
+--- job: integration-tests ---
+17:52 INFO  starting notifications-service integration suite
+17:52 INFO  integration suite passed
+
+--- job: publish ---
+17:54 INFO  publishing notifications-service image
+17:54 INFO  publish complete
+
+=== result: PASSED | run R-1044 ===

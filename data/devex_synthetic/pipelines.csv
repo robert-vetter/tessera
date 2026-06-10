@@ -1,0 +1,7 @@
+Pipeline,Name,Component
+PIPE-PAY,payments-service CI,SVC-PAY
+PIPE-CHK,checkout-service CI,SVC-CHK
+PIPE-AUTH,auth-service CI,SVC-AUTH
+PIPE-SRCH,search-service CI,SVC-SRCH
+PIPE-NOTIF,notifications-service CI,SVC-NOTIF
+PIPE-INV,inventory-service CI,SVC-INV

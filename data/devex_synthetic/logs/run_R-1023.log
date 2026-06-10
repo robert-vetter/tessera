@@ -1,0 +1,20 @@
+=== run R-1023 | pipeline search-service CI | commit f789acd9 | branch main | started 2026-06-01T13:07:00Z ===
+
+--- job: checkout ---
+13:08 INFO  fetching sources at f789acd9
+13:08 INFO  checkout complete
+
+--- job: build ---
+13:10 INFO  building search-service image
+13:10 INFO  image built
+
+--- job: unit-tests ---
+13:12 INFO  running search-service unit suite
+13:12 INFO  unit suite passed
+
+--- job: integration-tests ---
+13:14 INFO  starting search-service integration suite
+13:14 ERROR search-service: ConnectionResetError: search-index replica unreachable
+13:14 ERROR job integration-tests failed
+
+=== result: FAILED (job integration-tests) | run R-1023 ===

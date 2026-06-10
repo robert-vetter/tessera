@@ -1,0 +1,7 @@
+Service,OnCall,Channel
+Payments Service,Dana Petrov,#payments-oncall
+checkout-svc,Jonas Lindqvist,#checkout-alerts
+auth-service,Priya Raman,#identity-oncall
+search-servce,Mateo Alvarez,#search-oncall
+notif-svc,Aiko Tanaka,#comms-oncall
+inventory service,Lena Fischer,#warehouse-oncall

@@ -1,0 +1,23 @@
+=== run R-1004 | pipeline notifications-service CI | commit 5bdb5bf8 | branch main | started 2026-05-18T08:25:00Z ===
+
+--- job: checkout ---
+08:26 INFO  fetching sources at 5bdb5bf8
+08:26 INFO  checkout complete
+
+--- job: build ---
+08:28 INFO  building notifications-service image
+08:28 INFO  image built
+
+--- job: unit-tests ---
+08:30 INFO  running notifications-service unit suite
+08:30 INFO  unit suite passed
+
+--- job: integration-tests ---
+08:32 INFO  starting notifications-service integration suite
+08:32 INFO  integration suite passed
+
+--- job: publish ---
+08:34 INFO  publishing notifications-service image
+08:34 INFO  publish complete
+
+=== result: PASSED | run R-1004 ===

@@ -1,0 +1,17 @@
+{
+  "dataset": "devex_synthetic",
+  "synthetic": true,
+  "schema_reference": "Generic CI/CD + tracker export shapes (runs, logs, PRs, diffs, tickets, service catalog, on-call) — no real system's data",
+  "generator": "scripts/generate_devex_synthetic.py",
+  "snapshot_date": "2026-06-10",
+  "row_counts": {
+    "components.csv": 6,
+    "owners.csv": 6,
+    "pipelines.csv": 6,
+    "runs.csv": 14,
+    "tickets.csv": 10,
+    "prs.csv": 5
+  },
+  "log_files": 14,
+  "diff_files": 5
+}

@@ -1,0 +1,23 @@
+=== run R-1001 | pipeline auth-service CI | commit 2bb1af77 | branch main | started 2026-05-15T11:02:00Z ===
+
+--- job: checkout ---
+11:03 INFO  fetching sources at 2bb1af77
+11:03 INFO  checkout complete
+
+--- job: build ---
+11:05 INFO  building auth-service image
+11:05 INFO  image built
+
+--- job: unit-tests ---
+11:07 INFO  running auth-service unit suite
+11:07 INFO  unit suite passed
+
+--- job: integration-tests ---
+11:09 INFO  starting auth-service integration suite
+11:09 INFO  integration suite passed
+
+--- job: publish ---
+11:11 INFO  publishing auth-service image
+11:11 INFO  publish complete
+
+=== result: PASSED | run R-1001 ===

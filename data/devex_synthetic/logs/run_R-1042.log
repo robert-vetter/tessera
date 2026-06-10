@@ -1,0 +1,21 @@
+=== run R-1042 | pipeline payments-service CI | commit d6d43bc9 | branch main | started 2026-06-08T14:02:11Z ===
+
+--- job: checkout ---
+14:03 INFO  fetching sources at d6d43bc9
+14:03 INFO  checkout complete
+
+--- job: build ---
+14:05 INFO  building payments-service image
+14:05 INFO  pulling base image payments-svc:1.42.0
+14:05 INFO  image built
+
+--- job: unit-tests ---
+14:07 INFO  running payments-service unit suite
+14:07 INFO  unit suite passed
+
+--- job: integration-tests ---
+14:09 INFO  starting payments-service integration suite
+14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s
+14:09 ERROR job integration-tests failed
+
+=== result: FAILED (job integration-tests) | run R-1042 ===

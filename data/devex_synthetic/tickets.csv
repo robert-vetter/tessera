@@ -1,0 +1,11 @@
+Ticket,Component,Type,Status,CreatedOn,ResolvedOn,Title,Description
+DEVEX-142,SVC-AUTH,task,closed,2026-04-02,2026-04-20,Rotate signing keys quarterly,Automate quarterly rotation of the JWT signing keys with a grace window.
+DEVEX-150,SVC-CHK,task,closed,2026-04-28,2026-05-28,Add multi-item discounts to checkout totals,Customers buying three or more items should receive the tiered discount. Acceptance: checkout totals reflect the discount bands.
+DEVEX-160,SVC-NOTIF,task,open,2026-05-05,,Template editor for notification e-mails,Allow Comms to edit notification e-mail templates without a deploy.
+DEVEX-171,SVC-INV,task,closed,2026-05-08,2026-05-22,Nightly stock reconciliation job,Reconcile warehouse stock counts against the ledger every night.
+DEVEX-187,SVC-PAY,incident,resolved,2026-05-12,2026-05-14,Payments CI failing: database connection timeout,The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198).
+DEVEX-195,SVC-SRCH,task,open,2026-05-19,,Synonym support in search queries,Search should match configured synonyms (e.g. 'sofa' ~ 'couch').
+DEVEX-204,SVC-PAY,task,in progress,2026-06-05,,Harden payments-db client against slow connections,Follow-up to DEVEX-187: add retry with exponential backoff to the payments-db client so transient slowness does not fail the pipeline.
+DEVEX-209,SVC-CHK,task,open,2026-06-06,,One-click reorder from order history,Let a customer reorder a previous basket in one click.
+DEVEX-215,SVC-AUTH,task,open,2026-06-07,,Audit log for admin logins,Record every admin login with source address and outcome.
+DEVEX-231,SVC-SRCH,incident,open,2026-06-01,,search-index replica unreachable during CI,Integration runs intermittently fail with ConnectionResetError: search-index replica unreachable. Suspected replica eviction under memory pressure; investigating.
