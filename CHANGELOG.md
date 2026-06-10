@@ -13,6 +13,11 @@ then the phase tags are the releases.
 
 ### Added
 
+- **Trust metrics tracked over time + the earned faithfulness badge.**
+  `tessera-eval --record --note "why"` appends gold + synthetic numbers to the
+  append-only `eval/history.jsonl` and regenerates `eval/badge.json`; the
+  README now shows the faithfulness badge (deliberately withheld in Phase 0
+  until the number was real and gated). Green only while the floor holds.
 - **Synthetic eval battery.** Fifty-plus cases enumerated deterministically
   from the graph at eval time (no RNG, no LLM): per-entity lookups and
   aggregates, multi-step compares, per-currency superlatives, and refusal
