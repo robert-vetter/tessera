@@ -13,6 +13,13 @@ then the phase tags are the releases.
 
 ### Added
 
+- **Conflicting evidence is surfaced, never silently mixed.** The corpus now
+  contains a deliberate conflict (an amendment moves a renewal date against
+  the MSA); the engine detects disagreeing renewal dates among an entity's
+  clauses and emits a conflict claim naming both values and citing both
+  clauses — refusing to assert a single date. The faithfulness verifier checks
+  conflict claims (quoted values must come from distinct cited clauses and
+  actually disagree).
 - **Multi-step reasoning.** Compare two named entities' total net order value
   (per-entity sourced step claims plus a conclusion citing both row sets) and
   currency-scoped superlative ranking — never across currencies. The
