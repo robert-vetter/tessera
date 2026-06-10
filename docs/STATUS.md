@@ -564,3 +564,105 @@ on one unchanged core, both measured")**
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #31–#40 merged. Tagged
   `phase-3`.
+
+---
+
+## 2026-06-10 — Phase 4 COMPLETE (autonomous run: platform, polish, and the story)
+
+**Mode note:** ran **autonomously** end-to-end from one kickoff (per CLAUDE.md
+"Autonomous phase execution"): eight units, each spec → branch → implement →
+gate → PR → CI-green → squash-merge. The two project-shaping questions
+(external services/spend) were **asked**, per the rules: the maintainer chose
+*docs + tested seams, no provisioning* for the SAP path, and *GenAI Hub with
+an Anthropic fallback* for the optional narration adapter.
+
+**Done this session (8 units, PRs #41–#48)**
+- **Phase plan** (spec 0035, PR #41): unit breakdown + the two asked
+  decisions recorded before any code.
+- **The coverage loop closed** (spec 0036, ADR 0010, PR #42): the FIRED
+  ADR 0003/0004 triggers resolved deterministically — `components.csv`
+  declares the `notif-svc` alias, the vertical asserts it as a reversible
+  confidence-1.0 `Resolution`, and a new graph-aware **service route**
+  answers ownership questions from the resolved entity. **Devex gold
+  coverage 0.917 → 1.000** (recorded with `--record`); gold case 04
+  strengthened (now also expects "Aiko Tanaka"). Embeddings reassessed and
+  deferred with a refreshed trigger (a measured miss no declarable data
+  could fix); `checkout-svc` (0.846) deliberately kept undeclared as the
+  mechanism's visible boundary. Addenda on ADR 0003/0004.
+- **Relocation** (spec 0037, PR #43): business answer layer →
+  `tessera/business/` (cli, knowledge, composition, reasoning, conflicts,
+  routing, synthetic), mirroring `tessera/devex/`; core `routing.py` keeps
+  only the shared `Route` contract; entry points repointed, behaviour
+  identical, numbers byte-identical. ADR 0008/0009 addenda close their
+  recorded asymmetries.
+- **Claim-grammar ownership** (spec 0038, ADR 0011, PR #44): the six
+  business verifier shapes moved to `tessera/business/claims.py`, carried
+  explicitly via `Battery.claim_shapes`; `eval/metrics.py` is now
+  vertical-free (leak-guard test pins it); devex declares zero grammars —
+  itself a generality data point. One deliberate precedence change
+  (conclusion grammars own their verdict ahead of generic containment —
+  stricter), measured to change nothing.
+- **SAP deployment path** (spec 0039, ADR 0012, PR #45): `docs/DEPLOYMENT.md`
+  (component→service mapping, env reference, provisioning runbook,
+  verified-vs-not split) + `tessera/platform/` (config defaulting to local
+  mode; `ModelProvider` protocol; GenAI Hub + Anthropic adapters in pure
+  stdlib HTTP, contract-tested against fakes). No cloud touched; CI key-free.
+- **The Joule-style session** (spec 0040, ADR 0013, PR #46):
+  `uv run tessera-chat` over both verticals — explainable routing, numbered
+  claims, `:show N` provenance exploration (records, locators, assertion
+  trail with confidences, deduplicated), `:trust` panel from the history
+  journal, a **live verifier check on every answer** (same `is_supported` +
+  shapes as the eval), and optional narration under the ADR 0013 boundary
+  (label below canonical claims; deterministic novelty guard discards
+  fabricated numbers/ids with a notice; provider failure degrades silently;
+  refusals never narrated).
+- **The write-up** (spec 0041, PR #47): `docs/WRITEUP.md` — problem,
+  architecture, how the metrics are earned, the recorded trail
+  (business 0.929 → 0.938 → 1.000; devex 0.917 → 1.000), the empty-diff
+  generality proof, limitations at full prominence, future work, reproduce
+  commands.
+- **Close** (spec 0042, PR #48): README stranger pass (current numbers, the
+  chat door, DEPLOYMENT/WRITEUP links, gate = `scripts/gate.sh`, and one
+  real **overclaim fixed** — agentic/MCP was asserted as present, now
+  truthfully future work), CHANGELOG `[phase-4]` + repaired footer links,
+  this entry, tag `phase-4`.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **business — gold 7: faithfulness 1.000 (gated) · coverage 1.000 · quality 1.000;
+  synthetic 52: 1.000 · 1.000 · 1.000.**
+- **devex — gold 7: faithfulness 1.000 (gated) · coverage 1.000 · quality 1.000;
+  synthetic 24: 1.000 · 1.000 · 1.000.**
+- Trend: business coverage 0.929 → 0.938 → 1.000; devex 0.917 → 1.000 —
+  both loops closed metric-first, both recorded.
+
+**Phase 4 milestone check (ROADMAP: "a senior engineer can clone, run, read,
+and understand the project without the author in the room")**
+- Clone-and-run: `uv sync` → all five doors run key-free; gate + eval green
+  in CI ✓. Read: README → WRITEUP → DEPLOYMENT → ADR trail, all current and
+  cross-linked ✓. SAP path: designed-for with runbook + tested seams (the
+  honest posture SAP_ALIGNMENT endorses; provisioning deliberately declined) ✓.
+  Joule-style surface with explorable provenance + visible trust signal ✓.
+  Write-up with honest results and limitations ✓. **Milestone met.** Tagged
+  `phase-4`.
+
+**Open questions / risks**
+- **ADR 0007 trigger 2 (battery saturation) is now true of both batteries** —
+  every recorded number is 1.000. The next trust loop needs *harder* cases,
+  not more green: free-form phrasing variety, multi-hop mixed-modality
+  questions, scale. This is the named candidate for the next milestone's
+  first unit.
+- ADR 0010's refreshed embeddings trigger and ADR 0005's LLM-judge trigger
+  are live and written down; neither has a measured case yet.
+- The GenAI Hub adapter is contract-tested only; a provisioning session
+  (runbook in DEPLOYMENT.md) would turn "designed for" into "ran on" in an
+  afternoon — maintainer's call, spend involved.
+- Conversation is stateless; follow-up context is named future work
+  (WRITEUP).
+- Roadmap note: the four ROADMAP phases are complete. What follows is
+  post-roadmap work (next milestone to be defined with the maintainer —
+  candidates: hardening loop on harder cases, real connectors, agentic/MCP
+  mode, BTP provisioning, application/write-up packaging).
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #41–#48 merged. Tagged
+  `phase-4`.

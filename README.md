@@ -50,7 +50,18 @@ The same core engine powers two deliberately different demonstrations, to prove 
 As of Phase 3 **both verticals run and both are measured** — on a core whose
 files are byte-identical between the `phase-2` and `phase-3` tags
 ([ADR 0008](docs/adr/0008-vertical-boundary.md)): the generalization claim is
-an empty `git diff`, not a promise.
+an empty `git diff`, not a promise. Phase 4 completed the symmetry — the
+business answer layer lives in `tessera/business/` beside `tessera/devex/`,
+each vertical owns its claim grammars
+([ADR 0011](docs/adr/0011-vertical-owned-claim-grammars.md)) — and added the
+**Joule-style session over both**:
+
+```bash
+uv run tessera-chat
+# one conversational door: explainable routing, numbered claims, :show N to
+# walk provenance (records, locators, resolution assertions), :trust for the
+# recorded numbers — and a live verifier check on every answer.
+```
 
 ## What makes it genuinely hard (the honest version)
 
@@ -58,7 +69,18 @@ Grounded RAG exists. Knowledge graphs exist. Entity resolution exists. What is r
 
 ## Built with (and toward) the SAP stack
 
-Designed to run on SAP's own AI infrastructure rather than around it — SAP AI Core and the Generative AI Hub for model orchestration, SAP HANA Cloud for the graph and vector layer, and a Joule-style conversational surface. Beyond answering, Tessera supports **grounded agentic workflows** and speaks **MCP** (consuming external tools and exposing its own grounded-query capability), in line with SAP's 2026 move toward agentic AI, Joule Studio, and Agent-to-Agent interoperability. Details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
+Designed to run on SAP's own AI infrastructure rather than around it — SAP AI
+Core and the Generative AI Hub for the model layer (adapter implemented and
+contract-tested; provisioning is a written runbook —
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), [ADR 0012](docs/adr/0012-sap-deployment-path.md)),
+SAP HANA Cloud as the documented graph/vector target, and a Joule-style
+conversational surface (`uv run tessera-chat`) whose optional LLM narration is
+strictly bounded: it rephrases verifier-checked claims and can never add facts
+([ADR 0013](docs/adr/0013-narration-boundary.md)). The portable local mode —
+no keys, no network, zero runtime dependencies — is the default and is what CI
+verifies. Grounded **agentic workflows and MCP exposure** are named future
+work, in line with SAP's 2026 agentic direction — designed toward, not yet
+built. Details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
 
@@ -70,9 +92,9 @@ uv sync                      # create the environment from uv.lock
 uv run pre-commit install    # one-time: enable local commit gates
 ```
 
-Run the quality gate at any time with `uv run pre-commit run --all-files`
-(format, lint, secret scan, hygiene). The fuller gate — types and tests —
-runs via `uv run mypy src tests` and `uv run pytest`.
+Run the full quality gate — the exact checks CI runs (format, lint, strict
+types, tests) — with `bash scripts/gate.sh`; the eval is `uv run tessera-eval`
+and the secret scan `uv run pre-commit run gitleaks --all-files`.
 
 ### No toolchain? Use the container
 
@@ -127,7 +149,7 @@ it scores **both verticals** as separate batteries
 uv run tessera-eval
 # [business] gold (7):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [business] synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [devex]    gold (7):      faithfulness 1.000 (floor), coverage 0.917, quality 1.000
+# [devex]    gold (7):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [devex]    synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 ```
 
@@ -141,13 +163,19 @@ plus per-vertical synthetic batteries enumerated from the data:
   inject known-unfaithful claims — including a fabricated "recurring failure"
   — and confirm the metric catches them, so the 1.0 is earned, not
   tautological.
-- **Coverage** — how much of the available evidence the answers surface. The
-  DevEx number is honestly **below 1.0**: its gap is a *named* miss (the
-  `notif-svc` on-call row, whose abbreviated name resolves at 0.429 and shares
-  no retrieval token with the question) — planted in the corpus, predicted in
-  the spec before the battery first ran, and kept as the measured trigger for
-  the next improvement loop. The business vertical's equivalent (the Lumière
-  miss) was closed the same way in Phase 2: metric first, then the fix.
+- **Coverage** — how much of the expected evidence the answers surface. The
+  1.000s were **earned through two recorded trust loops**, not assumed: each
+  vertical shipped with a *named, planted* miss (business: the Lumière
+  document mention; devex: the `notif-svc` on-call row at similarity 0.429),
+  the metric measured it (0.929 and 0.917 respectively), and the smallest
+  honest mechanism closed it — a Unicode-folding fix
+  ([ADR 0004](docs/adr/0004-graph-and-entity-resolution.md) addendum) and a
+  **declared catalog alias**
+  ([ADR 0010](docs/adr/0010-declared-aliases-before-embeddings.md)). A third
+  specimen (`checkout-svc`, 0.846, deliberately undeclared) keeps the
+  mechanism's boundary visible. The whole trail is in
+  [`eval/history.jsonl`](eval/history.jsonl) and told in the
+  [write-up](docs/WRITEUP.md).
 - **Quality** — gold answers correct / refusals refused.
 
 The README badge shows the **minimum** gold faithfulness across batteries —
@@ -248,13 +276,20 @@ miss is named in the data's README rather than hidden.
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Feature-level breakdown of what each pillar can do |
 | [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md) | Location-by-location mapping + SAP systems + how to talk about it |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | The phased build plan across ~3–4 months |
+| [`docs/WRITEUP.md`](docs/WRITEUP.md) | **The technical write-up**: approach, the recorded results trail, limitations, lessons |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | The SAP deployment path (AI Core / GenAI Hub / HANA Cloud) and the local-first posture |
 | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | How the project is run: workflow, tooling, quality gates, anti-drift |
 | [`docs/SETUP.md`](docs/SETUP.md) | How to go from these docs to a running, gated project |
 | [`CLAUDE.md`](CLAUDE.md) | Working instructions for building this with Claude Code |
 
 ## Status
 
-Early development. Vision and scope defined; implementation in progress. This is a long-running project built deliberately over several months — see the roadmap.
+**Phases 0–4 complete** (see [`docs/STATUS.md`](docs/STATUS.md) and the
+[changelog](CHANGELOG.md)): both verticals run on one measured engine, all
+recorded trust numbers stand at 1.000 with the faithfulness floor gated in CI,
+the Joule-style session and the SAP deployment path are in place, and the
+[write-up](docs/WRITEUP.md) tells the story — including what is honestly not
+done (real connectors, embeddings, agentic/MCP mode, scale).
 
 ## License
 

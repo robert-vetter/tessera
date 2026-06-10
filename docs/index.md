@@ -17,9 +17,13 @@ trust this AI?" from a feeling into a measured **faithfulness** score.
   principles, scope, and what "excellent" means.
 - **[Capabilities](CAPABILITIES.md)** — the four pillars at feature level and
   what each must guarantee.
+- **[Technical Write-up](WRITEUP.md)** — the whole story in one sitting:
+  approach, the recorded results trail, limitations, lessons.
 - **[Roadmap](ROADMAP.md)** — the phased build plan across ~3–4 months.
 - **[SAP Alignment](SAP_ALIGNMENT.md)** — how the work maps onto SAP's teams and
   platform.
+- **[Deployment (SAP)](DEPLOYMENT.md)** — the AI Core / GenAI Hub / HANA Cloud
+  path, and why local mode is the default.
 
 ## Build and operate
 
