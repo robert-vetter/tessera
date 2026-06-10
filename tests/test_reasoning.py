@@ -8,6 +8,7 @@ data generator changes, these change loudly — that is intended.
 
 import pytest
 
+from tessera.business.claims import BUSINESS_CLAIM_SHAPES
 from tessera.business.knowledge import build_demo_graph
 from tessera.business.reasoning import NOT_MULTI_REFUSAL, find_named_entities, reason
 from tessera.eval.metrics import is_supported
@@ -64,7 +65,10 @@ def test_compare_claims_pass_faithfulness(graph: KnowledgeGraph) -> None:
     answer = reason("Compare Müller Logistik and Nordwind Logistik totals.", graph)
     nodes = {node.id: node for node in graph.nodes}
     assert answer.claims
-    assert all(is_supported(claim, nodes, graph) for claim in answer.claims)
+    assert all(
+        is_supported(claim, nodes, graph, BUSINESS_CLAIM_SHAPES)
+        for claim in answer.claims
+    )
 
 
 def test_compare_refuses_across_currencies(graph: KnowledgeGraph) -> None:
@@ -91,7 +95,9 @@ def test_superlative_in_eur(graph: KnowledgeGraph) -> None:
     assert "Among 13 entities with EUR orders" in claim.text
     assert "'Orion Datentechnik GmbH'" in claim.text
     assert "EUR 197,500.00" in claim.text
-    assert is_supported(claim, {n.id: n for n in graph.nodes}, graph)
+    assert is_supported(
+        claim, {n.id: n for n in graph.nodes}, graph, BUSINESS_CLAIM_SHAPES
+    )
 
 
 def test_superlative_without_currency_refuses(graph: KnowledgeGraph) -> None:
@@ -128,7 +134,9 @@ def test_verifier_rejects_wrong_superlative_winner(graph: KnowledgeGraph) -> Non
         text=real.text.replace("Orion Datentechnik GmbH", "Mueller Logistik Gmbh"),
         support=real.support,
     )
-    assert not is_supported(lie, {n.id: n for n in graph.nodes}, graph)
+    assert not is_supported(
+        lie, {n.id: n for n in graph.nodes}, graph, BUSINESS_CLAIM_SHAPES
+    )
 
 
 def test_verifier_rejects_flipped_compare_direction(graph: KnowledgeGraph) -> None:
@@ -140,11 +148,15 @@ def test_verifier_rejects_flipped_compare_direction(graph: KnowledgeGraph) -> No
         .replace("TMP", "Mueller Logistik Gmbh"),
         support=conclusion.support,
     )
-    assert not is_supported(flipped, {n.id: n for n in graph.nodes}, graph)
+    assert not is_supported(
+        flipped, {n.id: n for n in graph.nodes}, graph, BUSINESS_CLAIM_SHAPES
+    )
 
 
 def test_verifier_rejects_wrong_entity_count(graph: KnowledgeGraph) -> None:
     honest = reason("Highest total order value in EUR?", graph)
     (real,) = honest.claims
     lie = Claim(text=real.text.replace("Among 13", "Among 12"), support=real.support)
-    assert not is_supported(lie, {n.id: n for n in graph.nodes}, graph)
+    assert not is_supported(
+        lie, {n.id: n for n in graph.nodes}, graph, BUSINESS_CLAIM_SHAPES
+    )

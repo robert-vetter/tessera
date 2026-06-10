@@ -34,6 +34,7 @@ def _business_answer(
 
 
 def business_battery() -> Battery:
+    from tessera.business.claims import BUSINESS_CLAIM_SHAPES
     from tessera.business.knowledge import build_demo_graph, build_demo_kb
     from tessera.business.synthetic import generate_cases
 
@@ -44,6 +45,8 @@ def business_battery() -> Battery:
         build_kb=build_demo_kb,
         answer=_business_answer,
         synthetic=generate_cases,
+        # The vertical's own claim grammars (ADR 0011), in precedence order.
+        claim_shapes=BUSINESS_CLAIM_SHAPES,
     )
 
 
@@ -73,6 +76,10 @@ def devex_battery() -> Battery:
         build_kb=build_devex_kb,
         answer=_devex_answer,
         synthetic=generate_cases,
+        # No vertical grammars (ADR 0011): every devex claim is a verbatim
+        # snippet or speaks the generic shared-fragment grammar — itself a
+        # data point for the engine's generality.
+        claim_shapes=(),
     )
 
 
