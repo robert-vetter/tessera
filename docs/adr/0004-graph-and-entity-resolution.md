@@ -95,3 +95,15 @@ calibrated probability, and should not be read as one.
 - **Cluster-level assertions (store the merged set) instead of pairwise.**
   Rejected: pairwise links carry a per-pair reason + confidence and make
   reversibility granular; clusters are cleanly derived as connected components.
+
+## Addendum (2026-06-10, spec 0024)
+
+The coverage metric did what this ADR said it would: it identified the
+Lumière document-mention miss, and the fix landed as two deterministic,
+additive refinements — `normalize()` now folds non-German diacritics to base
+letters (NFKD) instead of deleting them, and document-mention linking
+tolerates a dropped legal suffix (reduced confidence 0.9, reason naming the
+stripped form). Name-only matching, the 0.85 threshold, and the
+non-destructive assertion model are unchanged; the proof tests (Bayerische
+4-way merge, Müller ≠ Nordwind, reversibility) still hold. Gold coverage
+moved 0.938 → 1.000 (`eval/history.jsonl`).

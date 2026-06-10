@@ -65,12 +65,18 @@ def test_document_links_across_sources_to_its_entity() -> None:
     assert all(m.reason and m.confidence == 1.0 for m in mentions)
 
 
-def test_lumiere_letter_is_a_known_unlinked_miss() -> None:
-    """Honest limitation: the letter says 'Lumière Énergie' (legal form dropped),
-    a form absent from the master data, so containment does not link it."""
+def test_lumiere_letter_links_via_suffix_stripped_mention() -> None:
+    """Formerly the documented miss: the letter drops the legal form
+    ('Lumière Énergie', master data says '... S.A.R.L.'). Spec 0024 closed it
+    with diacritic folding + suffix-tolerant matching; the resulting mentions
+    carry reduced confidence (0.9) and a reason naming the stripped form, so
+    the weaker basis of the link stays inspectable."""
     g = build_demo_graph()
     lumiere_chunks = {
         n.id for n in g.nodes if n.id.startswith("lumiere_energie_letter")
     }
     assert lumiere_chunks  # the letter was ingested
-    assert not [m for m in g.mentions if m.chunk in lumiere_chunks]
+    mentions = [m for m in g.mentions if m.chunk in lumiere_chunks]
+    assert mentions
+    assert all(m.confidence == 0.9 for m in mentions)
+    assert all("legal suffix stripped" in m.reason for m in mentions)
