@@ -19,6 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from tessera.eval.metrics import ClaimShape
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer, KnowledgeBase
 
@@ -44,7 +45,12 @@ class GoldCase:
 
 @dataclass(frozen=True)
 class Battery:
-    """One vertical, as the eval harness sees it (ADR 0009)."""
+    """One vertical, as the eval harness sees it (ADR 0009).
+
+    ``claim_shapes`` are the vertical's own claim grammars (ADR 0011),
+    consulted by the verifier before the generic shapes — declared here so a
+    battery's entire verification surface is explicit and readable.
+    """
 
     name: str
     gold_dir: Path
@@ -52,3 +58,4 @@ class Battery:
     build_kb: Callable[[], KnowledgeBase]
     answer: Callable[[GoldCase, KnowledgeGraph, KnowledgeBase], Answer]
     synthetic: Callable[[KnowledgeGraph, KnowledgeBase], list[GoldCase]]
+    claim_shapes: tuple[ClaimShape, ...] = ()

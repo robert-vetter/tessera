@@ -2,6 +2,7 @@
 
 import pytest
 
+from tessera.business.claims import BUSINESS_CLAIM_SHAPES
 from tessera.business.composition import compose
 from tessera.business.conflicts import find_renewal_conflict, renewal_date_of
 from tessera.business.knowledge import build_demo_graph
@@ -84,7 +85,7 @@ def test_conflict_claim_passes_faithfulness(graph: KnowledgeGraph) -> None:
         c for c in answer.claims if "disagree on the renewal date" in c.text
     ]
     assert len(conflict_claims) == 1
-    assert is_supported(conflict_claims[0], nodes, graph)
+    assert is_supported(conflict_claims[0], nodes, graph, BUSINESS_CLAIM_SHAPES)
 
 
 # --- adversarial: the conflict shape can fail -------------------------------------
@@ -100,7 +101,7 @@ def test_verifier_rejects_conflict_with_agreeing_citations() -> None:
         ),
         support=(_MSA, _UNRELATED),  # only ONE date-stating clause cited
     )
-    assert not is_supported(lie, {})
+    assert not is_supported(lie, {}, shapes=BUSINESS_CLAIM_SHAPES)
 
 
 def test_verifier_rejects_conflict_with_uncited_value() -> None:
@@ -113,4 +114,4 @@ def test_verifier_rejects_conflict_with_uncited_value() -> None:
         ),
         support=(_MSA, _AMENDMENT),  # these state August/February, not March
     )
-    assert not is_supported(lie, {})
+    assert not is_supported(lie, {}, shapes=BUSINESS_CLAIM_SHAPES)

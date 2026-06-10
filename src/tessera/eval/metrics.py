@@ -1,39 +1,36 @@
-"""The faithfulness verifier — deterministic, and provably able to fail.
+"""The faithfulness verifier core — deterministic, vertical-neutral, able to fail.
 
 ``is_supported`` decides whether one claim's content is actually backed by its
-cited evidence, by claim shape (snippet/clause containment, aggregate
-recomputation, count verification, refuse-to-sum condition, and the
-vertical-neutral shared-fragment shape added in Phase 3 — ADR 0008's one
-sanctioned verifier delta). It is the core of the
-faithfulness metric (ADR 0005): a claim that asserts anything its citations do not
-support returns ``False``, so faithfulness can — and is tested to — drop below 1.0.
-No LLM; pure deterministic checks.
+cited evidence. The core knows only the grammars that are genuinely
+vertical-neutral (ADR 0008/0011): the **shared-fragment** shape (a quoted
+fragment asserted to occur in several named sources) and **verbatim
+containment** (the claim text appears in a cited record). Every other grammar
+belongs to the vertical that composes it, expressed as a :data:`ClaimShape`
+and carried to the harness by its battery
+(:mod:`tessera.eval.registry` → :mod:`tessera.eval.battery`) — e.g. the
+business grammars in :mod:`tessera.business.claims`.
+
+It is the core of the faithfulness metric (ADR 0005): a claim that asserts
+anything its citations do not support returns ``False``, so faithfulness can
+— and is tested to — drop below 1.0. No LLM; pure deterministic checks.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
-from decimal import Decimal, InvalidOperation
+from collections.abc import Callable, Mapping, Sequence
 
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import Claim
 from tessera.resolution import normalize
 
-_MONEY = re.compile(r"\b([A-Z]{3}) ([\d,]+\.\d{2})\b")
-_COUNTS = re.compile(
-    r"spanning (\d+) customer record\(s\) and (\d+) address record\(s\)"
-)
-_REFUSE = re.compile(r"Refused to sum across (\w+) and (\w+)")
-_COMPARE = re.compile(
-    r"'(.+?)' \(([A-Z]{3}) ([\d,]+\.\d{2}) across (\d+) order\(s\)\) exceeds "
-    r"'(.+?)' \(([A-Z]{3}) ([\d,]+\.\d{2}) across (\d+) order\(s\)\) "
-    r"in total net order value"
-)
-_SUPERLATIVE = re.compile(
-    r"Among (\d+) entities with ([A-Z]{3}) orders, '(.+?)' has the highest "
-    r"total net order value: ([A-Z]{3}) ([\d,]+\.\d{2})"
-)
+# A vertical-owned claim grammar (ADR 0011). Returns an OWNED verdict (bool)
+# when the claim speaks its grammar, or None when it does not — in which case
+# the next shape, and finally the generic grammars below, are consulted.
+ClaimShape = Callable[
+    [Claim, Mapping[str, Node], "KnowledgeGraph | None"], "bool | None"
+]
+
 # Shared-fragment claims: '… "FRAGMENT" appears in 'SRC_A' and 'SRC_B'.'
 # Vertical-neutral by construction (ADR 0008): the claim asserts only that a
 # quoted evidence fragment occurs in the named sources — a recurring log
@@ -46,121 +43,32 @@ _SHARED_FRAGMENT = re.compile(r'"([^"]+)" appears in ([^"]+)$')
 _NAMED_SOURCES = re.compile(r"'([^']+)'")
 
 
-def _dec(raw: str) -> Decimal | None:
-    try:
-        return Decimal(raw.replace(",", ""))
-    except InvalidOperation:
-        return None
-
-
-def _entity_of_row(graph: KnowledgeGraph, row_id: str) -> frozenset[str] | None:
-    """The resolved entity a sales row was sold to (via its sold_to edge)."""
-    for edge in graph.edges:
-        if edge.src == row_id and edge.relation == "sold_to":
-            return graph.entity_of(edge.dst)
-    return None
-
-
-def _cluster_names(graph: KnowledgeGraph, cluster: frozenset[str]) -> set[str]:
-    return {
-        normalize(name) for nid in cluster if (name := graph.node(nid).name) is not None
-    }
-
-
-def _verify_compare(claim: Claim, graph: KnowledgeGraph) -> bool:
-    """Recompute a compare conclusion: each side's cited rows must belong to the
-    named entity, sum to the stated amount in the stated currency, match the
-    stated count — and the direction must hold."""
-    match = _COMPARE.search(claim.text)
-    assert match is not None
-    sides = (
-        (match.group(1), match.group(2), match.group(3), match.group(4)),
-        (match.group(5), match.group(6), match.group(7), match.group(8)),
-    )
-    totals: list[Decimal] = []
-    for name, currency, raw, count in sides:
-        stated = _dec(raw)
-        if stated is None:
-            return False
-        wanted = normalize(name)
-        rows = []
-        for rec in claim.support:
-            entity = _entity_of_row(graph, rec.id)
-            if entity is not None and wanted in _cluster_names(graph, entity):
-                rows.append(graph.node(rec.id))
-        if len(rows) != int(count):
-            return False
-        if any(n.attr("currency") != currency for n in rows):
-            return False
-        total = sum((Decimal(n.attr("net_amount") or "0") for n in rows), Decimal("0"))
-        if total != stated:
-            return False
-        totals.append(total)
-    return totals[0] > totals[1]
-
-
-def _verify_superlative(claim: Claim, graph: KnowledgeGraph) -> bool:
-    """Recompute a superlative conclusion over the WHOLE graph: the stated
-    entity count, winner, and amount must all re-derive from the data."""
-    match = _SUPERLATIVE.search(claim.text)
-    assert match is not None
-    stated_count = int(match.group(1))
-    currency = match.group(2)
-    winner = normalize(match.group(3))
-    if match.group(4) != currency:
-        return False
-    stated = _dec(match.group(5))
-    if stated is None:
-        return False
-
-    ranked: list[tuple[Decimal, frozenset[str]]] = []
-    for cluster in graph.clusters():
-        if not _cluster_names(graph, cluster):
-            continue
-        rows = [
-            graph.node(nid)
-            for nid in set(graph.sources_of(set(cluster), "sold_to"))
-            if graph.node(nid).attr("currency") == currency
-        ]
-        if not rows:
-            continue
-        total = sum((Decimal(n.attr("net_amount") or "0") for n in rows), Decimal("0"))
-        ranked.append((total, cluster))
-    if len(ranked) != stated_count or not ranked:
-        return False
-    best_total, best_cluster = max(ranked, key=lambda item: item[0])
-    if best_total != stated or winner not in _cluster_names(graph, best_cluster):
-        return False
-    # Bind the citation: the cited rows themselves must sum to the stated total.
-    cited = [nodes_n for rec in claim.support if (nodes_n := graph.node(rec.id))]
-    cited_total = sum(
-        (Decimal(n.attr("net_amount") or "0") for n in cited), Decimal("0")
-    )
-    return cited_total == stated and all(n.attr("currency") == currency for n in cited)
-
-
 def is_supported(
-    claim: Claim, nodes: Mapping[str, Node], graph: KnowledgeGraph | None = None
+    claim: Claim,
+    nodes: Mapping[str, Node],
+    graph: KnowledgeGraph | None = None,
+    shapes: Sequence[ClaimShape] = (),
 ) -> bool:
     """True iff the claim's content is deterministically backed by its citations.
 
-    ``nodes`` maps a record id to its graph node, so aggregate/count claims can be
-    re-checked against the structured attributes of exactly the cited rows.
-    ``graph`` (optional) enables the multi-step shapes — compare and superlative
-    conclusions are recomputed over the graph's entities (spec 0019).
+    ``nodes`` maps a record id to its graph node so shapes can re-check claims
+    against the structured attributes of exactly the cited rows; ``graph``
+    (optional) enables shapes that recompute conclusions over entities.
+    ``shapes`` are the owning battery's declared grammars, consulted first and
+    in order (ADR 0011); the generic grammars follow; anything unclaimed is
+    unsupported.
     """
     text = claim.text
 
-    # 5) Multi-step conclusions (compare / superlative): need the graph.
-    if graph is not None:
-        if _COMPARE.search(text):
-            return _verify_compare(claim, graph)
-        if _SUPERLATIVE.search(text):
-            return _verify_superlative(claim, graph)
+    # 1) The vertical's own grammars, in the battery's declared order.
+    for shape in shapes:
+        verdict = shape(claim, nodes, graph)
+        if verdict is not None:
+            return verdict
 
-    # 6) Shared fragment: the quoted fragment must appear in EVERY cited
+    # 2) Shared fragment: the quoted fragment must appear in EVERY cited
     #    record, and the named sources must be exactly the cited origins.
-    #    This grammar owns its verdict — no fallthrough to other shapes.
+    #    This grammar owns its verdict — no fallthrough to containment.
     shared = _SHARED_FRAGMENT.search(text)
     if shared:
         fragment = shared.group(1)
@@ -174,63 +82,7 @@ def is_supported(
             needle_fragment in normalize(rec.text) for rec in claim.support
         )
 
-    # 1) Surfaced snippet / document clause: the claim text appears in a cited record.
+    # 3) Surfaced snippet / document clause: the claim text appears verbatim
+    #    (normalized) in a cited record. Anything unclaimed is unsupported.
     needle = normalize(text)
-    if needle and any(needle in normalize(rec.text) for rec in claim.support):
-        return True
-
-    # 2) Aggregate: the stated amount must recompute from exactly the cited rows.
-    money = _MONEY.search(text)
-    if money and "net order value" in text.lower():
-        currency, raw = money.group(1), money.group(2)
-        try:
-            stated = Decimal(raw.replace(",", ""))
-        except InvalidOperation:
-            return False
-        cited = [nodes.get(rec.id) for rec in claim.support]
-        if cited and all(
-            n is not None and n.attr("currency") == currency for n in cited
-        ):
-            total = sum(
-                (Decimal(n.attr("net_amount") or "0") for n in cited if n), Decimal("0")
-            )
-            if total == stated:
-                return True
-
-    # 3) Identity/count: asserted record counts must match the cited records.
-    counts = _COUNTS.search(text)
-    if counts:
-        want_customers, want_addresses = int(counts.group(1)), int(counts.group(2))
-        kinds = [nodes[rec.id].kind for rec in claim.support if rec.id in nodes]
-        if (
-            kinds.count("I_Customer") == want_customers
-            and kinds.count("I_AddrOrgNamePostalAddress") == want_addresses
-        ):
-            return True
-
-    # 4b) Conflict disclosure: every quoted value must really be stated by a
-    #     DISTINCT cited clause, and the values must actually disagree.
-    if "disagree on the renewal date" in text:
-        from tessera.business.conflicts import renewal_date_of
-
-        quoted = re.findall(r"'(\d{1,2} [A-Z][a-z]+)'", text)
-        cited_dates = {date for rec in claim.support if (date := renewal_date_of(rec))}
-        return (
-            len(set(quoted)) >= 2
-            and set(quoted) == cited_dates
-            and len(claim.support) >= 2
-        )
-
-    # 4) Refuse-to-sum: the cited rows must actually span the named currencies.
-    refuse = _REFUSE.search(text)
-    if refuse:
-        named = {refuse.group(1), refuse.group(2)}
-        cited_currencies = {
-            nodes[rec.id].attr("currency")
-            for rec in claim.support
-            if rec.id in nodes and nodes[rec.id].attr("currency")
-        }
-        if named <= cited_currencies:
-            return True
-
-    return False
+    return bool(needle) and any(needle in normalize(rec.text) for rec in claim.support)
