@@ -82,34 +82,33 @@ the environment builds and syncs automatically.
 
 ### Try the demo
 
-A deterministic slice proves the end-to-end shape — *question → retrieve evidence
-→ grounded answer with provenance → render*. The evidence is **ingested** from a
-structured dataset and a document corpus; a lexical retriever selects the records
-relevant to a question, and every surfaced claim traces back to the specific
-source behind it.
+`uv run tessera` is one routed door: a deterministic router decides whether your
+question is a simple lookup, a one-entity cross-source composition, or
+multi-step reasoning — and prints its route and reason above the answer. Every
+claim traces to the specific source behind it; what cannot be answered honestly
+is refused with the reason.
 
 ```bash
 uv run tessera
-# Surfaces the records relevant to a customer-orders question — each traced to its
-# ingested source row (file + table + row).
+# One entity named → cross-source composition: identity (customer + address
+# rows), a fully-sourced order total, and the entity's agreement clauses.
 
-uv run tessera "What are the renewal and termination terms of the service agreement?"
-# Retrieves a *document* clause; the claim traces to a specific span (file + lines).
+uv run tessera "Compare Müller Logistik and Nordwind Logistik totals."
+# Two entities → multi-step: per-entity sourced totals + a conclusion citing
+# both row sets.
+
+uv run tessera "Which entity has the highest total order value in EUR?"
+# A ranking → multi-step superlative, scoped to one currency. Without the
+# currency scope it refuses: a single ranking would silently mix currencies.
 
 uv run tessera "What colour is the sky?"
 # No evidence shares its terms → a principled refusal, not a guess.
 ```
 
-**What the answer is — and isn't.** This slice *retrieves and sources evidence*: it
-surfaces the records that match your question, each with provenance. It does
-**not** yet synthesize prose or compute aggregates — it shows the relevant sales
-rows, not a single "combined value is EUR X"; that synthesis is multi-step
-reasoning, a later phase. Surfacing evidence rather than a polished sentence is
-the *honest* state of the slice, not a regression. There is no model: retrieval is
-lexical, deterministic, and offline
-([ADR 0003](docs/adr/0003-lexical-first-retrieval.md)). What is already real is the
-ingestion, the retrieval, the provenance, and the principled refusal — exactly
-what the evaluation harness will measure.
+There is still no model: routing, retrieval, resolution, and reasoning are all
+deterministic and offline ([ADR 0003](docs/adr/0003-lexical-first-retrieval.md),
+[ADR 0006](docs/adr/0006-deterministic-reasoning-llm-deferral.md)) — which is
+what keeps the trust numbers below auditable.
 
 ### The eval harness
 

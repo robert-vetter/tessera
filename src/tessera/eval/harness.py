@@ -19,9 +19,11 @@ from pathlib import Path
 
 from tessera.composition import compose
 from tessera.eval.metrics import is_supported
+from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer
 from tessera.knowledge import DEMO_KB, build_demo_graph
 from tessera.retrieval import answer as retrieve_answer
+from tessera.routing import route
 
 GOLD_DIR = Path(__file__).resolve().parents[3] / "eval" / "gold"
 
@@ -96,9 +98,11 @@ def load_gold_set(gold_dir: Path = GOLD_DIR) -> list[GoldCase]:
     return cases
 
 
-def _answer_for(case: GoldCase, graph: object) -> Answer:
+def _answer_for(case: GoldCase, graph: KnowledgeGraph) -> Answer:
     if case.engine == "compose":
-        return compose(case.question, graph)  # type: ignore[arg-type]
+        return compose(case.question, graph)
+    if case.engine == "route":
+        return route(case.question, graph, DEMO_KB)[1]
     return retrieve_answer(case.question, DEMO_KB)
 
 
