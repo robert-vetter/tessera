@@ -1,0 +1,32 @@
+diff --git a/src/payments/db_client.py b/src/payments/db_client.py
+--- a/src/payments/db_client.py
++++ b/src/payments/db_client.py
+@@ -18,7 +18,13 @@ class PaymentsDbClient:
+     def connect(self) -> Connection:
+-        return self._pool.acquire(timeout=30)
++        last_error: Exception | None = None
++        for attempt in range(3):
++            try:
++                return self._pool.acquire(timeout=30)
++            except TimeoutError as error:
++                last_error = error
++                sleep(2**attempt)
++        raise last_error
+diff --git a/src/payments/db_client.py b/src/payments/db_client.py
+--- a/src/payments/db_client.py
++++ b/src/payments/db_client.py
+@@ -44,4 +50,5 @@ class PaymentsDbClient:
+     def close(self) -> None:
++        self._retry_metrics.flush()
+         self._pool.release_all()
+diff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.py
+--- a/tests/payments/test_db_client.py
++++ b/tests/payments/test_db_client.py
+@@ -30,3 +30,10 @@ def test_connect_happy_path():
+     assert client.connect() is not None
++
++def test_connect_retries_on_timeout():
++    pool = FlakyPool(failures=2)
++    client = PaymentsDbClient(pool)
++    assert client.connect() is not None
++    assert pool.acquire_calls == 3

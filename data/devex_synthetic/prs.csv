@@ -1,0 +1,6 @@
+PR,Title,Author,Branch,MergedCommit,MergedOn,Description
+PR-188,Add multi-item discounts to checkout totals,mara.koch,feat/checkout-discounts,4b762692,2026-05-28,Fixes DEVEX-150: implements tiered discount bands in the totals calculator and extends the unit suite.
+PR-190,Notification e-mail templates: footer fix,aiko.tanaka,fix/notif-footer,a03370ad,2026-05-21,Refs DEVEX-160: first slice — corrects the footer variable in the notification templates.
+PR-198,Raise payments-db pool timeout,dana.petrov,fix/db-pool-timeout,aee8f89f,2026-05-14,Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.
+PR-201,Add retry with backoff to payments-db client,dana.petrov,feat/db-retry,04b0452b,2026-06-09,Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage.
+PR-205,Rename search index aliases for clarity,mateo.alvarez,chore/index-aliases,03dd8132,2026-06-06,Renames the search index aliases to the new naming scheme. No ticket — housekeeping.

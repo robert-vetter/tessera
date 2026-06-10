@@ -1,0 +1,8 @@
+diff --git a/src/search/indexes.py b/src/search/indexes.py
+--- a/src/search/indexes.py
++++ b/src/search/indexes.py
+@@ -7,8 +7,8 @@
+-PRIMARY_ALIAS = "idx-main"
+-REPLICA_ALIAS = "idx-shadow"
++PRIMARY_ALIAS = "search-primary"
++REPLICA_ALIAS = "search-replica"
