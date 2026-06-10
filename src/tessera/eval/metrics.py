@@ -2,7 +2,9 @@
 
 ``is_supported`` decides whether one claim's content is actually backed by its
 cited evidence, by claim shape (snippet/clause containment, aggregate
-recomputation, count verification, refuse-to-sum condition). It is the core of the
+recomputation, count verification, refuse-to-sum condition, and the
+vertical-neutral shared-fragment shape added in Phase 3 — ADR 0008's one
+sanctioned verifier delta). It is the core of the
 faithfulness metric (ADR 0005): a claim that asserts anything its citations do not
 support returns ``False``, so faithfulness can — and is tested to — drop below 1.0.
 No LLM; pure deterministic checks.
@@ -32,6 +34,16 @@ _SUPERLATIVE = re.compile(
     r"Among (\d+) entities with ([A-Z]{3}) orders, '(.+?)' has the highest "
     r"total net order value: ([A-Z]{3}) ([\d,]+\.\d{2})"
 )
+# Shared-fragment claims: '… "FRAGMENT" appears in 'SRC_A' and 'SRC_B'.'
+# Vertical-neutral by construction (ADR 0008): the claim asserts only that a
+# quoted evidence fragment occurs in the named sources — a recurring log
+# signature, a ticket id shared by a PR and a tracker row, a clause echoed
+# across documents are all the same shape. Sources are parsed from the tail
+# only, so single quotes INSIDE the fragment cannot masquerade as sources;
+# a fragment containing a double quote does not parse and the claim simply
+# fails verification (honest, not lenient).
+_SHARED_FRAGMENT = re.compile(r'"([^"]+)" appears in ([^"]+)$')
+_NAMED_SOURCES = re.compile(r"'([^']+)'")
 
 
 def _dec(raw: str) -> Decimal | None:
@@ -145,6 +157,22 @@ def is_supported(
             return _verify_compare(claim, graph)
         if _SUPERLATIVE.search(text):
             return _verify_superlative(claim, graph)
+
+    # 6) Shared fragment: the quoted fragment must appear in EVERY cited
+    #    record, and the named sources must be exactly the cited origins.
+    #    This grammar owns its verdict — no fallthrough to other shapes.
+    shared = _SHARED_FRAGMENT.search(text)
+    if shared:
+        fragment = shared.group(1)
+        named = set(_NAMED_SOURCES.findall(shared.group(2)))
+        if len(claim.support) < 2 or len(named) < 2:
+            return False
+        if named != {rec.origin.source for rec in claim.support}:
+            return False
+        needle_fragment = normalize(fragment)
+        return bool(needle_fragment) and all(
+            needle_fragment in normalize(rec.text) for rec in claim.support
+        )
 
     # 1) Surfaced snippet / document clause: the claim text appears in a cited record.
     needle = normalize(text)
