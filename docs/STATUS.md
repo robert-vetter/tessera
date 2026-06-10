@@ -473,3 +473,94 @@ both measured*.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #23–#29 merged. Tagged
   `phase-2`.
+
+---
+
+## 2026-06-10 — Phase 3 COMPLETE (autonomous run: the DevEx vertical on a provably unchanged core)
+
+**Mode note:** ran **autonomously** end-to-end from one kickoff (per
+CLAUDE.md "Autonomous phase execution"): ten units, each spec → branch →
+implement → gate → PR → CI-green → squash-merge; decisions recorded in
+specs/ADRs instead of asked.
+
+**Done this session (10 units, PRs #31–#40)**
+- **Phase plan + the boundary** (spec 0025, ADR 0008, ADR 0009, PR #31):
+  what "core" means, what "unchanged" will be proven by, and the only two
+  sanctioned vertical-neutral core deltas — fixed *before* any DevEx code.
+  Also repaired ADR-index/mkdocs-nav drift.
+- **DevEx synthetic corpus** (spec 0026, PR #32): runs+logs, PRs+diffs,
+  tickets, service catalog, on-call export — generated with **no RNG**,
+  every record a reviewable literal; recurrence anchors (R-0987/R-1042 +
+  incident DEVEX-187; search R-1023/R-1031), PR↔ticket refs (PR-205
+  deliberately none), ER variants with *measured* outcomes
+  (checkout-svc 0.846 near-miss; notif-svc 0.429 miss).
+- **Ingestion through the same door** (spec 0027, PR #33): eight source
+  shapes as `EvidenceRecord`s; new `log-span` / `diff-hunk` locator kinds on
+  the unchanged kind-tagged `Locator` (ADR 0002 cashed a third time).
+- **One graph, measured ER** (spec 0028, PR #34): engine's unchanged
+  resolve/mention layers over catalog+on-call names; variants merge
+  (1.000/0.960), abbreviations stay unresolved as named misses; worst
+  cross-service similarity < 0.80; reversibility re-proven on DevEx data.
+- **RCA + the shared-fragment shape** (spec 0029, PR #35): the ONE verifier
+  delta — generic `"FRAGMENT" appears in 'A' and 'B'` recomputation,
+  adversarially tested vertical-free; `tessera/devex/rca.py` answers "why
+  did run X fail / has it happened before" with run row, error log lines,
+  recurrence + documented-incident claims; first occurrences get no
+  recurrence claim; passed runs are refused premises.
+- **Change summaries** (spec 0030, PR #36): PR row + diff hunk-by-hunk +
+  verified motivating-ticket link; honest omission for PR-205.
+- **The second routed door** (spec 0031, PR #37): `uv run tessera-devex`
+  (rca / summary / lookup-with-refusal), reasons printed; core routing.py
+  untouched.
+- **Eval batteries** (spec 0032, ADR 0009, PR #38): harness parameterized
+  over per-vertical batteries; gold moved to `eval/gold/business/`; history
+  schema v2 (append-only, v1 intact); badge = min gold faithfulness.
+  Business numbers reproduced exactly through the refactor (pinned).
+- **The DevEx battery** (spec 0033, PR #39): 7 gold cases (incl. the named
+  coverage miss) + 24 synthetic cases (data-derived expectations); floor
+  gates all four numbers; recorded with `--record`.
+- **Close** (spec 0034, PR #40): README/CHANGELOG reflect both verticals
+  (incl. rolling Phase 2's lingering "Unreleased" entries into their
+  section — drift repaired, noted); this entry; tag `phase-3`.
+
+**Current eval numbers (recorded in eval/history.jsonl, schema v2)**
+- **business — gold 7: faithfulness 1.000 (gated) · coverage 1.000 · quality 1.000;
+  synthetic 52: 1.000 · 1.000 · 1.000.** (Unchanged through the refactor.)
+- **devex — gold 7: faithfulness 1.000 (gated) · coverage 0.917 · quality 1.000;
+  synthetic 24: 1.000 · 1.000 · 1.000.**
+- The devex 0.917 is the **named** notif-svc on-call miss — planted in the
+  corpus (spec 0026), predicted in the spec before the battery ran (spec
+  0033), kept as the measured trigger for the next trust loop.
+
+**Phase 3 milestone check (ROADMAP: "two genuinely different verticals run
+on one unchanged core, both measured")**
+- Same ingestion door ✓ (logs/diffs/tickets as EvidenceRecords; new locator
+  kinds, zero engine change). RCA grounded in log lines + linked to prior
+  incidents ✓. PR summaries tied to motivating tickets ✓. Eval extended ✓
+  (own gold + synthetic, same floor). **Core unchanged — proven:**
+  `git diff phase-2..HEAD` over the ADR 0008 frozen list
+  (grounding/ingestion/graph/resolution/retrieval/routing/composition/
+  reasoning/conflicts/knowledge/cli/salt/documents/eval-synthetic) is
+  **empty**; the only core-adjacent diffs are the two sanctioned deltas
+  (metrics: one generic shape; harness/history: battery parameterization).
+  **Milestone met.** Tagged `phase-3`.
+
+**Open questions / risks**
+- **ADR 0003/0004 revisit triggers have now FIRED with a real measurement:**
+  devex coverage 0.917 (vocabulary/variant mismatch the deterministic layer
+  doesn't bridge). Decision recorded here rather than acted on mid-phase:
+  evaluate the fix in Phase 4 — candidates are (a) deterministic alias
+  support in the service catalog (additive, keeps clone-and-run; likely
+  first), then (b) embeddings via SAP GenAI Hub with the lexical path as
+  local fallback (the ADRs' stated end state). The miss is in the gold set,
+  so any fix moves a public number.
+- The business modules still live at `tessera/` top level while DevEx lives
+  in `tessera/devex/` — recorded asymmetry (ADR 0008), scheduled for the
+  Phase 4 relocation/polish.
+- ADR 0007 trigger 2 (battery saturation) now applies per battery; the new
+  devex battery is green on synthetic — watch in Phase 4.
+- Confirm SAP AI Core / HANA Cloud access for Phase 4; not blocking.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #31–#40 merged. Tagged
+  `phase-3`.
