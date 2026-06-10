@@ -51,6 +51,10 @@ nav:
   - Architecture Decisions:
       - Overview: adr/README.md
       - 0001 Record architecture decisions: adr/0001-record-architecture-decisions.md
+      - 0002 Ingestion & provenance representation: adr/0002-ingestion-provenance-representation.md
+      - 0003 Lexical-first retrieval: adr/0003-lexical-first-retrieval.md
+      - 0004 Graph & entity resolution: adr/0004-graph-and-entity-resolution.md
+      - 0005 Faithfulness metric: adr/0005-faithfulness-metric.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
