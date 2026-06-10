@@ -28,11 +28,12 @@ def test_faithfulness_is_one_on_the_gold_set() -> None:
     assert report.faithfulness == 1.0
 
 
-def test_coverage_is_honestly_below_one() -> None:
-    """The Lumière agreement clause is a known mention miss, so coverage < 1.0."""
+def test_coverage_is_complete_after_spec_0024() -> None:
+    """Coverage reached 1.0 when the Lumière mention miss was closed (diacritic
+    folding + suffix-tolerant mentions, spec 0024). The climb 0.929 -> 0.938 ->
+    1.000 is recorded in eval/history.jsonl — the metric drove the fix."""
     report = run_eval()
-    assert report.coverage is not None
-    assert 0.0 < report.coverage < 1.0
+    assert report.coverage == 1.0
 
 
 def test_quality_is_reported() -> None:
