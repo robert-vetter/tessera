@@ -13,6 +13,7 @@ dependencies = []
 
 [project.scripts]
 tessera = "tessera.business.cli:main"
+tessera-chat = "tessera.surface.cli:main"
 tessera-eval = "tessera.eval.cli:main"
 tessera-compose = "tessera.business.composition:main"
 tessera-devex = "tessera.devex.cli:main"
