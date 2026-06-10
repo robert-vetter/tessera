@@ -22,6 +22,7 @@ source, not in the engine.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -242,3 +243,85 @@ class DevExSource:
                     )
                 )
         return records
+
+    # --- graph accessors (schema knowledge stays in the source, spec 0028) --------
+    def org_names(self) -> dict[str, str]:
+        """Map each name-bearing record id to its service/component name.
+
+        The resolution candidates: the catalog's canonical names and the
+        on-call export's (variant) service names — the same two-master shape
+        as the business vertical's customer/address files.
+        """
+        names: dict[str, str] = {}
+        for row in read_csv_rows(self.data_dir / "components.csv"):
+            names[f"Component:{row['Component']}"] = row["Name"]
+        for row in read_csv_rows(self.data_dir / "owners.csv"):
+            names[f"Owner:{row['Service']}"] = row["Service"]
+        return names
+
+    def node_attributes(self) -> dict[str, tuple[tuple[str, str], ...]]:
+        """Structured facts for nodes, so answer paths need not parse text:
+        a run's outcome, a ticket's type/status, a PR's merged commit."""
+        attrs: dict[str, tuple[tuple[str, str], ...]] = {}
+        for row in read_csv_rows(self.data_dir / "runs.csv"):
+            attrs[f"Run:{row['Run']}"] = (
+                ("status", row["Status"]),
+                ("failed_job", row["FailedJob"]),
+                ("commit", row["Commit"]),
+                ("started", row["StartedAt"]),
+            )
+        for row in read_csv_rows(self.data_dir / "tickets.csv"):
+            attrs[f"Ticket:{row['Ticket']}"] = (
+                ("type", row["Type"]),
+                ("status", row["Status"]),
+            )
+        for row in read_csv_rows(self.data_dir / "prs.csv"):
+            attrs[f"PR:{row['PR']}"] = (
+                ("merged_commit", row["MergedCommit"]),
+                ("merged_on", row["MergedOn"]),
+            )
+        return attrs
+
+    def structural_edges(self) -> list[tuple[str, str, str]]:
+        """Deterministic (src_id, dst_id, relation) edges.
+
+        Foreign keys become edges exactly as SALT's did: run --executes-->
+        pipeline --builds--> component; ticket --concerns--> component. Two
+        relations are *derived but deterministic*: PR --motivated_by-->
+        ticket (the first ``DEVEX-\\d+`` in the PR description — "Fixes" and
+        "Refs" alike; PR-205 names none and gets no edge), and each log
+        chunk / diff hunk linked to its run / PR by filename.
+        """
+        edges: list[tuple[str, str, str]] = []
+        for row in read_csv_rows(self.data_dir / "pipelines.csv"):
+            edges.append(
+                (
+                    f"Pipeline:{row['Pipeline']}",
+                    f"Component:{row['Component']}",
+                    "builds",
+                )
+            )
+        for row in read_csv_rows(self.data_dir / "runs.csv"):
+            edges.append(
+                (f"Run:{row['Run']}", f"Pipeline:{row['Pipeline']}", "executes")
+            )
+        for row in read_csv_rows(self.data_dir / "tickets.csv"):
+            edges.append(
+                (f"Ticket:{row['Ticket']}", f"Component:{row['Component']}", "concerns")
+            )
+        for row in read_csv_rows(self.data_dir / "prs.csv"):
+            match = re.search(r"DEVEX-\d+", row["Description"])
+            if match:
+                edges.append(
+                    (f"PR:{row['PR']}", f"Ticket:{match.group(0)}", "motivated_by")
+                )
+        for path in sorted((self.data_dir / "logs").glob("*.log")):
+            run_id = path.stem.removeprefix("run_")
+            for index, _chunk in enumerate(chunk_text(path.read_text("utf-8")), 1):
+                edges.append((f"{path.stem}:chunk{index}", f"Run:{run_id}", "log_of"))
+        for path in sorted((self.data_dir / "prs").glob("*.diff")):
+            for index, _hunk in enumerate(split_diff_hunks(path.read_text("utf-8")), 1):
+                edges.append(
+                    (f"{path.stem}.diff:hunk{index}", f"PR:{path.stem}", "diff_of")
+                )
+        return edges
