@@ -28,7 +28,7 @@ packages = ["src/tessera"]
 # Dev tooling (PEP 735 dependency group). Installed via `uv sync`.
 [dependency-groups]
 dev = [
-    "ruff>=0.10",
+    "ruff>=0.15.17",
     "mypy>=1.15",
     "pytest>=8.0",
     "pre-commit>=4.0",
