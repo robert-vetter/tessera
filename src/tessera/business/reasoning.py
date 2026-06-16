@@ -33,8 +33,30 @@ NAME_MATCH_RATIO = 0.6
 # alone cannot sweep in every firm sharing them).
 MIN_NAME_MATCH = 6
 
-SUPERLATIVE_WORDS = ("highest", "largest", "biggest", "most", "top")
+# Superlative phrasings that ask for a ranking. Matched on WORD BOUNDARIES
+# (spec 0048): substring matching used to fire on 'most' inside 'almost' and
+# 'top' inside 'laptop'. 'greatest'/'maximum' are deterministic synonyms added
+# for free-form phrasing variety; genuinely intent-bearing words ('rank',
+# 'lead', 'best') need understanding the rules do not have and are left to the
+# documented router ceiling (ADR 0006), not force-fit with a brittle pattern.
+SUPERLATIVE_WORDS = (
+    "highest",
+    "largest",
+    "biggest",
+    "greatest",
+    "maximum",
+    "most",
+    "top",
+)
+_SUPERLATIVE_RE = re.compile(r"\b(?:" + "|".join(SUPERLATIVE_WORDS) + r")\b")
 _CURRENCY = re.compile(r"\b([A-Z]{3})\b")
+
+
+def mentions_superlative(question: str) -> bool:
+    """Whether the question asks for a ranking, matched on word boundaries so a
+    superlative word inside another word ('almost', 'laptop') does not fire."""
+    return bool(_SUPERLATIVE_RE.search(question.lower()))
+
 
 NOT_MULTI_REFUSAL = (
     "I can't treat this as a multi-step question (compare two named entities, "
@@ -187,9 +209,14 @@ def compare(question: str, a: _Entity, b: _Entity, graph: KnowledgeGraph) -> Ans
 
 def superlative(question: str, graph: KnowledgeGraph) -> Answer:
     """Which entity has the highest total net order value, in a named currency."""
-    scope = _CURRENCY.search(question)
     all_currencies = sorted({c for n in graph.nodes if (c := n.attr("currency"))})
-    if not scope:
+    # Scope to the first 3-letter token that is an ACTUAL corpus currency — not
+    # any uppercase triple (spec 0048): 'ASK'/'VAT'/'FYI' must not hijack the
+    # ranking into a non-existent currency and silently answer "no orders".
+    currency = next(
+        (tok for tok in _CURRENCY.findall(question) if tok in all_currencies), None
+    )
+    if currency is None:
         return Answer(
             question=question,
             claims=(),
@@ -199,7 +226,6 @@ def superlative(question: str, graph: KnowledgeGraph) -> Answer:
                 "I can rank the totals honestly."
             ),
         )
-    currency = scope.group(1)
 
     ranked: list[tuple[Decimal, str, list[Node]]] = []
     for cluster in graph.clusters():
@@ -252,7 +278,6 @@ def reason(question: str, graph: KnowledgeGraph) -> Answer:
                 f"Ambiguous: the question matches more than two entities ({labels})."
             ),
         )
-    lowered = question.lower()
-    if any(word in lowered for word in SUPERLATIVE_WORDS):
+    if mentions_superlative(question):
         return superlative(question, graph)
     return Answer(question=question, claims=(), refusal=NOT_MULTI_REFUSAL)

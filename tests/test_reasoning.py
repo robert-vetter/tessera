@@ -160,3 +160,52 @@ def test_verifier_rejects_wrong_entity_count(graph: KnowledgeGraph) -> None:
     assert not is_supported(
         lie, {n.id: n for n in graph.nodes}, graph, BUSINESS_CLAIM_SHAPES
     )
+
+
+# --- free-form phrasing variety (spec 0048) -------------------------------------
+
+
+def test_superlative_synonyms_route_to_a_ranking(graph: KnowledgeGraph) -> None:
+    """'greatest'/'maximum' are deterministic synonyms for the ranking intent."""
+    for word in ("greatest", "maximum"):
+        answer = reason(
+            f"Which customer has the {word} total order value in EUR?", graph
+        )
+        assert answer.is_grounded, word
+        assert "highest total net order value" in answer.render()
+
+
+def test_word_boundary_avoids_false_superlatives() -> None:
+    """The substring bug fixed: a superlative word inside another word must not
+    fire ('most' in 'almost', 'top' in 'desktop'/'topmost')."""
+    from tessera.business.reasoning import mentions_superlative
+
+    assert not mentions_superlative("we almost shipped the desktop build")
+    assert not mentions_superlative("the topmost row")
+    assert mentions_superlative("which is the most valuable")
+    assert mentions_superlative("the largest order")
+
+
+def test_junk_three_letter_token_does_not_hijack_currency_scope(
+    graph: KnowledgeGraph,
+) -> None:
+    """_CURRENCY matches any uppercase triple; only an ACTUAL corpus currency
+    may scope the ranking, so 'ASK'/'FYI' cannot silently answer 'no orders'."""
+    scoped = reason("Which entity has the highest total — ASK finance — in EUR?", graph)
+    assert scoped.is_grounded
+    assert "EUR" in scoped.render() and "Orion Datentechnik" in scoped.render()
+
+    no_currency = reason("Which entity has the highest total, FYI?", graph)
+    assert not no_currency.is_grounded
+    assert "name one" in (no_currency.refusal or "")
+
+
+def test_intent_verbs_are_the_documented_router_ceiling() -> None:
+    """The honest ADR 0006 boundary: words that carry the ranking *intent* only
+    semantically ('rank', 'order', 'lead', 'best') are deliberately NOT pattern-
+    matched as superlatives — force-fitting them would be a brittle guess. This
+    is the router's documented ceiling, not a bug to paper over (spec 0050)."""
+    from tessera.business.reasoning import mentions_superlative
+
+    for phrasing in ("rank our customers", "order them by revenue", "our best client"):
+        assert not mentions_superlative(phrasing), phrasing

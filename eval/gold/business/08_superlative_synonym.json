@@ -1,0 +1,11 @@
+{
+  "id": "08_superlative_synonym",
+  "question": "Which customer has the greatest total order value in EUR?",
+  "engine": "route",
+  "kind": "answer",
+  "expected_facts": [
+    "Orion Datentechnik GmbH",
+    "highest total net order value",
+    "EUR 197,500.00"
+  ]
+}
