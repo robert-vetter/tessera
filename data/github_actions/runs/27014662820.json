@@ -1,0 +1,85 @@
+{
+  "conclusion": "failure",
+  "createdAt": "2026-06-05T12:24:22Z",
+  "databaseId": 27014662820,
+  "displayTitle": "feat(ingestion): structured ingestion of SALT-shaped data into a common origin-tagged representation (Phase 1, Unit 1)",
+  "event": "pull_request",
+  "headBranch": "feat/0010-structured-ingestion-salt",
+  "headSha": "63a47dea541f67243d1277335f4d41012954220a",
+  "jobs": [
+    {
+      "conclusion": "failure",
+      "name": "gate",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1
+        },
+        {
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2
+        },
+        {
+          "conclusion": "success",
+          "name": "Set up uv",
+          "number": 3
+        },
+        {
+          "conclusion": "success",
+          "name": "Install dependencies",
+          "number": 4
+        },
+        {
+          "conclusion": "failure",
+          "name": "Format check",
+          "number": 5
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Lint",
+          "number": 6
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Type-check",
+          "number": 7
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Tests",
+          "number": 8
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Cache pre-commit environments",
+          "number": 9
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Secret scan",
+          "number": 10
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Post Set up uv",
+          "number": 19
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 20
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 21
+        }
+      ]
+    }
+  ],
+  "name": "CI",
+  "workflowName": "CI"
+}

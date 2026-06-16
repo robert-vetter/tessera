@@ -1,0 +1,60 @@
+deploy	UNKNOWN STEP	﻿2026-06-10T14:50:57.3006680Z Current runner version: '2.334.0'
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3030166Z ##[group]Runner Image Provisioner
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3030963Z Hosted Compute Agent
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3031500Z Version: 20260520.533
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3032088Z Commit: 189110e25284a9812c124fd27b339e2fb4f2f9db
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3032726Z Build Date: 2026-05-20T17:44:04Z
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3033330Z Worker ID: {69ce19e3-4515-45a5-aca2-dc59e22cae5b}
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3034006Z Azure Region: westus3
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3034515Z ##[endgroup]
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3035875Z ##[group]Operating System
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3037127Z Ubuntu
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3037631Z 24.04.4
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3038142Z LTS
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3038617Z ##[endgroup]
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3039106Z ##[group]Runner Image
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3039631Z Image: ubuntu-24.04
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3040171Z Version: 20260525.161.1
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3041371Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3042743Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3043597Z ##[endgroup]
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3044532Z ##[group]GITHUB_TOKEN Permissions
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3047001Z Metadata: read
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3047571Z Pages: write
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3048089Z ##[endgroup]
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3050233Z Secret source: Actions
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3050925Z Prepare workflow directory
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3368506Z Prepare all required actions
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.3407262Z Getting action download info
+deploy	UNKNOWN STEP	2026-06-10T14:50:57.7910606Z Download action repository 'actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128' (SHA:cd2ce8fcbc39b97be8ca5fce6e763baed58fa128)
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0078836Z Complete job name: deploy
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0717015Z ##[group]Run actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0718385Z with:
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0723623Z   token: ***
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0724192Z   timeout: 600000
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0724829Z   error_count: 10
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0725403Z   reporting_interval: 5000
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0726036Z   artifact_name: github-pages
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0726878Z   preview: false
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.0727761Z ##[endgroup]
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.2810137Z (node:2094) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.2814516Z (Use `node --trace-deprecation ...` to show where the warning was created)
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.5031713Z Fetching artifact metadata for "github-pages" in this workflow run
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7366059Z Found 1 artifact(s)
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7384183Z Creating Pages deployment with payload:
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7386091Z {
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7388064Z 	"artifact_id": 7539326797,
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7390597Z 	"pages_build_version": "f705e117ff451936b37556d1a9b7710df75de843",
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7508393Z 	"oidc_token": "***"
+deploy	UNKNOWN STEP	2026-06-10T14:50:59.7509844Z }
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.0804443Z ##[error]Creating Pages deployment failed
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.2515240Z ##[error]HttpError: Not Found
+deploy	UNKNOWN STEP	    at /home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/node_modules/@octokit/request/dist-node/index.js:124:1
+deploy	UNKNOWN STEP	    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+deploy	UNKNOWN STEP	    at createPagesDeployment (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/api-client.js:125:1)
+deploy	UNKNOWN STEP	    at Deployment.create (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/deployment.js:73:1)
+deploy	UNKNOWN STEP	    at main (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/index.js:30:1)
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.2594104Z ##[error]Error: Failed to create deployment (status: 404) with build version f705e117ff451936b37556d1a9b7710df75de843. Request ID 4C10:38276B:AEB29DF:2953270D:6A2979D3 Ensure GitHub Pages has been enabled: https://github.com/robert-vetter/tessera/settings/pages
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.2911864Z Evaluate and set environment url
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.2919811Z Evaluated environment url: 
+deploy	UNKNOWN STEP	2026-06-10T14:51:00.2921933Z Cleaning up orphan processes
