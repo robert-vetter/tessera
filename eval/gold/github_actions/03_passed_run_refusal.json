@@ -1,0 +1,6 @@
+{
+  "id": "03_passed_run_refusal",
+  "question": "Why did run 27411838436 fail?",
+  "engine": "rca",
+  "kind": "refuse"
+}

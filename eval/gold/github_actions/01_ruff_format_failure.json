@@ -1,0 +1,12 @@
+{
+  "id": "01_ruff_format_failure",
+  "question": "Why did run 27014662820 fail?",
+  "engine": "rca",
+  "kind": "answer",
+  "expected_support": ["Run:27014662820", "27014662820.failed:chunk1"],
+  "expected_facts": [
+    "Format check",
+    "Would reformat",
+    "Process completed with exit code 1"
+  ]
+}
