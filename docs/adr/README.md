@@ -28,3 +28,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0011](0011-vertical-owned-claim-grammars.md) — Vertical-owned claim grammars
 - [0012](0012-sap-deployment-path.md) — SAP deployment path: docs + tested seams
 - [0013](0013-narration-boundary.md) — The narration boundary: rephrase, never add
+- [0014](0014-real-connector-snapshot-boundary.md) — Real connector: fetch-to-snapshot, ingest raw (Milestone 5)

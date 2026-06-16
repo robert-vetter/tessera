@@ -1,0 +1,71 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-06-12T11:06:58Z",
+  "databaseId": 27411838417,
+  "displayTitle": "chore: bump ruff from 0.15.16 to 0.15.17 in the python group",
+  "event": "pull_request",
+  "headBranch": "dependabot/uv/python-65aa614161",
+  "headSha": "b3320387766b9a5c40ec649395b6843e9eebad7d",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "build",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1
+        },
+        {
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2
+        },
+        {
+          "conclusion": "success",
+          "name": "Set up uv",
+          "number": 3
+        },
+        {
+          "conclusion": "success",
+          "name": "Install docs dependencies",
+          "number": 4
+        },
+        {
+          "conclusion": "success",
+          "name": "Build site",
+          "number": 5
+        },
+        {
+          "conclusion": "skipped",
+          "name": "Upload Pages artifact",
+          "number": 6
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Set up uv",
+          "number": 11
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 12
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13
+        }
+      ]
+    },
+    {
+      "conclusion": "skipped",
+      "name": "deploy",
+      "status": "completed",
+      "steps": []
+    }
+  ],
+  "name": "Docs",
+  "workflowName": "Docs"
+}

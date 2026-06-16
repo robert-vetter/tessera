@@ -1,0 +1,35 @@
+GitHub Actions snapshot — REAL data (not synthetic)
+===================================================
+
+Unlike data/salt_synthetic/ and data/devex_synthetic/ (which are generated, every
+record a reviewable literal), this directory holds a snapshot of REAL GitHub
+Actions runs from this project's own CI history:
+
+    repository : github.com/robert-vetter/tessera  (private)
+    contents   : runs/<id>.json   — run/job/step metadata (GitHub Actions API)
+                 logs/<id>.failed.log — raw failed-step runner logs
+    fetched by : scripts/fetch_github_actions_snapshot.py (run once, pinned ids)
+    snapshot   : see MANIFEST.json (synthetic: false)
+
+Why real data is here
+---------------------
+Every recorded eval number was 1.000 — both synthetic batteries were saturated
+(ADR 0007 trigger 2). Real CI logs are the honest source of *un-planted*
+difficulty: they spell failures `##[error]` with nanosecond timestamps, ANSI
+codes, and TAB-delimited job/step prefixes — nothing like the synthetic
+`ERROR <svc>:` shape the RCA heuristic keys on. Ingesting them lets the eval
+measure a miss no one authored (spec 0045 / 0046, ADR 0014).
+
+Provenance & safety
+-------------------
+- The source repository is the maintainer's own private repository; snapshotting
+  its CI artifacts here carries no third-party encumbrance.
+- The `gh` CLI masks secrets in log output (`***`); the committed logs were
+  scanned for unmasked tokens/keys before commit and contain none. They do
+  contain non-sensitive runner metadata (image SHAs, commit SHAs, Request IDs).
+- The run ids are PINNED and the runs are immutable history, so re-running the
+  fetch script reproduces byte-identical fixtures. The trust path (ingestion and
+  the eval) reads only these committed files — never the network or a token.
+
+Tessera's own code remains MIT-licensed; this snapshot is project-internal CI
+data committed for the eval and carries no separate license grant.

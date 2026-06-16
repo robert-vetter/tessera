@@ -1,0 +1,11 @@
+gate	Format check	﻿2026-06-05T12:24:30.0659302Z ##[group]Run uv run ruff format --check .
+gate	Format check	2026-06-05T12:24:30.0661157Z [36;1muv run ruff format --check .[0m
+gate	Format check	2026-06-05T12:24:30.0688976Z shell: /usr/bin/bash -e {0}
+gate	Format check	2026-06-05T12:24:30.0689308Z env:
+gate	Format check	2026-06-05T12:24:30.0689611Z   UV_PYTHON_INSTALL_DIR: /home/runner/work/_temp/uv-python-dir
+gate	Format check	2026-06-05T12:24:30.0690213Z   UV_CACHE_DIR: /home/runner/work/_temp/setup-uv-cache
+gate	Format check	2026-06-05T12:24:30.0690580Z ##[endgroup]
+gate	Format check	2026-06-05T12:24:30.0935647Z Would reformat: scripts/generate_salt_synthetic.py
+gate	Format check	2026-06-05T12:24:30.0936697Z Would reformat: src/tessera/sources/salt.py
+gate	Format check	2026-06-05T12:24:30.0937415Z 2 files would be reformatted, 11 files already formatted
+gate	Format check	2026-06-05T12:24:30.0965718Z ##[error]Process completed with exit code 1.

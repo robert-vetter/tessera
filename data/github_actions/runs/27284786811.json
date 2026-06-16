@@ -1,0 +1,87 @@
+{
+  "conclusion": "failure",
+  "createdAt": "2026-06-10T14:50:34Z",
+  "databaseId": 27284786811,
+  "displayTitle": "docs(writeup): the technical write-up \u2014 problem, approach, the record\u2026",
+  "event": "push",
+  "headBranch": "main",
+  "headSha": "f705e117ff451936b37556d1a9b7710df75de843",
+  "jobs": [
+    {
+      "conclusion": "success",
+      "name": "build",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1
+        },
+        {
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2
+        },
+        {
+          "conclusion": "success",
+          "name": "Set up uv",
+          "number": 3
+        },
+        {
+          "conclusion": "success",
+          "name": "Install docs dependencies",
+          "number": 4
+        },
+        {
+          "conclusion": "success",
+          "name": "Build site",
+          "number": 5
+        },
+        {
+          "conclusion": "success",
+          "name": "Upload Pages artifact",
+          "number": 6
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Set up uv",
+          "number": 11
+        },
+        {
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 12
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13
+        }
+      ]
+    },
+    {
+      "conclusion": "failure",
+      "name": "deploy",
+      "status": "completed",
+      "steps": [
+        {
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1
+        },
+        {
+          "conclusion": "failure",
+          "name": "Deploy to GitHub Pages",
+          "number": 2
+        },
+        {
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 3
+        }
+      ]
+    }
+  ],
+  "name": "Docs",
+  "workflowName": "Docs"
+}

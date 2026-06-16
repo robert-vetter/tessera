@@ -65,6 +65,7 @@ nav:
       - 0011 Vertical-owned claim grammars: adr/0011-vertical-owned-claim-grammars.md
       - 0012 SAP deployment path: adr/0012-sap-deployment-path.md
       - 0013 The narration boundary: adr/0013-narration-boundary.md
+      - 0014 Real connector snapshot boundary: adr/0014-real-connector-snapshot-boundary.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

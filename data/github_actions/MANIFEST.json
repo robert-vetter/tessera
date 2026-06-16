@@ -1,0 +1,16 @@
+{
+  "dataset": "github_actions",
+  "synthetic": false,
+  "source": "github.com/robert-vetter/tessera \u2014 GitHub Actions API (run/job/step + raw runner logs)",
+  "snapshot_date": "2026-06-16",
+  "fetched_by": "scripts/fetch_github_actions_snapshot.py",
+  "failed_run_ids": [
+    27014662820,
+    27285174461,
+    27284786811
+  ],
+  "passed_run_ids": [
+    27411838436,
+    27411838417
+  ]
+}
