@@ -1,0 +1,16 @@
+{
+  "id": "02_pages_deploy_recurrence",
+  "question": "Why did run 27285174461 fail, and has this happened before?",
+  "engine": "rca",
+  "kind": "answer",
+  "expected_support": [
+    "Run:27285174461",
+    "27285174461.failed:chunk1",
+    "27284786811.failed:chunk1"
+  ],
+  "expected_facts": [
+    "HttpError: Not Found",
+    "Recurring failure",
+    "Creating Pages deployment failed"
+  ]
+}

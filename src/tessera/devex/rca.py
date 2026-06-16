@@ -24,10 +24,18 @@ import re
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import Answer, Claim
 
-RUN_ID = re.compile(r"\bR-\d{3,5}\b")
+# A run is named by the synthetic 'R-####' id OR a real GitHub Actions run id
+# (8+ digits) — the same RCA path serves both the synthetic corpus and the real
+# connector (spec 0046). A non-existent id of either shape is refused by name.
+RUN_ID = re.compile(r"\bR-\d{3,5}\b|\b\d{8,}\b")
 # 'ERROR payments-service: TimeoutError: …' — the colon after the token
 # excludes the 'ERROR job <name> failed' trailer line on purpose (spec 0029).
 _ERROR_LINE = re.compile(r"ERROR \S+: (.+)$", re.MULTILINE)
+# Real GitHub Actions runner logs mark a failure '##[error]<message>' rather than
+# the synthetic 'ERROR <svc>: …' shape (spec 0046). Recognized ADDITIVELY: the
+# synthetic logs still match _ERROR_LINE first, so their numbers do not move.
+_GH_ERROR_MARKER = "##[error]"
+_GH_ERROR_LINE = re.compile(r"##\[error\](.+)$", re.MULTILINE)
 
 NO_RUN_REFUSAL = (
     "I can't find a pipeline run in that question — name one, "
@@ -52,15 +60,25 @@ def _log_chunks(graph: KnowledgeGraph, run_id: str) -> list[Node]:
 
 
 def _error_chunks(chunks: list[Node]) -> list[Node]:
-    return [chunk for chunk in chunks if "ERROR" in chunk.record.text]
+    return [
+        chunk
+        for chunk in chunks
+        if "ERROR" in chunk.record.text or _GH_ERROR_MARKER in chunk.record.text
+    ]
 
 
 def _signature(chunks: list[Node]) -> str | None:
-    """The first error signature in the run's error chunks."""
+    """The first error signature in the run's error chunks — the synthetic
+    'ERROR <svc>: …' shape, else the first real '##[error]' line. The most
+    specific line is taken (e.g. 'Creating Pages deployment failed'), not a
+    generic trailer like 'Process completed with exit code 1'."""
     for chunk in chunks:
         match = _ERROR_LINE.search(chunk.record.text)
         if match:
             return match.group(1)
+        gh_match = _GH_ERROR_LINE.search(chunk.record.text)
+        if gh_match:
+            return gh_match.group(1).strip()
     return None
 
 
