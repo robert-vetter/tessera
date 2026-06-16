@@ -13,6 +13,50 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-5] — 2026-06-16
+
+Post-roadmap hardening: make the eval able to fail again. Every roadmap number
+had reached 1.000 and both synthetic batteries had saturated (ADR 0007 trigger
+2); a floor that cannot fail is decorative. This milestone reintroduces failure
+with **un-planted** difficulty, holding faithfulness gated at 1.0 throughout.
+
+### Added
+
+- **The first real connector — GitHub Actions (ADR 0014).** The repo's own CI
+  history is ingested through the same door, reusing the table-row and log-span
+  locator kinds with zero engine change. The live fetch is a run-once script
+  (the only network touchpoint); the snapshot is committed, scrubbed, and
+  byte-reproducible. A new `github_actions` eval battery measures it.
+- **A measured, un-planted miss — and its deterministic close.** Real CI logs
+  mark failures `##[error]` (not the synthetic `ERROR <svc>:`), so the saturated
+  eval finally measured a miss no one authored: github_actions gold coverage
+  **0.000**, quality 0.500. An additive close (real run-id grammar, `##[error]`
+  recognition, first-`##[error]`-line signature) recovered it to **1.000**,
+  including a genuine cross-run recurrence over two real Pages-deploy failures.
+  The drop and recovery are both recorded in `eval/history.jsonl`.
+- **Mixed-modality multi-hop in one turn.** RCA walks the incident ticket to the
+  PR that resolved it and the diff that did it (`run → log → log → ticket → PR →
+  diff`, each hop cited), closing the gap Phase 2 named; the mis-pivot trap is
+  avoided structurally.
+- **Free-form phrasing variety.** The router gained superlative synonyms,
+  word-boundary matching, and currency-set validation; the batteries now sample
+  phrasing. Two latent router bugs (`most`⊂`almost`; any-uppercase-triple as a
+  currency) fixed.
+- **A scale stress harness.** The engine is faithful and ER-precise over 180
+  entities; the transitive over-merge risk is measured at volume.
+- **Three standing-trigger specimens.** ADR 0005 (a verbatim-but-misleading
+  claim passes the structural check), ADR 0010 (error-class synonymy no declared
+  alias could bridge), ADR 0006 (the intent-verb router ceiling) — each a
+  committed test; none acted on (the determinism line held).
+
+### Changed
+
+- **The faithfulness floor now gates the build.** `tessera-eval` runs inside the
+  shared `scripts/gate.sh`, so a floor breach fails CI, not only the local
+  `/verify` step (it previously ran in no automated gate).
+- WRITEUP gains a post-roadmap hardening section and updated, more honest
+  limitations (scale now partly tested; the real connector now exists).
+
 ## [phase-4] — 2026-06-10
 
 ### Added

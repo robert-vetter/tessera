@@ -141,16 +141,19 @@ what keeps the trust numbers below auditable.
 
 ### The eval harness
 
-Trust is measured, so the eval is runnable from the start — and since Phase 3
-it scores **both verticals** as separate batteries
-([ADR 0009](docs/adr/0009-multi-vertical-eval-batteries.md)):
+Trust is measured, so the eval is runnable from the start — and it scores each
+vertical as a separate battery
+([ADR 0009](docs/adr/0009-multi-vertical-eval-batteries.md)), including the first
+**real** connector (GitHub Actions) measured the same way:
 
 ```bash
 uv run tessera-eval
-# [business] gold (7):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [business] synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [devex]    gold (7):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [devex]    synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business]       gold (9):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business]       synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [devex]          gold (8):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [devex]          synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [github_actions] gold (4):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [github_actions] synthetic (8):  faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 ```
 
 The numbers are real and **auditable**, scored against the answers the engine
@@ -164,18 +167,18 @@ plus per-vertical synthetic batteries enumerated from the data:
   — and confirm the metric catches them, so the 1.0 is earned, not
   tautological.
 - **Coverage** — how much of the expected evidence the answers surface. The
-  1.000s were **earned through two recorded trust loops**, not assumed: each
-  vertical shipped with a *named, planted* miss (business: the Lumière
-  document mention; devex: the `notif-svc` on-call row at similarity 0.429),
-  the metric measured it (0.929 and 0.917 respectively), and the smallest
-  honest mechanism closed it — a Unicode-folding fix
+  1.000s were **earned through three recorded trust loops**, not assumed. The
+  first two closed *named, planted* misses (business: the Lumière document
+  mention, 0.929; devex: the `notif-svc` on-call row at similarity 0.429,
+  0.917) with the smallest honest mechanism — a Unicode-folding fix
   ([ADR 0004](docs/adr/0004-graph-and-entity-resolution.md) addendum) and a
   **declared catalog alias**
-  ([ADR 0010](docs/adr/0010-declared-aliases-before-embeddings.md)). A third
-  specimen (`checkout-svc`, 0.846, deliberately undeclared) keeps the
-  mechanism's boundary visible. The whole trail is in
-  [`eval/history.jsonl`](eval/history.jsonl) and told in the
-  [write-up](docs/WRITEUP.md).
+  ([ADR 0010](docs/adr/0010-declared-aliases-before-embeddings.md)). The third
+  is the strongest: a miss **no one planted**, surfaced by the **real** GitHub
+  Actions connector (its logs mark failures `##[error]`, not the synthetic
+  shape) — coverage **0.000 → 1.000**, closed deterministically (ADR 0014).
+  The whole trail is in [`eval/history.jsonl`](eval/history.jsonl) and told in
+  the [write-up](docs/WRITEUP.md).
 - **Quality** — gold answers correct / refusals refused.
 
 The README badge shows the **minimum** gold faithfulness across batteries —
@@ -284,12 +287,18 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete** (see [`docs/STATUS.md`](docs/STATUS.md) and the
-[changelog](CHANGELOG.md)): both verticals run on one measured engine, all
-recorded trust numbers stand at 1.000 with the faithfulness floor gated in CI,
-the Joule-style session and the SAP deployment path are in place, and the
-[write-up](docs/WRITEUP.md) tells the story — including what is honestly not
-done (real connectors, embeddings, agentic/MCP mode, scale).
+**Phases 0–4 complete, plus a post-roadmap hardening milestone**
+(see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
+verticals run on one measured engine, the faithfulness floor is gated in CI, and
+the Joule-style session and SAP deployment path are in place. When every number
+had reached 1.000, **milestone 5** made the eval able to fail again — the first
+**real** connector (GitHub Actions) surfaced a miss no one planted (coverage
+0.000 → 1.000, closed deterministically), multi-hop answers and free-form
+phrasing landed, scale and the ER over-merge risk were measured, and three
+standing triggers (LLM-judge, embeddings, semantic routing) are demonstrated as
+named limits the determinism line deliberately leaves un-crossed. The
+[write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet
+done (more connectors, embeddings, agentic/MCP mode, true million-record scale).
 
 ## License
 
