@@ -20,9 +20,10 @@ from tessera.eval.registry import GOLD_ROOT, batteries, business_battery
 
 def test_business_gold_set_is_loaded() -> None:
     cases = load_gold_set(GOLD_ROOT / "business")
-    assert len(cases) == 7
+    assert len(cases) == 9  # 7 + two free-form phrasing cases (spec 0048)
     assert {c.kind for c in cases} == {"answer", "refuse"}
-    assert {c.engine for c in cases} == {"compose", "retrieve"}  # both answer paths
+    # compose, retrieve, and the routed multi-step path (the phrasing cases)
+    assert {c.engine for c in cases} == {"compose", "retrieve", "route"}
 
 
 def _business_result() -> BatteryResult:
@@ -33,9 +34,10 @@ def _business_result() -> BatteryResult:
 
 def test_business_numbers_reproduce_phase_2_exactly() -> None:
     """The battery refactor moved the scoring; it must not have moved the
-    scores (spec 0032): gold 7 and synthetic 52, all three metrics 1.0."""
+    scores (spec 0032): gold (now 9, with the spec-0048 phrasing cases) and
+    synthetic 52, all three metrics 1.0."""
     result = _business_result()
-    assert result.gold_case_count == 7
+    assert result.gold_case_count == 9  # 7 + two free-form phrasing cases (0048)
     assert result.faithfulness == 1.0
     assert result.coverage == 1.0
     assert result.quality == 1.0
