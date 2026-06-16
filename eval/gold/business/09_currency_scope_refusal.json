@@ -1,0 +1,6 @@
+{
+  "id": "09_currency_scope_refusal",
+  "question": "Who is our biggest customer?",
+  "engine": "route",
+  "kind": "refuse"
+}

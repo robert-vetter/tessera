@@ -11,7 +11,7 @@ question falls through to a path that refuses honestly rather than guessing.
 from __future__ import annotations
 
 from tessera.business.composition import compose
-from tessera.business.reasoning import SUPERLATIVE_WORDS, find_named_entities, reason
+from tessera.business.reasoning import find_named_entities, mentions_superlative, reason
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer, KnowledgeBase
 from tessera.retrieval import answer as retrieve_answer
@@ -28,14 +28,13 @@ def classify(question: str, graph: KnowledgeGraph) -> Route:
       relevant exists).
     """
     entities = find_named_entities(question, graph)
-    lowered = question.lower()
     if len(entities) >= 2:
         names = ", ".join(e.name for e in entities)
         return Route(
             kind="multi",
             reason=f"names {len(entities)} entities ({names}) — multi-step",
         )
-    if any(word in lowered for word in SUPERLATIVE_WORDS):
+    if mentions_superlative(question):
         return Route(kind="multi", reason="asks for a ranking — multi-step")
     if len(entities) == 1:
         return Route(
