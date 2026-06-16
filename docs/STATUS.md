@@ -666,3 +666,95 @@ and understand the project without the author in the room")**
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #41–#48 merged. Tagged
   `phase-4`.
+
+---
+
+## 2026-06-16 — Milestone 5 COMPLETE (post-roadmap hardening: the eval can fail again)
+
+**Mode note:** ran **autonomously** end-to-end from one kickoff after a
+project-shaping scope discussion (the maintainer chose: the hardening loop;
+real connector + harder synthetic; hold the determinism line — pause before any
+LLM/embedding). Eight units, each spec → branch → implement → gate → PR →
+CI-green → squash-merge.
+
+**The problem this milestone answers.** All four roadmap phases were done and
+every recorded number was 1.000 — both synthetic batteries saturated (ADR 0007
+trigger 2). A floor that cannot fail is decorative. And both prior coverage
+recoveries closed misses the project *planted*. So the goal was inverted: make
+the eval able to fail again with **un-planted** difficulty, faithfulness gated
+at 1.0 throughout.
+
+**Done this session (8 units, PRs #50–#57)**
+- **Phase plan** (spec 0043, PR #50): unit breakdown + the three recorded
+  scope decisions + the inverted success criterion.
+- **The floor actually gates** (spec 0044, PR #51): `tessera-eval` wired into
+  `scripts/gate.sh`, so the faithfulness floor's non-zero exit fails the build
+  in CI, not only in the manual `/verify`. Proven by a forced breach. (The
+  audit gap: the floor had been enforced by no automated gate.)
+- **The first real connector** (spec 0045, ADR 0014, PR #52): the repo's own
+  GitHub Actions history, ingested through the same door, reusing the table-row
+  + log-span locator kinds with zero engine change (ADR 0002, 4th cash). Live
+  fetch is a run-once script (the only network touchpoint); the snapshot is
+  committed, scrubbed, byte-reproducible; logs ingested RAW (`##[error]`
+  preserved). Separate graph → synthetic battery numbers byte-identical.
+- **The measured un-planted miss + its close** (spec 0046, PR #53): a
+  `github_actions` battery measured **gold coverage 0.000, quality 0.500**
+  (real run-id + `##[error]` divergence the engine didn't bridge) — recorded on
+  purpose, then closed additively (run-id grammar, `##[error]` marker, first
+  `##[error]` line as signature) → **1.000**, with a genuine cross-run
+  recurrence over two real Pages-deploy failures. Both points in
+  `eval/history.jsonl`. **This is the milestone's core: the eval failed on data
+  no one authored, then the trust loop closed it.**
+- **Mixed-modality multi-hop in one turn** (spec 0047, PR #54): the Phase-2-named
+  gap. RCA walks incident ticket → resolving PR → diff (`run → log → log →
+  ticket → PR → diff`, each hop cited). Mis-pivot trap avoided structurally
+  (PR-198 not PR-201). devex gold 7→8, all 1.000.
+- **Free-form phrasing variety** (spec 0048, PR #55): router widened
+  deterministically (synonyms; word-boundary matching fixing `most`⊂`almost`;
+  currency-set validation fixing the `ASK`/`VAT` hijack — two latent bugs); the
+  batteries now sample phrasing (business gold 7→9). Intent words left as the
+  named ADR 0006 ceiling.
+- **Scale, measured** (spec 0049, PR #56): a real-engine harness over 180
+  entities — precision/recall hold, faithfulness holds, and the over-merge risk
+  is now a *reproduced fact* (generic-suffix firms cross 0.85 at volume).
+- **Trigger status + close** (spec 0050, this entry, PR #57): three committed
+  specimens — ADR 0005 (verbatim-but-misleading passes the structural check),
+  ADR 0010 (error-class synonymy no alias could bridge), ADR 0006 (intent-verb
+  ceiling); WRITEUP hardening section + updated limitations; CHANGELOG; tag
+  `milestone-5`.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **business — gold 9: 1.000 / 1.000 / 1.000; synthetic 52: 1.000 / 1.000 / 1.000.**
+- **devex — gold 8: 1.000 / 1.000 / 1.000; synthetic 24: 1.000 / 1.000 / 1.000.**
+- **github_actions (REAL) — gold 4: 1.000 / 1.000 / 1.000; synthetic 8: 1.000 / 1.000 / 1.000.**
+- Trail: github_actions gold coverage **0.000 → 1.000**, quality **0.500 → 1.000**
+  (the un-planted miss, deterministically closed). Verified under 5
+  `PYTHONHASHSEED` values; 235 tests.
+
+**Milestone check (the inverted criterion):** an un-planted, measured miss was
+surfaced (real-data RCA) and closed deterministically; faithfulness stayed
+gated at 1.0 throughout; the determinism line held (three triggers demonstrated
+and escalated, none acted on); the WRITEUP's "scale untested" and "drop-in
+shaped" claims are now tested/demonstrated. **Met.** Tagged `milestone-5`.
+
+**Open questions / risks — the three live triggers, now with concrete specimens**
+- **ADR 0010 (embeddings):** the error-class synonymy (`HttpError: Not Found` =
+  `status: 404` = `Ensure GitHub Pages has been enabled`) is a real, present,
+  *undeclarable* miss — the refreshed trigger's exact condition. Acting on it
+  (GenAI Hub embeddings + HANA vector) needs spend/cloud — maintainer's call.
+- **ADR 0005 (LLM-judge):** the verbatim-but-misleading specimen shows the
+  structural blind spot; no *measured* case forces it yet.
+- **ADR 0006 (semantic routing):** intent verbs (`rank`/`lead`/`best`) are the
+  named ceiling; a correct refusal is the honest fallback.
+- The over-merge at volume (ADR 0004) is now measured; multi-field ER or
+  embeddings is the recorded remedy.
+
+**Next milestone — to be defined with the maintainer.** Candidates: act on a
+fired trigger (embeddings via GenAI Hub — the ADR 0010 specimen is ready, needs
+spend); a second real connector (Jira/PR-and-issue export); agentic/MCP mode;
+BTP provisioning (turn "designed for SAP" into "ran on SAP"); application
+packaging for the SAP motivation letter.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #50–#57 merged. Tagged
+  `milestone-5`.
