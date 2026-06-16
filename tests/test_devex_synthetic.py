@@ -70,15 +70,16 @@ def test_unreferenced_pr_case_expects_no_ticket(
     assert "Ticket:DEVEX-204" in pr201.expected_support
 
 
-def test_two_vertical_eval_floor_holds_and_coverage_loop_is_closed() -> None:
-    """Both verticals scored by the same harness; faithfulness 1.0
-    everywhere; and the Phase 3 coverage gap (the named notif-svc miss,
-    0.917) is now closed by the declared catalog alias (spec 0036) — the
-    first full trust loop: measure → name the miss → fix → re-measure."""
+def test_synthetic_verticals_floor_holds_and_coverage_loop_is_closed() -> None:
+    """The two synthetic verticals scored by the same harness; faithfulness 1.0
+    everywhere; and the Phase 3 coverage gap (the named notif-svc miss, 0.917)
+    is closed by the declared catalog alias (spec 0036). The real GitHub
+    Actions battery is measured by the same harness too (Milestone 5); its own
+    numbers are pinned in test_github_actions_battery."""
     report = run_eval()
     by_name = {b.name: b for b in report.batteries}
-    assert set(by_name) == {"business", "devex"}
-    assert report.floor_holds
+    assert set(by_name) == {"business", "devex", "github_actions"}
+    assert report.floor_holds  # faithfulness is 1.0 on every battery, always
     business, devex = by_name["business"], by_name["devex"]
     assert business.faithfulness == 1.0 and business.synthetic_faithfulness == 1.0
     assert devex.faithfulness == 1.0 and devex.synthetic_faithfulness == 1.0

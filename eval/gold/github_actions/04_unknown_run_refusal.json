@@ -1,0 +1,6 @@
+{
+  "id": "04_unknown_run_refusal",
+  "question": "Why did run 99999999999 fail?",
+  "engine": "rca",
+  "kind": "refuse"
+}

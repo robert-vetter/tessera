@@ -83,7 +83,33 @@ def devex_battery() -> Battery:
     )
 
 
+def github_actions_battery() -> Battery:
+    """The real GitHub Actions connector, measured (spec 0046).
+
+    Reuses the DevEx answer dispatch — GitHub Actions data *is* CI data, so the
+    same RCA path applies — over a separate graph built from the committed
+    snapshot (ADR 0014). This is where the un-planted, real-data miss is
+    measured: a saturated synthetic eval cannot show it, real CI logs can.
+    """
+    from tessera.devex.github_synthetic import generate_cases
+    from tessera.devex.knowledge import (
+        build_github_actions_graph,
+        build_github_actions_kb,
+    )
+
+    return Battery(
+        name="github_actions",
+        gold_dir=GOLD_ROOT / "github_actions",
+        build_graph=build_github_actions_graph,
+        build_kb=build_github_actions_kb,
+        answer=_devex_answer,
+        synthetic=generate_cases,
+        claim_shapes=(),
+    )
+
+
 def batteries() -> tuple[Battery, ...]:
-    """Every measured vertical — the Phase 3 milestone in one line: two
-    genuinely different verticals, one unchanged engine, both measured."""
-    return (business_battery(), devex_battery())
+    """Every measured vertical — two synthetic verticals on one unchanged
+    engine (the Phase 3 milestone), plus the first real connector measured the
+    same way (Milestone 5)."""
+    return (business_battery(), devex_battery(), github_actions_battery())
