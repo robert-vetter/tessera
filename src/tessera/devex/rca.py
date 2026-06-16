@@ -165,5 +165,31 @@ def explain_failure(question: str, graph: KnowledgeGraph) -> Answer:
                 )
             )
             claims.append(Claim(text=ticket.record.text, support=(ticket.record,)))
+            # 5) The fix: the PR that resolves THIS incident, and its diff — one
+            #    more hop, turning RCA into a genuine mixed-modality chain
+            #    (run row -> log -> prior log -> ticket -> PR row -> diff).
+            claims.extend(_fix_chain_claims(graph, ticket))
 
     return Answer(question=question, claims=tuple(claims), refusal=None)
+
+
+def _fix_chain_claims(graph: KnowledgeGraph, ticket: Node) -> list[Claim]:
+    """The PR(s) that resolve an incident ticket, plus the diff that did it.
+
+    The link is the *exact* ticket id via the reversed ``motivated_by`` edge
+    (extracted at ingestion from the PR's own description): so the fix for
+    DEVEX-187 is PR-198, never PR-201 (which fixes the follow-up DEVEX-204) —
+    the mis-pivot trap is avoided structurally, not by heuristic. The link is a
+    neutral shared-fragment claim (the ticket id appears in both records); the
+    "Fixes" language lives in the PR row's own verbatim text. No fixing PR ->
+    no claim (an open incident like DEVEX-231 stops here, honestly)."""
+    claims: list[Claim] = []
+    ticket_ref = ticket.record.id.removeprefix("Ticket:")
+    for pr_id in sorted(graph.sources_of({ticket.record.id}, "motivated_by")):
+        pr = graph.node(pr_id)
+        claims.append(_shared_fragment_claim(ticket_ref, [ticket, pr], "Resolved by"))
+        claims.append(Claim(text=pr.record.text, support=(pr.record,)))
+        for hunk_id in sorted(graph.sources_of({pr_id}, "diff_of")):
+            hunk = graph.node(hunk_id)
+            claims.append(Claim(text=hunk.record.text, support=(hunk.record,)))
+    return claims

@@ -1,0 +1,21 @@
+{
+  "id": "08_r1042_fix_chain",
+  "question": "Why did run R-1042 fail, and how was it fixed?",
+  "engine": "rca",
+  "kind": "answer",
+  "expected_support": [
+    "Run:R-1042",
+    "run_R-1042:chunk5",
+    "run_R-0987:chunk5",
+    "Ticket:DEVEX-187",
+    "PR:PR-198",
+    "PR-198.diff:hunk1"
+  ],
+  "expected_facts": [
+    "TimeoutError: connection to payments-db timed out after 30s",
+    "Documented incident:",
+    "Resolved by:",
+    "PR PR-198",
+    "timeout=30"
+  ]
+}
