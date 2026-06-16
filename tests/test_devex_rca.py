@@ -89,6 +89,45 @@ def test_tampered_recurrence_claim_is_caught(graph: KnowledgeGraph) -> None:
     assert not is_supported(tampered, nodes, graph)
 
 
+# --- the multi-hop fix chain (spec 0047) ----------------------------------------
+
+
+def test_r1042_chain_reaches_the_fixing_pr_and_its_diff(
+    graph: KnowledgeGraph,
+) -> None:
+    """The mixed-modality multi-hop in one turn: run row -> log -> prior log ->
+    incident ticket -> the PR that resolved it -> the diff that did it."""
+    answer = explain_failure("Why did run R-1042 fail, and how was it fixed?", graph)
+    texts = _claim_texts(answer)
+    # The incident's resolving PR, linked by the exact ticket id, then quoted.
+    resolved = [t for t in texts if t.startswith("Resolved by:")]
+    assert len(resolved) == 1
+    assert '"DEVEX-187"' in resolved[0]
+    assert "prs.csv" in resolved[0] and "tickets.csv" in resolved[0]
+    assert any("PR PR-198" in t for t in texts)
+    # The actual code change — the diff hunk, verbatim (the 10s -> 30s fix).
+    assert any("timeout=30" in t and "db_client.py" in t for t in texts)
+
+
+def test_fix_chain_avoids_the_mispivot(graph: KnowledgeGraph) -> None:
+    """DEVEX-187 is fixed by PR-198; PR-201 fixes the *follow-up* DEVEX-204.
+    A naive 'any related payments PR' chain would wrongly cite PR-201 and the
+    faithfulness verifier would reject it. The exact-id reverse edge cites
+    PR-198 only."""
+    answer = explain_failure("Why did run R-1042 fail, and how was it fixed?", graph)
+    cited = {rec.id for claim in answer.claims for rec in claim.support}
+    assert "PR:PR-198" in cited
+    assert "PR:PR-201" not in cited
+
+
+def test_open_incident_has_no_fix_claim(graph: KnowledgeGraph) -> None:
+    """R-1031 reaches the OPEN incident DEVEX-231, which no PR resolves: the
+    chain stops at the ticket — no 'Resolved by' is invented."""
+    texts = _claim_texts(explain_failure("Why did run R-1031 fail?", graph))
+    assert any(t.startswith("Documented incident:") for t in texts)
+    assert not any(t.startswith("Resolved by:") for t in texts)
+
+
 # --- recurrence honesty ---------------------------------------------------------
 
 
