@@ -140,6 +140,48 @@ coverage miss exists that *no declarable data could fix*. A deliberately
 retained specimen exists (`checkout-svc`, similarity 0.846, undeclared) so
 the boundary of the current mechanism stays visible and tested.
 
+### Post-roadmap hardening: making the eval able to fail again
+
+By the close of the four roadmap phases every recorded number was 1.000 and
+both synthetic batteries had saturated (ADR 0007 trigger 2). A floor that
+cannot fail is decorative, so a fifth milestone set out to make the eval able
+to fail again — with **un-planted** difficulty, holding faithfulness gated at
+1.0 and the trust path deterministic.
+
+- **A real connector.** The project's own GitHub Actions history is ingested
+  through the same door (a committed snapshot; the live fetch is a run-once
+  script, the only network touchpoint — ADR 0014). Real CI logs spell failures
+  `##[error]` with nanosecond timestamps and TAB-delimited job/step prefixes —
+  nothing like the synthetic `ERROR <svc>:` shape — so the saturated eval
+  finally measured a miss **no one authored**: GitHub-Actions gold coverage
+  **0.000**, quality 0.500. The deterministic close (recognize real run ids, the
+  `##[error]` marker, and the first such line as the signature — all additive)
+  recovered it to **1.000**, including a genuine cross-run recurrence over two
+  real Pages-deploy failures. The drop and the recovery are both recorded.
+- **Multi-hop in one turn.** RCA now walks the incident ticket to the PR that
+  resolved it and the diff that did it — `run → log → prior log → ticket → PR →
+  diff`, each hop cited — closing the gap Phase 2 named. The mis-pivot trap (a
+  follow-up PR that fixes a *different* ticket) is avoided structurally and
+  guarded by the floor.
+- **Phrasing variety, and its ceiling.** The router gained synonyms,
+  word-boundary matching, and currency-set validation (two latent bugs fixed);
+  the batteries now sample free-form phrasing. Intent-only words (`rank`,
+  `lead`, `best`) are left as the named ADR 0006 ceiling, not force-fit.
+- **Scale, measured.** The engine is faithful and ER-precise over 180 entities;
+  and the over-merge risk is now a reproduced fact — generic-suffix firms cross
+  the 0.85 threshold at volume.
+- **The floor actually gates.** `tessera-eval` now runs inside the shared gate
+  script, so the faithfulness floor fails the build in CI, not only in the local
+  verify step.
+
+The honest end state inverts the roadmap phases: rather than driving every
+number back to 1.000, the milestone leaves three **named specimens** where the
+deterministic approach reaches its edge — a verbatim-but-misleading claim the
+structural verifier passes (ADR 0005), an error-class synonymy no declared alias
+could bridge (ADR 0010), and the intent-verb router ceiling (ADR 0006). Each is
+a committed test; none is acted on, because crossing into an LLM or embedding
+dependency is a spend / clone-and-run decision held for the maintainer.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -193,25 +235,33 @@ keys — is what CI verifies and what a stranger clones.
 
 Named with the same prominence as the results:
 
-- **The corpus is synthetic and small.** Schema-faithful (SALT's real ERP
-  schema; realistic CI/tracker shapes) with planted, *measured* difficulty —
-  but hundreds of records, not millions. Scale behaviour (retrieval quality,
-  graph performance, ER precision under volume) is untested.
+- **The corpus is mostly synthetic, and bounded.** Schema-faithful (SALT's real
+  ERP schema; realistic CI/tracker shapes) with planted, *measured* difficulty,
+  now joined by a **real** GitHub Actions connector — but still hundreds of
+  records, not millions. Scale behaviour is no longer fully untested: the engine
+  is faithful and ER-precise over 180 entities (`tests/test_scale.py`), and the
+  transitive over-merge risk is now a *measured* fact at volume — but BM25
+  latency and graph performance at millions of records remain genuinely
+  out of reach with a synthetic corpus.
 - **Faithfulness is structural, not semantic.** The verifier re-derives
   quantities, containment, and cross-source fragments; it cannot judge a
-  subtly misleading-but-verbatim juxtaposition. An LLM-judged faithfulness
-  layer has a standing trigger (ADR 0005) and has not been needed by any
-  measured case.
+  subtly misleading-but-verbatim juxtaposition — now demonstrated by a committed
+  specimen (a "recurring failure" claim built on a generic shared trailer passes
+  the structural check). An LLM-judged faithfulness layer has a standing trigger
+  (ADR 0005) and has still not been forced by any *measured* case.
 - **Question understanding is rule-based.** Phrasings outside the routers'
-  rules refuse rather than guess — honest, but a usability ceiling. The
-  measured-miss trigger for upgrading it (ADR 0006) has not fired: no gold
-  or synthetic case requires phrasing the rules cannot handle, which also
-  means the batteries under-sample free-form phrasing variety.
+  rules refuse rather than guess — honest, but a usability ceiling. The router
+  was widened this milestone (synonyms, word-boundary matching, currency-set
+  validation) and the batteries now *do* sample free-form phrasing, but
+  intent-only words (`rank`, `lead`, `best`) stay the named ADR 0006 ceiling;
+  its measured-miss trigger has not fired (a correct refusal is the fallback).
 - **ER is name-only and threshold-based.** Multi-field matching (name +
   address + keys) is an additive extension the assertion layer was designed
-  for, not yet built. Transitive over-merge remains possible in principle;
-  the conservative threshold and the disjointness tests bound it on the
-  current corpora.
+  for, not yet built. Transitive over-merge is no longer only "possible in
+  principle": at volume, distinct firms sharing a long generic suffix
+  demonstrably cross the 0.85 threshold (`tests/test_scale.py`) — the conservative
+  threshold and disjointness tests bound it on the *current* corpora, and
+  multi-field ER or embeddings (ADR 0004/0010) is the recorded remedy.
 - **The narration guard is conservative, not complete.** It catches
   fabricated quantities and identifiers, not every semantic drift — which is
   why narration is presentation below canonical claims, never evidence.
@@ -221,9 +271,10 @@ Named with the same prominence as the results:
 
 ## Deliberately deferred (future work, not gaps missed)
 
-Real connectors (the synthetic corpora are drop-in shaped for them) ·
-embeddings + HANA vector under ADR 0010's trigger · multi-field ER ·
-LLM-judged faithfulness alongside the deterministic floor · an agentic /
+More real connectors (the first — GitHub Actions — now exists and proves the
+synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
+next) · embeddings + HANA vector under ADR 0010's refreshed trigger · multi-field
+ER · LLM-judged faithfulness alongside the deterministic floor · an agentic /
 MCP-exposed mode (grounded actions, not just answers — the 2026-shaped
 extension of the same trust substrate) · persistence, multi-tenancy,
 access governance.
@@ -253,11 +304,11 @@ access governance.
 ```bash
 git clone https://github.com/robert-vetter/tessera && cd tessera
 uv sync                         # Python 3.12, zero runtime deps
-uv run tessera-eval             # both batteries; non-zero exit if the floor breaks
+uv run tessera-eval             # three batteries; non-zero exit if the floor breaks
 uv run tessera-chat             # the Joule-style session (deterministic by default)
-uv run tessera "Compare Müller Logistik and Nordwind Logistik totals."
-uv run tessera-devex "Why did run R-1042 fail, and has this happened before?"
-bash scripts/gate.sh            # format · lint · strict types · 209 tests
+uv run tessera "Which customer has the greatest total order value in EUR?"
+uv run tessera-devex "Why did run R-1042 fail, and how was it fixed?"
+bash scripts/gate.sh            # format · lint · strict types · tests · eval floor
 ```
 
 The development history itself is part of the result: every unit of work has
