@@ -24,6 +24,7 @@ from tessera.graph import Edge, KnowledgeGraph, Node, Resolution
 from tessera.grounding import KnowledgeBase
 from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD, normalize
 from tessera.sources.devex import DevExSource
+from tessera.sources.github_actions import GitHubActionsSource
 
 # The kinds that arrive as unstructured chunks (and so participate in the
 # engine's document-mention linking).
@@ -66,6 +67,43 @@ def build_devex_graph(
     graph.resolve_entities(threshold)
     _assert_declared_aliases(graph, source.declared_aliases())
     graph.link_document_mentions()
+    return graph
+
+
+def build_github_actions_kb() -> KnowledgeBase:
+    """All real GitHub Actions snapshot records as one retrievable base."""
+    return KnowledgeBase(records=tuple(GitHubActionsSource().ingest()))
+
+
+def build_github_actions_graph() -> KnowledgeGraph:
+    """A **separate** graph over the real GitHub Actions snapshot (spec 0045).
+
+    Deliberately its own graph, not unioned into the synthetic DevEx graph: the
+    synthetic battery's numbers stay byte-identical, and the real-data miss the
+    next unit measures (spec 0046) is isolated in its own battery. The same
+    engine machinery — run rows as structured nodes, failed-step log chunks as
+    ``document`` nodes, ``log_of`` edges — with no resolution layer (the
+    snapshot carries no service catalog to resolve against).
+    """
+    source = GitHubActionsSource()
+    node_attrs = source.node_attributes()
+
+    graph = KnowledgeGraph()
+    for record in source.ingest():
+        if record.origin.locator.kind in _CHUNK_LOCATOR_KINDS:
+            kind = "document"
+        else:
+            kind = record.id.split(":", 1)[0]  # "Run"
+        graph.add_node(
+            Node(
+                record=record,
+                kind=kind,
+                attributes=node_attrs.get(record.id, ()),
+            )
+        )
+
+    for src, dst, relation in source.structural_edges():
+        graph.add_edge(Edge(src=src, dst=dst, relation=relation))
     return graph
 
 
