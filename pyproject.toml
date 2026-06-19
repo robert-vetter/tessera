@@ -28,9 +28,9 @@ packages = ["src/tessera"]
 # Dev tooling (PEP 735 dependency group). Installed via `uv sync`.
 [dependency-groups]
 dev = [
-    "ruff>=0.10",
+    "ruff>=0.15.18",
     "mypy>=1.15",
-    "pytest>=8.0",
+    "pytest>=9.1.1",
     "pre-commit>=4.0",
 ]
 # Docs site toolchain. Not installed by default; CI and local docs builds opt in
