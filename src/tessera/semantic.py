@@ -119,16 +119,20 @@ class HanaSemanticIndex:
 
     def _ensure_table(self, cursor: _Cursor) -> None:
         schema = self.config.hana_database.strip()
+        # HANA upper-cases unquoted identifiers, so the table/schema we create
+        # are stored upper-cased in SYS.TABLES; the existence check must compare
+        # against the upper-cased names or it never finds an existing table and
+        # tries (and fails) to re-CREATE it on every run.
         if schema:
             cursor.execute(
                 "SELECT COUNT(*) FROM SYS.TABLES "
                 "WHERE TABLE_NAME = ? AND SCHEMA_NAME = ?",
-                [self.table, schema],
+                [self.table.upper(), schema.upper()],
             )
         else:
             cursor.execute(
                 "SELECT COUNT(*) FROM SYS.TABLES WHERE TABLE_NAME = ?",
-                [self.table],
+                [self.table.upper()],
             )
         rows = cursor.fetchall()
         exists = bool(rows) and int(str(rows[0][0])) > 0

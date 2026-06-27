@@ -4,9 +4,10 @@
   "engine": "lookup",
   "kind": "answer",
   "expected_support": [
-    "27285174461.failed:chunk1"
+    "Run:27285174461"
   ],
   "expected_facts": [
-    "HttpError: Not Found"
+    "status failed",
+    "Deploy to GitHub Pages"
   ]
 }
