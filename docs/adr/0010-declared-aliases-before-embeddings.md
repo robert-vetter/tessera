@@ -85,3 +85,13 @@ refreshed trigger watches for.
   Rejected for now: only one vertical has alias data; the additive
   `Resolution` layer already expresses the assertion without any engine
   change. Promote when a second vertical needs it.
+
+## Addendum (2026-06-27) — the refreshed trigger fired and is now acted on
+
+Milestone 5 produced the undeclarable miss this ADR's refreshed trigger watched
+for (the error-class synonymy in the real Pages-deploy log;
+`test_adr0010_error_class_synonymy_is_undeclarable`). Milestone 6 acts on it —
+GenAI Hub embeddings + HANA Cloud vector store, lexical path as the offline
+fallback — with the boundary (retrieval-only, opt-in, faithfulness untouched)
+recorded in **[ADR 0015](0015-embeddings-on-sap.md)**. This deferral has ended,
+deliberately and with a measured cause.

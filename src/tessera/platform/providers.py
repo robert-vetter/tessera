@@ -22,11 +22,12 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
 from tessera.platform.config import (
+    EMBEDDINGS_NONE,
     PROVIDER_GENAI_HUB,
     PROVIDER_NONE,
     PlatformConfig,
@@ -78,6 +79,28 @@ def _http_post_json(
     return parsed
 
 
+def _xsuaa_token(config: PlatformConfig, transport: Transport) -> str:
+    """An XSUAA OAuth2 access token via client-credentials.
+
+    Shared by every GenAI Hub adapter (chat and embeddings): the AI Core auth
+    flow is identical regardless of which inference endpoint follows it.
+    """
+    response = transport(
+        f"{config.aicore_auth_url.rstrip('/')}/oauth/token"
+        "?grant_type=client_credentials",
+        {
+            "Authorization": _basic_auth(
+                config.aicore_client_id, config.aicore_client_secret
+            )
+        },
+        {},
+    )
+    token = response.get("access_token")
+    if not isinstance(token, str) or not token:
+        raise ProviderError("XSUAA token response carried no access_token")
+    return token
+
+
 @dataclass(frozen=True)
 class GenAIHubProvider:
     """SAP Generative AI Hub (on AI Core) — the documented production target.
@@ -96,22 +119,6 @@ class GenAIHubProvider:
     def name(self) -> str:
         return "sap-genai-hub"
 
-    def _token(self) -> str:
-        response = self.transport(
-            f"{self.config.aicore_auth_url.rstrip('/')}/oauth/token"
-            "?grant_type=client_credentials",
-            {
-                "Authorization": _basic_auth(
-                    self.config.aicore_client_id, self.config.aicore_client_secret
-                )
-            },
-            {},
-        )
-        token = response.get("access_token")
-        if not isinstance(token, str) or not token:
-            raise ProviderError("XSUAA token response carried no access_token")
-        return token
-
     def complete(self, system: str, prompt: str) -> str:
         url = (
             f"{self.config.aicore_base_url.rstrip('/')}/v2/inference/deployments/"
@@ -120,7 +127,7 @@ class GenAIHubProvider:
         response = self.transport(
             url,
             {
-                "Authorization": f"Bearer {self._token()}",
+                "Authorization": f"Bearer {_xsuaa_token(self.config, self.transport)}",
                 "AI-Resource-Group": self.config.aicore_resource_group,
             },
             {
@@ -219,3 +226,110 @@ def provider_from_env(
     if not cfg.anthropic_api_key:
         raise ProviderError("anthropic selected but ANTHROPIC_API_KEY is unset")
     return AnthropicProvider(config=cfg, transport=transport)
+
+
+# --- Embeddings: text → dense vector for semantic retrieval (ADR 0015) -------
+#
+# A separate, equally narrow seam. Embeddings serve RETRIEVAL ONLY — they change
+# what evidence is surfaced, never what is claimed. The faithfulness verifier
+# (eval/metrics.py) imports nothing from here; a leak-guard test pins that, so a
+# 1.0 stays earned by structure, not by a model.
+
+
+class EmbeddingProvider(Protocol):
+    """The one thing the engine may ask an embedding model for: vectors.
+
+    Batch by design — indexing embeds many records in one call. Deliberately
+    narrow (ADR 0015), mirroring :class:`ModelProvider`.
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]: ...
+
+
+def _parse_embeddings(
+    response: dict[str, object], *, expected: int
+) -> list[list[float]]:
+    """Parse an OpenAI-shaped embeddings response into input-ordered vectors.
+
+    Both Azure- and OpenAI-style GenAI Hub deployments return
+    ``{"data": [{"index": i, "embedding": [...]}, ...]}``; the list may arrive
+    out of order, so we sort by ``index``. Anything unexpected becomes a
+    :class:`ProviderError` so the caller degrades rather than indexing garbage.
+    """
+    try:
+        data = response["data"]
+        assert isinstance(data, list)
+        ordered = sorted(data, key=lambda item: int(item["index"]))
+        vectors = [[float(x) for x in item["embedding"]] for item in ordered]
+    except (KeyError, IndexError, TypeError, ValueError, AssertionError) as error:
+        raise ProviderError(f"unexpected embeddings shape: {error}") from error
+    if len(vectors) != expected:
+        raise ProviderError(f"expected {expected} embedding(s), got {len(vectors)}")
+    return vectors
+
+
+@dataclass(frozen=True)
+class GenAIHubEmbeddingProvider:
+    """SAP Generative AI Hub embeddings — text → dense vector (ADR 0015).
+
+    Same XSUAA auth and base URL as the chat adapter; a different inference
+    suffix (configurable — see ``genai_embedding_path``). Returns one vector per
+    input text, in input order. Exercised against a fake transport in this
+    repository; a live smoke test precedes the one recorded online run
+    (DEPLOYMENT.md / spec 0057).
+    """
+
+    config: PlatformConfig
+    transport: Transport = _http_post_json
+
+    @property
+    def name(self) -> str:
+        return "sap-genai-hub-embeddings"
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        url = (
+            f"{self.config.aicore_base_url.rstrip('/')}/v2/inference/deployments/"
+            f"{self.config.genai_embedding_deployment_id}/"
+            f"{self.config.genai_embedding_path.strip('/')}"
+        )
+        response = self.transport(
+            url,
+            {
+                "Authorization": f"Bearer {_xsuaa_token(self.config, self.transport)}",
+                "AI-Resource-Group": self.config.aicore_resource_group,
+            },
+            {"input": list(texts)},
+        )
+        return _parse_embeddings(response, expected=len(texts))
+
+
+def embedding_provider_from_env(
+    config: PlatformConfig | None = None, transport: Transport = _http_post_json
+) -> EmbeddingProvider | None:
+    """The configured embedding provider, or ``None`` in the (default) local mode.
+
+    Independent of the narrator. A half-configured provider fails loudly here,
+    naming the missing variable — not mid-index.
+    """
+    cfg = load_config() if config is None else config
+    if cfg.embeddings == EMBEDDINGS_NONE:
+        return None
+    missing = [
+        name
+        for name, value in (
+            ("AICORE_AUTH_URL", cfg.aicore_auth_url),
+            ("AICORE_CLIENT_ID", cfg.aicore_client_id),
+            ("AICORE_CLIENT_SECRET", cfg.aicore_client_secret),
+            ("AICORE_BASE_URL", cfg.aicore_base_url),
+            ("TESSERA_GENAI_EMBEDDING_DEPLOYMENT", cfg.genai_embedding_deployment_id),
+        )
+        if not value
+    ]
+    if missing:
+        raise ProviderError(
+            f"genai-hub embeddings selected but unset: {', '.join(missing)}"
+        )
+    return GenAIHubEmbeddingProvider(config=cfg, transport=transport)
