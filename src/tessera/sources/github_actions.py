@@ -52,13 +52,32 @@ _TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T[\d:.]+Z ?")
 
 _CONCLUSION_TO_STATUS = {"failure": "failed", "success": "passed"}
 
+# Runner logs mark a failure with this annotation (spec 0046).
+_GH_ERROR_MARKER = "##[error]"
+# When a (job, step) group carries an error marker, its error cluster is split
+# into its own chunk so the failure is not diluted by the dozens of lines of
+# provisioning boilerplate above it (spec 0064 / ADR 0017): the real Pages-deploy
+# 404 sat at lines 50–57 of a 60-line group, so the concise run-status row
+# out-ranked the whole-log chunk. A few lines ride along ahead of the marker so
+# the diagnostic immediately above it (e.g. a formatter's ``Would reformat:``
+# lines, printed just before the non-zero exit) is not severed from the error it
+# explains. A documented, tunable knob.
+_ERROR_CONTEXT_LINES = 3
+
 
 @dataclass(frozen=True)
 class _LogChunk:
-    """One citable span of a runner log: a (job, step) group of message lines."""
+    """One citable span of a runner log.
+
+    ``name`` is the **stable, role-tagged** id suffix (ADR 0017): ``chunk{n}``
+    for an ordinary/context span, ``error{n}`` for an isolated error cluster.
+    Role-derived rather than positional, so re-chunking the surrounding context
+    never renames the error span a gold case cites.
+    """
 
     job: str
     step: str
+    name: str
     start_line: int
     end_line: int
     text: str
@@ -70,43 +89,67 @@ def _clean_message(rest: str) -> str:
     return _ANSI.sub("", _TIMESTAMP.sub("", rest)).rstrip()
 
 
+def _make_chunk(
+    job: str, step: str, name: str, lines: list[tuple[int, str]]
+) -> _LogChunk:
+    return _LogChunk(
+        job=job,
+        step=step,
+        name=name,
+        start_line=lines[0][0],
+        end_line=lines[-1][0],
+        text="\n".join(message for _, message in lines),
+    )
+
+
 def parse_log_chunks(raw: str) -> list[_LogChunk]:
-    """Group a ``--log-failed`` dump into one chunk per consecutive (job, step).
+    """Split a ``--log-failed`` dump into citable spans of the failed step's log.
 
-    The GitHub-native citable unit is the failed step's log. Lines are
-    ``job⇥step⇥<timestamp> message``; the BOM on the first line is stripped.
+    First group consecutive (job, step) lines (``job⇥step⇥<timestamp> message``;
+    the BOM on the first line is stripped). Then, within any group carrying an
+    ``##[error]`` marker, isolate the error cluster — the marker (minus a small
+    leading context window) through the end of the group — into its own
+    ``error{n}`` chunk, leaving the preamble as a ``chunk{n}``. Groups with no
+    error stay a single ``chunk{n}``. This de-dilutes long runner logs so the
+    actual failure line surfaces, not just the run-status row (spec 0064).
     """
-    chunks: list[_LogChunk] = []
+    groups: list[tuple[str, str, list[tuple[int, str]]]] = []
     job = step = ""
-    buffer: list[str] = []
-    start = 0
-
-    def flush(end: int) -> None:
-        if buffer:
-            chunks.append(
-                _LogChunk(
-                    job=job,
-                    step=step,
-                    start_line=start,
-                    end_line=end,
-                    text="\n".join(buffer),
-                )
-            )
-            buffer.clear()
+    current: list[tuple[int, str]] = []
 
     for lineno, line in enumerate(raw.lstrip("﻿").splitlines(), start=1):
         parts = line.split("\t", 2)
         if len(parts) < 3:
-            # A continuation line with no job/step prefix: keep it in the chunk.
-            if buffer:
-                buffer.append(_clean_message(line))
+            # A continuation line with no job/step prefix: keep it in the group.
+            if current:
+                current.append((lineno, _clean_message(line)))
             continue
         line_job, line_step, rest = parts
         if (line_job, line_step) != (job, step):
-            flush(lineno - 1)
-            job, step, start = line_job, line_step, lineno
-        buffer.append(_clean_message(rest))
-    flush(lineno)
+            if current:
+                groups.append((job, step, current))
+            job, step, current = line_job, line_step, []
+        current.append((lineno, _clean_message(rest)))
+    if current:
+        groups.append((job, step, current))
+
+    chunks: list[_LogChunk] = []
+    chunk_n = error_n = 0
+    for g_job, g_step, lines in groups:
+        error_at = next(
+            (i for i, (_, msg) in enumerate(lines) if _GH_ERROR_MARKER in msg), None
+        )
+        if error_at is None:
+            chunk_n += 1
+            chunks.append(_make_chunk(g_job, g_step, f"chunk{chunk_n}", lines))
+            continue
+        split = max(0, error_at - _ERROR_CONTEXT_LINES)
+        preamble, failure = lines[:split], lines[split:]
+        if preamble:
+            chunk_n += 1
+            chunks.append(_make_chunk(g_job, g_step, f"chunk{chunk_n}", preamble))
+        error_n += 1
+        chunks.append(_make_chunk(g_job, g_step, f"error{error_n}", failure))
     return chunks
 
 
@@ -150,21 +193,19 @@ class GitHubActionsSource:
         records: list[EvidenceRecord] = []
         for path in sorted((self.data_dir / "logs").glob("*.failed.log")):
             run_id = path.name.split(".", 1)[0]
-            for index, chunk in enumerate(
-                parse_log_chunks(path.read_text("utf-8")), start=1
-            ):
+            for chunk in parse_log_chunks(path.read_text("utf-8")):
                 locator = Locator(
                     kind="log-span",
                     parts=(
                         ("lines", f"{chunk.start_line}-{chunk.end_line}"),
                         ("job", chunk.job),
                         ("step", chunk.step),
-                        ("chunk", str(index)),
+                        ("section", chunk.name),
                     ),
                 )
                 records.append(
                     EvidenceRecord(
-                        id=f"{run_id}.failed:chunk{index}",
+                        id=f"{run_id}.failed:{chunk.name}",
                         origin=Origin(
                             source=f"github_actions/logs/{path.name}",
                             locator=locator,
@@ -200,11 +241,9 @@ class GitHubActionsSource:
         edges: list[tuple[str, str, str]] = []
         for path in sorted((self.data_dir / "logs").glob("*.failed.log")):
             run_id = path.name.split(".", 1)[0]
-            for index, _chunk in enumerate(
-                parse_log_chunks(path.read_text("utf-8")), start=1
-            ):
+            for chunk in parse_log_chunks(path.read_text("utf-8")):
                 edges.append(
-                    (f"{run_id}.failed:chunk{index}", f"Run:{run_id}", "log_of")
+                    (f"{run_id}.failed:{chunk.name}", f"Run:{run_id}", "log_of")
                 )
         return edges
 
