@@ -20,9 +20,9 @@ from tessera.eval.registry import _devex_answer, github_actions_battery
 from tessera.platform.vectors import InMemoryVectorStore
 from tessera.semantic import SemanticIndex
 
-_PAGES_LOG = "27285174461.failed:chunk1"
+_PAGES_LOG = "27285174461.failed:error1"  # the isolated 404 cluster (spec 0064)
 _PAGES_RUN = "Run:27285174461"
-_RUFF_LOG = "27014662820.failed:chunk1"
+_RUFF_LOG = "27014662820.failed:error1"
 _SYNONYMY_QUESTION = "Is the published documentation site unreachable for visitors?"
 
 
@@ -98,14 +98,18 @@ def test_synonymy_case_misses_offline_and_closes_with_a_semantic_index() -> None
     offline = _devex_answer(case, graph, kb, None)
     assert not offline.is_grounded
 
-    # With a semantic index that groups the synonyms: the case closes by
-    # surfacing the failed Docs run (what SAP's model ranks top on the real run;
-    # the long error-log chunk dilutes lower — spec 0058's recorded finding).
+    # With a semantic index that groups the synonyms the case closes — and with
+    # finer chunking (spec 0064) it now surfaces the actual failure cluster, not
+    # just the run-status row: the isolated ``error1`` chunk carries the 404 /
+    # "Pages not enabled" lines themselves, so the answer states the real cause.
+    # This is spec 0058's long-document dilution, resolved.
     closed = _devex_answer(case, graph, kb, _stub_index())
     assert closed.is_grounded
     cited = {rec.id for claim in closed.claims for rec in claim.support}
-    assert _PAGES_RUN in cited
-    assert "Deploy to GitHub Pages" in closed.render()
+    assert _PAGES_LOG in cited  # the de-diluted 404 cluster, not just the run row
+    rendered = closed.render()
+    assert "HttpError: Not Found" in rendered
+    assert "Ensure GitHub Pages has been enabled" in rendered
 
 
 def test_semantic_retrieval_precision_no_cross_cause_conflation() -> None:
@@ -141,8 +145,8 @@ def test_rca_detects_real_cross_run_recurrence() -> None:
     # The recurrence cites BOTH Pages-deploy runs' logs, sharing the signature.
     assert "Creating Pages deployment failed" in claim.text
     cited = {rec.id for rec in claim.support}
-    assert "27285174461.failed:chunk1" in cited
-    assert "27284786811.failed:chunk1" in cited
+    assert "27285174461.failed:error1" in cited
+    assert "27284786811.failed:error1" in cited
 
 
 def test_passed_and_unknown_runs_refuse() -> None:

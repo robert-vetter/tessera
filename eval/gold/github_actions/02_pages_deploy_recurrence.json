@@ -5,8 +5,8 @@
   "kind": "answer",
   "expected_support": [
     "Run:27285174461",
-    "27285174461.failed:chunk1",
-    "27284786811.failed:chunk1"
+    "27285174461.failed:error1",
+    "27284786811.failed:error1"
   ],
   "expected_facts": [
     "HttpError: Not Found",
