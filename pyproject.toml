@@ -18,6 +18,13 @@ tessera-eval = "tessera.eval.cli:main"
 tessera-compose = "tessera.business.composition:main"
 tessera-devex = "tessera.devex.cli:main"
 
+[project.optional-dependencies]
+# SAP HANA Cloud driver — the only non-stdlib runtime dependency, and it is
+# OPT-IN: `uv sync --extra cloud`. Imported lazily by the HANA vector backend
+# (ADR 0015); the default clone-and-run graph never touches it (guarded by
+# tests/test_vectors.py::test_default_import_graph_has_no_hdbcli).
+cloud = ["hdbcli>=2.19"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -61,6 +68,12 @@ select = [
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+# The optional HANA driver ships no type stubs; it is imported lazily and only
+# under the 'cloud' extra (ADR 0015), so its absence must not fail the gate.
+module = ["hdbcli.*"]
+ignore_missing_imports = true
 
 # --- pytest -----------------------------------------------------------------
 [tool.pytest.ini_options]
