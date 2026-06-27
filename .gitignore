@@ -19,6 +19,8 @@ site/
 # Secrets / env
 .env
 .env.*
+# …but the committed, secret-free template is the one exception.
+!.env.example
 
 # Editor
 .idea/
