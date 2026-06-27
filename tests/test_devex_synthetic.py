@@ -83,5 +83,9 @@ def test_synthetic_verticals_floor_holds_and_coverage_loop_is_closed() -> None:
     business, devex = by_name["business"], by_name["devex"]
     assert business.faithfulness == 1.0 and business.synthetic_faithfulness == 1.0
     assert devex.faithfulness == 1.0 and devex.synthetic_faithfulness == 1.0
-    assert devex.coverage == 1.0  # was 11/12 — the alias closed the named miss
-    assert devex.quality == 1.0
+    # Milestone 7 added the checkout-svc ER recall miss (gold case 09): offline,
+    # difflib leaves checkout-svc unresolved, so the on-call is not surfaced — a
+    # faithful PARTIAL, so faithfulness stays 1.0 while coverage/quality read the
+    # recorded miss. Embeddings close it online (spec 0066); CI keeps the miss.
+    assert devex.coverage == 0.95  # 19/20 — the checkout-svc on-call is uncited
+    assert devex.quality == pytest.approx(8 / 9)  # gold case 09 misses offline
