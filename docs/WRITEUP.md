@@ -138,7 +138,9 @@ measured improvement at the cost of non-determinism and a cloud dependency.
 The refreshed trigger is precise: embeddings arrive when a **measured**
 coverage miss exists that *no declarable data could fix*. A deliberately
 retained specimen exists (`checkout-svc`, similarity 0.846, undeclared) so
-the boundary of the current mechanism stays visible and tested.
+the boundary of the current mechanism stays visible and tested. *(Milestone 6
+acted on this — the refreshed trigger fired on Milestone 5's error-class-synonymy
+specimen; see "Milestone 6: embeddings on SAP" below.)*
 
 ### Post-roadmap hardening: making the eval able to fail again
 
@@ -181,6 +183,44 @@ structural verifier passes (ADR 0005), an error-class synonymy no declared alias
 could bridge (ADR 0010), and the intent-verb router ceiling (ADR 0006). Each is
 a committed test; none is acted on, because crossing into an LLM or embedding
 dependency is a spend / clone-and-run decision held for the maintainer.
+
+### Milestone 6: embeddings on SAP — the first named miss closed by a method upgrade
+
+Milestone 5 deliberately *kept* its hardest specimen: the error-class synonymy in
+the real Pages-deploy log (`HttpError: Not Found` ≈ `status: 404` ≈ `Ensure
+GitHub Pages has been enabled`), a measured miss no declared catalog data could
+fix — the exact firing condition ADR 0010 had set for embeddings. Milestone 6
+acted on it, and did so **on real SAP infrastructure**.
+
+The build kept the trust line intact. Embeddings serve **retrieval only** — they
+change *which evidence is surfaced*, never *what is claimed or how a claim is
+verified*; a subprocess leak-guard pins that the faithfulness verifier imports no
+embedding module, so a 1.0 stays earned by structure, not a model. The seam is
+two backends behind one protocol (so the design is not cloud-locked): SAP
+Generative AI Hub embeddings stored in HANA's vector engine, and — after the
+GenAI Hub deployment proved hard to configure — **HANA Cloud's in-database
+`VECTOR_EMBEDDING`**, where one SAP service does embedding, storage, and KNN
+(ADR 0015 records the pivot). Offline and in CI, retrieval falls back to the
+deterministic lexical path, key-free.
+
+A new `github_actions` gold case asks, in pure out-of-log vocabulary, *"is the
+published documentation site unreachable for visitors?"* — sharing **zero
+tokens** with any record. Lexical BM25 returns nothing → a recorded miss (gold
+coverage **0.833**, quality 0.800). Then the live run: HANA Cloud in-database
+`VECTOR_EMBEDDING` (`SAP_NEB.20240715`, 768-dim) + `COSINE_SIMILARITY` closed it
+— coverage **1.000**, quality **1.000**, faithfulness 1.0 throughout. Both points
+are in `eval/history.jsonl`. This is the **inverse of Milestone 5**: a
+previously-recorded, named miss closed by a real method upgrade, measured on
+cloud infrastructure — *designed for SAP* became *ran on SAP*.
+
+Two honesties came with it. The recorded number is a **timestamped online
+measurement, not a CI-reproducible one** — the cloud model can change, so CI
+stays on lexical and `github_actions` gold still reads 0.833 there. And SAP's
+embedding shows **long-document dilution**: it bridges the concept (every
+`Docs`-failure record outranks the unrelated ruff failure), but the concise
+run-status *row* outranks the long, noisy error-*log* chunk, so the answer
+surfaces the failed run rather than the specific 404 line — recorded as a named
+limitation, not papered over by inflating the retrieval depth.
 
 ## The generality proof
 
@@ -262,6 +302,14 @@ Named with the same prominence as the results:
   demonstrably cross the 0.85 threshold (`tests/test_scale.py`) — the conservative
   threshold and disjointness tests bound it on the *current* corpora, and
   multi-field ER or embeddings (ADR 0004/0010) is the recorded remedy.
+- **Semantic retrieval ran on SAP, but is retrieval-only and cloud-measured.**
+  Milestone 6 closed the error-class-synonymy miss with HANA Cloud in-database
+  embeddings — but embeddings touch *retrieval*, not entity resolution and never
+  the faithfulness verifier; the recorded close is a **timestamped online
+  measurement** (CI stays on the lexical path, where `github_actions` gold reads
+  0.833); and long error-logs embed weakly versus concise records, so the answer
+  surfaced the failed *run*, not the 404 *line*. Finer log chunking and
+  embedding-assisted ER are the recorded next steps.
 - **The narration guard is conservative, not complete.** It catches
   fabricated quantities and identifiers, not every semantic drift — which is
   why narration is presentation below canonical claims, never evidence.
@@ -273,11 +321,12 @@ Named with the same prominence as the results:
 
 More real connectors (the first — GitHub Actions — now exists and proves the
 synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
-next) · embeddings + HANA vector under ADR 0010's refreshed trigger · multi-field
-ER · LLM-judged faithfulness alongside the deterministic floor · an agentic /
-MCP-exposed mode (grounded actions, not just answers — the 2026-shaped
-extension of the same trust substrate) · persistence, multi-tenancy,
-access governance.
+next) · embedding-assisted **entity resolution** and finer error-log chunking
+(Milestone 6 ran embeddings for *retrieval* on SAP HANA, ADR 0015; applying them
+to ER and de-diluting long logs are the next steps) · multi-field ER · LLM-judged
+faithfulness alongside the deterministic floor · an agentic / MCP-exposed mode
+(grounded actions, not just answers — the 2026-shaped extension of the same trust
+substrate) · persistence, multi-tenancy, access governance.
 
 ## What was learned
 

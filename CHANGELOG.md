@@ -13,6 +13,45 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-6] — 2026-06-27
+
+Act on ADR 0010: real semantic embeddings, **run on SAP HANA Cloud**, to close
+the error-class-synonymy miss Milestone 5 deliberately kept. Faithfulness gated
+at 1.0 throughout; CI stays offline, lexical, and key-free.
+
+### Added
+
+- **Embedding + vector seams (ADR 0015).** An `EmbeddingProvider` protocol + a
+  GenAI Hub adapter (stdlib HTTPS, contract-tested); a `VectorStore` protocol
+  with an in-memory backend and a HANA Cloud backend (`REAL_VECTOR` +
+  `COSINE_SIMILARITY`). `hdbcli` is an opt-in `cloud` extra, imported lazily — the
+  default clone-and-run stays pure-stdlib (guarded by a test).
+- **HANA-native embeddings.** `HanaSemanticIndex` embeds in-SQL via
+  `VECTOR_EMBEDDING` (vectors never enter Python); the GenAI Hub → HANA pivot is
+  recorded as an ADR 0015 addendum.
+- **Semantic retrieval with lexical fallback.** A `SemanticRetriever` protocol;
+  retrieval is semantic when configured, else exactly ADR 0003 lexical. A
+  subprocess **leak-guard** pins that the faithfulness verifier imports no
+  embedding module — a 1.0 stays earned by structure, not a model.
+- **The synonymy gold case + the recorded close.** A `github_actions` gold case
+  lexical cannot bridge (offline gold coverage 0.833) that HANA embeddings close
+  online (coverage/quality 1.000) — both points in `eval/history.jsonl`. The
+  first named miss closed by a method upgrade, measured on cloud infrastructure.
+- **Deployment runbook + `.env.example`** for the HANA-native path (the NLP
+  feature, a least-privilege app user, a smoke test, the one-shot record).
+
+### Fixed
+
+- HANA existence-check casing (HANA upper-cases unquoted identifiers) so the
+  vector table is not re-`CREATE`d on every run.
+
+### Notes
+
+- The online embedding number is a **timestamped measurement, not
+  CI-reproducible** — CI stays on the lexical path. SAP's embedding shows
+  long-document dilution (the answer surfaces the failed run, not the diluted 404
+  log line) — recorded as a named limitation.
+
 ## [milestone-5] — 2026-06-16
 
 Post-roadmap hardening: make the eval able to fail again. Every roadmap number
