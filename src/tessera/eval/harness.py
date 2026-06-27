@@ -21,11 +21,15 @@ import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tessera.eval.battery import Battery, GoldCase
 from tessera.eval.metrics import is_supported
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import KnowledgeBase
+
+if TYPE_CHECKING:
+    from tessera.semantic import SemanticRetriever
 
 __all__ = ["BatteryResult", "EvalReport", "GoldCase", "load_gold_set", "run_eval"]
 
@@ -125,6 +129,7 @@ def _score(
     graph: KnowledgeGraph,
     kb: KnowledgeBase,
     nodes: dict[str, Node],
+    index: SemanticRetriever | None = None,
 ) -> tuple[float, float, float]:
     """Faithfulness, coverage, quality over a case list (shared semantics)."""
     total_claims = supported_claims = 0
@@ -132,7 +137,7 @@ def _score(
     correct = 0
 
     for case in cases:
-        answer = battery.answer(case, graph, kb)
+        answer = battery.answer(case, graph, kb, index)
 
         if case.kind == "refuse":
             if not answer.is_grounded:
@@ -171,10 +176,19 @@ def _run_battery(battery: Battery) -> BatteryResult:
     kb = battery.build_kb()
     nodes: dict[str, Node] = {node.id: node for node in graph.nodes}
 
-    faithfulness, coverage, quality = _score(cases, battery, graph, kb, nodes)
+    # Semantic retrieval is opt-in per battery and configured per environment:
+    # built once here (None in the default offline/CI mode → lexical fallback),
+    # then shared across this battery's gold and synthetic scoring (ADR 0015).
+    index: SemanticRetriever | None = None
+    if battery.uses_semantic:
+        from tessera.semantic import build_semantic_index
+
+        index = build_semantic_index(kb.records)
+
+    faithfulness, coverage, quality = _score(cases, battery, graph, kb, nodes, index)
     synthetic = battery.synthetic(graph, kb)
     syn_faithfulness, syn_coverage, syn_quality = _score(
-        synthetic, battery, graph, kb, nodes
+        synthetic, battery, graph, kb, nodes, index
     )
 
     return BatteryResult(
