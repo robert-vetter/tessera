@@ -211,6 +211,21 @@ wheels = [
 ]
 
 [[package]]
+name = "hdbcli"
+version = "2.29.23"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/02/2f274dd086b015efd766d52da98d13a9e12c8a86d13123e48a68eae5612a/hdbcli-2.29.23-cp310-abi3-macosx_13_0_arm64.whl", hash = "sha256:ad83b110c6e6ca5de87bdd7390e168e852c57712e66c85f6b96f3f2eb35f1e16", size = 5219881, upload-time = "2026-06-16T14:39:03.083Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/b7/f424df623c02cff066a650db6af78f76f981c73ee9c7f8510917990d91e1/hdbcli-2.29.23-cp310-abi3-macosx_13_0_x86_64.whl", hash = "sha256:be0d2810a387999463a21a4a7b681342a2162e6dc9f9e9d9fa42cf6b888d4946", size = 5708699, upload-time = "2026-06-16T14:39:05.217Z" },
+    { url = "https://files.pythonhosted.org/packages/61/18/b1717b086bc223c1b079d73270d6e499bc4bd56d2684206336942ecdb08e/hdbcli-2.29.23-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:0a03c320ad915d50e892b9885e3ffbe20f35862e53b34b7fb481ef01aa008e60", size = 5511023, upload-time = "2026-06-16T14:39:06.96Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/76/6f55cb8fdc424de75628ebe3ee2cad71ac65a6648a275a11c9ec1ca0a096/hdbcli-2.29.23-cp310-abi3-manylinux2014_ppc64le.whl", hash = "sha256:16357c0110e7625cb80aeec558ff9e1b30837d0a35b8c8e21f6f2d3fea10cb89", size = 6096903, upload-time = "2026-06-16T14:39:08.808Z" },
+    { url = "https://files.pythonhosted.org/packages/31/d1/b88dfbcde56398b0edcab0c1e0039801d998a2823827180c583453bcac54/hdbcli-2.29.23-cp310-abi3-manylinux2014_x86_64.whl", hash = "sha256:d34962d35a0811ca24a7c02d92af3981b3503a80626c4423a497cd00d615b68f", size = 5845528, upload-time = "2026-06-16T14:39:10.847Z" },
+    { url = "https://files.pythonhosted.org/packages/13/26/50972918d1918aa1cba9a3b187d812fb10ae795003f676201644e38c4d99/hdbcli-2.29.23-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:d8c30b1d6cc53cfe6f05fffa49c9e5dda3c0eee829d13632f67a80181f9dcd1c", size = 5936878, upload-time = "2026-06-16T14:39:12.592Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/27/4538b545723df7bf1baee1833c37a057a12db5db55fc1fca27a78f1d5fb9/hdbcli-2.29.23-cp310-abi3-win32.whl", hash = "sha256:850bab92deeac7575f5bdf5d23bf1169e8c4ce40e9db805e6015b929c6f5dc8d", size = 3427658, upload-time = "2026-06-16T14:39:14.251Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/8a/f6c5fec1e671004f85e742cfd3b878d1b27ccaef30cf5291a433a1d929c5/hdbcli-2.29.23-cp310-abi3-win_amd64.whl", hash = "sha256:0381c40ffdf026faff5f67901c400382a0890feebfccf40819fdaaa62f5ae872", size = 3743787, upload-time = "2026-06-16T14:39:16.024Z" },
+]
+
+[[package]]
 name = "identify"
 version = "2.6.19"
 source = { registry = "https://pypi.org/simple" }
@@ -757,6 +772,11 @@ name = "tessera"
 version = "0.0.0"
 source = { editable = "." }
 
+[package.optional-dependencies]
+cloud = [
+    { name = "hdbcli" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
@@ -769,6 +789,8 @@ docs = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "hdbcli", marker = "extra == 'cloud'", specifier = ">=2.19" }]
+provides-extras = ["cloud"]
 
 [package.metadata.requires-dev]
 dev = [
