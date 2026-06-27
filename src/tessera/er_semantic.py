@@ -46,12 +46,27 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Protocol
 
 from tessera.graph import Resolution
+from tessera.grounding import EvidenceRecord, Locator, Origin
 from tessera.platform.providers import EmbeddingProvider
 from tessera.platform.vectors import InMemoryVectorStore, VectorStore
 from tessera.resolution import LEGAL_SUFFIXES, normalize
+
+
+class _IndexableRetriever(Protocol):
+    """A record-shaped semantic index that can be filled and queried — the half
+    of the backends (``HanaSemanticIndex`` / ``SemanticIndex``) the via-index
+    proposer needs. (``SemanticRetriever`` itself only exposes ``retrieve``.)"""
+
+    def index(self, records: tuple[EvidenceRecord, ...]) -> None: ...
+
+    def retrieve(
+        self, question: str, k: int = ...
+    ) -> list[tuple[EvidenceRecord, float]]: ...
+
 
 # The cosine at/above which two distinctive stems are asserted to co-refer. Named,
 # documented, and tunable on purpose (the analogue of
@@ -117,6 +132,62 @@ def distinctive_stem(name: str, generic: frozenset[str]) -> str:
     return " ".join(tok for tok in tokenize(name) if tok not in generic)
 
 
+def _embeddable_stems(
+    named: Sequence[tuple[str, str]], min_df: int, descriptors: frozenset[str]
+) -> list[tuple[str, str]]:
+    """``(node_id, distinctive_stem)`` for the candidates that carry a stem.
+
+    Names whose every token is generic drop out — they have no identity signal
+    and are never embedded or proposed for a merge.
+    """
+    candidates = list(named)
+    generic = generic_tokens(
+        [name for _, name in candidates], min_df=min_df, descriptors=descriptors
+    )
+    return [
+        (node_id, stem)
+        for node_id, name in candidates
+        if (stem := distinctive_stem(name, generic))
+    ]
+
+
+def _proposals_from_pairs(
+    stems: dict[str, str],
+    pairs: Iterable[tuple[str, str, float]],
+    *,
+    threshold: float,
+    model_name: str,
+) -> list[Resolution]:
+    """Build deduplicated, sorted :class:`Resolution`\\s from ``(a, b, cosine)``
+    neighbour triples at/above ``threshold``. The two embedding backends differ
+    only in how they produce the triples; the assertion shape is shared here."""
+    seen: set[tuple[str, str]] = set()
+    proposals: list[Resolution] = []
+    for node_id, other_id, score in pairs:
+        if other_id == node_id or score < threshold:
+            continue
+        pair = (node_id, other_id) if node_id < other_id else (other_id, node_id)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        left, right = pair
+        cosine = float(score)
+        proposals.append(
+            Resolution(
+                node_a=left,
+                node_b=right,
+                score=cosine,
+                confidence=min(1.0, cosine),
+                reason=(
+                    f"embedding match: stem {stems[left]!r} ~ {stems[right]!r} "
+                    f"(cosine {cosine:.3f}, model {model_name})"
+                ),
+            )
+        )
+    proposals.sort(key=lambda resolution: (resolution.node_a, resolution.node_b))
+    return proposals
+
+
 def propose_semantic_resolutions(
     named: Sequence[tuple[str, str]],
     provider: EmbeddingProvider,
@@ -127,33 +198,25 @@ def propose_semantic_resolutions(
     descriptors: frozenset[str] = ORG_DESCRIPTORS,
     k: int = 10,
 ) -> list[Resolution]:
-    """Propose same-entity :class:`~tessera.graph.Resolution`\\s from stem cosine.
+    """Propose same-entity :class:`~tessera.graph.Resolution`\\s from stem cosine,
+    embedding via a Python-side ``provider`` into a ``VectorStore``.
 
     ``named`` is ``(node_id, name)`` for the resolution candidates (e.g.
     ``[(n.id, n.name) for n in graph.name_nodes()]``). Each name's *distinctive
-    stem* is embedded by ``provider`` and stored in ``store`` (an in-memory cosine
-    KNN by default; a HANA-backed store for the online path); pairs whose stem
-    cosine is ``>= threshold`` become additive proposals. The caller adds them to
-    the graph — this function mutates nothing.
+    stem* is embedded and stored (an in-memory cosine KNN by default; a HANA-backed
+    store for a GenAI-Hub online path); pairs whose stem cosine is ``>= threshold``
+    become additive proposals. The caller adds them to the graph — this function
+    mutates nothing. Use :func:`propose_semantic_resolutions_via_index` for the
+    HANA-native in-database path (where vectors never enter Python).
 
     Deterministic given a deterministic ``provider``: candidates are embedded in a
     fixed order, KNN ties break by id (the store's contract), and proposals are
     sorted by ``(node_a, node_b)``.
     """
-    candidates = list(named)
-    if len(candidates) < 2:
-        return []
-
-    generic = generic_tokens(
-        [name for _, name in candidates], min_df=min_df, descriptors=descriptors
-    )
-    stems = {node_id: distinctive_stem(name, generic) for node_id, name in candidates}
-    embeddable = [
-        (node_id, stems[node_id]) for node_id, _ in candidates if stems[node_id]
-    ]
+    embeddable = _embeddable_stems(named, min_df, descriptors)
     if len(embeddable) < 2:
         return []
-
+    stems = dict(embeddable)
     vectors = provider.embed([stem for _, stem in embeddable])
     backing = store if store is not None else InMemoryVectorStore()
     backing.upsert(
@@ -163,31 +226,63 @@ def propose_semantic_resolutions(
         ]
     )
 
-    seen: set[tuple[str, str]] = set()
-    proposals: list[Resolution] = []
-    for (node_id, _), vector in zip(embeddable, vectors, strict=True):
-        # k + 1 because the candidate's own vector is its nearest neighbour.
-        for match in backing.query(vector, k + 1):
-            if match.id == node_id or match.score < threshold:
-                continue
-            pair = (node_id, match.id) if node_id < match.id else (match.id, node_id)
-            if pair in seen:
-                continue
-            seen.add(pair)
-            left, right = pair
-            cosine = float(match.score)
-            proposals.append(
-                Resolution(
-                    node_a=left,
-                    node_b=right,
-                    score=cosine,
-                    confidence=min(1.0, cosine),
-                    reason=(
-                        f"embedding match: stem {stems[left]!r} ~ {stems[right]!r} "
-                        f"(cosine {cosine:.3f}, model {provider.name})"
-                    ),
-                )
-            )
+    def _pairs() -> Iterable[tuple[str, str, float]]:
+        for (node_id, _), vector in zip(embeddable, vectors, strict=True):
+            # k + 1 because the candidate's own vector is its nearest neighbour.
+            for match in backing.query(vector, k + 1):
+                yield (node_id, match.id, match.score)
 
-    proposals.sort(key=lambda resolution: (resolution.node_a, resolution.node_b))
-    return proposals
+    return _proposals_from_pairs(
+        stems, _pairs(), threshold=threshold, model_name=provider.name
+    )
+
+
+def _stem_record(node_id: str, stem: str) -> EvidenceRecord:
+    """A throwaway record carrying a stem as text, so a record-shaped semantic
+    index (e.g. :class:`~tessera.semantic.HanaSemanticIndex`) can embed it. These
+    never surface as evidence — they exist only to drive the in-database embed."""
+    return EvidenceRecord(
+        id=node_id,
+        origin=Origin(
+            source="er/stem", locator=Locator(kind="er-stem", parts=()), ingested_at=""
+        ),
+        text=stem,
+    )
+
+
+def propose_semantic_resolutions_via_index(
+    named: Sequence[tuple[str, str]],
+    index_builder: Callable[[], _IndexableRetriever],
+    *,
+    model_name: str,
+    threshold: float = DEFAULT_SEMANTIC_THRESHOLD,
+    min_df: int = DEFAULT_MIN_GENERIC_DF,
+    descriptors: frozenset[str] = ORG_DESCRIPTORS,
+    k: int = 10,
+) -> list[Resolution]:
+    """The HANA-native analogue: propose merges via a record-shaped
+    :class:`~tessera.semantic.SemanticRetriever` (the recorded in-database path,
+    where vectors never enter Python; ADR 0015).
+
+    Each distinctive stem is wrapped as a throwaway record, indexed by
+    ``index_builder()`` (e.g. a :class:`~tessera.semantic.HanaSemanticIndex`), and
+    each stem queries its nearest neighbours; pairs at/above ``threshold`` become
+    proposals. Same stem-gating, same assertion shape as the provider path —
+    only the embed/KNN backend differs. ``model_name`` labels the assertion reason.
+    """
+    embeddable = _embeddable_stems(named, min_df, descriptors)
+    if len(embeddable) < 2:
+        return []
+    stems = dict(embeddable)
+    records = tuple(_stem_record(node_id, stem) for node_id, stem in embeddable)
+    index = index_builder()
+    index.index(records)
+
+    def _pairs() -> Iterable[tuple[str, str, float]]:
+        for node_id, stem in embeddable:
+            for record, score in index.retrieve(stem, k + 1):
+                yield (node_id, record.id, score)
+
+    return _proposals_from_pairs(
+        stems, _pairs(), threshold=threshold, model_name=model_name
+    )

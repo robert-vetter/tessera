@@ -20,6 +20,8 @@ unresolved — aliases only fix what someone declares.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from tessera.graph import Edge, KnowledgeGraph, Node, Resolution
 from tessera.grounding import KnowledgeBase
 from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD, normalize
@@ -32,6 +34,16 @@ _CHUNK_LOCATOR_KINDS = frozenset({"log-span", "diff-hunk"})
 
 DEMO_QUESTION = "Why did run R-1042 fail?"
 
+# A resolver proposes additive same-entity Resolutions from the name-bearing
+# nodes; the embedding-assisted one (spec 0063 / ADR 0016) is built from the
+# TESSERA_EMBEDDINGS selector and is None in the default offline mode.
+SemanticResolver = Callable[[list[tuple[str, str]]], list[Resolution]]
+
+# The HANA table for ER stem vectors — deliberately separate from the
+# retrieval doc-vector table, so ER linking and document retrieval never share
+# a vector space.
+_ER_VECTOR_TABLE = "TESSERA_ER_VECTORS"
+
 
 def build_devex_kb() -> KnowledgeBase:
     """All DevEx records as one retrievable knowledge base."""
@@ -40,8 +52,21 @@ def build_devex_kb() -> KnowledgeBase:
 
 def build_devex_graph(
     threshold: float = DEFAULT_RESOLUTION_THRESHOLD,
+    *,
+    semantic_resolver: SemanticResolver | None = None,
 ) -> KnowledgeGraph:
-    """One graph over all eight DevEx source shapes, resolved and linked."""
+    """One graph over all eight DevEx source shapes, resolved and linked.
+
+    Three additive resolution regimes run in order, each leaving the nodes
+    untouched (ADR 0004/0010/0016): deterministic ``difflib`` similarity, then
+    declared catalog aliases, then — only when embeddings are configured — the
+    embedding-assisted regime (spec 0063), which bridges abbreviation/synonym
+    variants ``difflib`` misses (e.g. ``checkout-svc``). ``semantic_resolver`` is
+    injected for offline tests; otherwise it is built from the
+    ``TESSERA_EMBEDDINGS`` selector and is ``None`` in the default offline mode,
+    so the graph is byte-identical to before and ``checkout-svc`` stays a named
+    miss.
+    """
     source = DevExSource()
     org_names = source.org_names()
     node_attrs = source.node_attributes()
@@ -66,8 +91,82 @@ def build_devex_graph(
 
     graph.resolve_entities(threshold)
     _assert_declared_aliases(graph, source.declared_aliases())
+    _apply_embedding_resolution(graph, semantic_resolver)
     graph.link_document_mentions()
     return graph
+
+
+def _apply_embedding_resolution(
+    graph: KnowledgeGraph, semantic_resolver: SemanticResolver | None
+) -> None:
+    """Add the embedding-assisted regime's proposals, if one is configured.
+
+    Vertical-side by the ADR 0010 precedent (the engine stays embedding-free);
+    each proposal is an ordinary additive, reversible ``Resolution``.
+    """
+    resolver = (
+        semantic_resolver
+        if semantic_resolver is not None
+        else _devex_semantic_resolver_from_env()
+    )
+    if resolver is None:
+        return
+    named = [(node.id, node.name) for node in graph.name_nodes() if node.name]
+    for proposal in resolver(named):
+        graph.add_resolution(proposal)
+
+
+def _devex_semantic_resolver_from_env() -> SemanticResolver | None:
+    """Build the embedding-assisted resolver from ``TESSERA_EMBEDDINGS``.
+
+    ``none`` (the default) → ``None``: no embedding ER, the offline path is
+    untouched. ``hana`` → the HANA-native in-database path (the recorded online
+    path, spec 0066). ``genai-hub`` → a provider+store path. All embedding imports
+    are lazy, so the default clone-and-run import graph carries no cloud code.
+    """
+    from tessera.platform.config import EMBEDDINGS_HANA, EMBEDDINGS_NONE, load_config
+
+    cfg = load_config()
+    if cfg.embeddings == EMBEDDINGS_NONE:
+        return None
+
+    from tessera.er_semantic import (
+        propose_semantic_resolutions,
+        propose_semantic_resolutions_via_index,
+    )
+
+    if cfg.embeddings == EMBEDDINGS_HANA:
+        from tessera.semantic import HanaSemanticIndex
+
+        def resolve_hana(named: list[tuple[str, str]]) -> list[Resolution]:
+            return propose_semantic_resolutions_via_index(
+                named,
+                lambda: HanaSemanticIndex(config=cfg, table=_ER_VECTOR_TABLE),
+                model_name=cfg.hana_embedding_model,
+            )
+
+        return resolve_hana
+
+    from tessera.platform.providers import embedding_provider_from_env
+    from tessera.platform.vectors import (
+        HanaVectorStore,
+        InMemoryVectorStore,
+        VectorStore,
+    )
+
+    provider = embedding_provider_from_env(cfg)
+    if provider is None:
+        return None
+    store: VectorStore = (
+        HanaVectorStore(config=cfg, table=_ER_VECTOR_TABLE)
+        if cfg.hana_host
+        else InMemoryVectorStore()
+    )
+
+    def resolve_provider(named: list[tuple[str, str]]) -> list[Resolution]:
+        return propose_semantic_resolutions(named, provider, store)
+
+    return resolve_provider
 
 
 def build_github_actions_kb() -> KnowledgeBase:
