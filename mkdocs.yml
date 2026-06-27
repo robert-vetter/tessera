@@ -67,6 +67,7 @@ nav:
       - 0013 The narration boundary: adr/0013-narration-boundary.md
       - 0014 Real connector snapshot boundary: adr/0014-real-connector-snapshot-boundary.md
       - 0015 Embeddings on SAP: adr/0015-embeddings-on-sap.md
+      - 0016 Embedding-assisted entity resolution: adr/0016-embedding-assisted-entity-resolution.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

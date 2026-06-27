@@ -30,3 +30,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0013](0013-narration-boundary.md) — The narration boundary: rephrase, never add
 - [0014](0014-real-connector-snapshot-boundary.md) — Real connector: fetch-to-snapshot, ingest raw (Milestone 5)
 - [0015](0015-embeddings-on-sap.md) — Embeddings on SAP: GenAI Hub + HANA vector, lexical fallback (Milestone 6)
+- [0016](0016-embedding-assisted-entity-resolution.md) — Embedding-assisted entity resolution: stem-gated, additive (Milestone 7)
