@@ -128,6 +128,38 @@ synonymy miss (`github_actions` gold coverage 0.833 → 1.000).
    The `github_actions` synonymy gold case closes; the point is appended to
    `eval/history.jsonl`. CI stays offline/lexical and key-free throughout.
 
+### Milestone 7: embeddings beyond retrieval (ER + de-diluted logs)
+
+Milestone 7 carries the same `TESSERA_EMBEDDINGS=hana` path into two more places,
+so **one** online run records **both** closes (ADR 0016 / ADR 0017):
+
+- **Embedding-assisted entity resolution.** `build_devex_graph` runs a third
+  additive resolution regime (stem-gated; `tessera/er_semantic.py`) that resolves
+  the undeclared `checkout-svc` ↔ `checkout-service` abbreviation `difflib`
+  missed — closing devex gold case 09 (the on-call lookup). ER stems are embedded
+  in a **separate** in-DB table, `TESSERA.TESSERA_ER_VECTORS`, auto-created on
+  first run (distinct from the retrieval `TESSERA_DOC_VECTORS`).
+- **De-diluted logs.** Finer chunking (ADR 0017) isolates the Pages-deploy
+  `##[error]` cluster into its own `error1` chunk, so the synonymy answer surfaces
+  the actual 404 line, not just the run-status row (gold-05 re-pointed).
+
+Both ride the same `VECTOR_EMBEDDING` NLP feature and least-privilege user as
+Milestone 6. The single one-shot:
+
+```bash
+set -a; source .env; set +a            # HANA_* from the gitignored .env
+uv sync --extra cloud                  # the optional hdbcli driver
+TESSERA_EMBEDDINGS=hana uv run tessera-eval --record \
+  --recorded 2026-06-27 \
+  --note "M7 online: embedding ER closes checkout-svc (devex gold 0.950->1.000) + de-diluted synonymy surfaces the 404 line (github_actions gold 0.833->1.000), on SAP HANA"
+```
+
+Expected: devex gold coverage 0.950 → 1.000 and quality 0.889 → 1.000;
+github_actions gold coverage 0.833 → 1.000 and quality 0.800 → 1.000; faithfulness
+1.0 on every battery. Both points are **timestamped online measurements**, not
+CI-reproducible — CI stays offline on the deterministic/lexical path, where the
+two misses honestly remain.
+
 ## What is verified, and what is not — honestly
 
 - **Verified in CI, key-free:** the full engine, both verticals, the eval
