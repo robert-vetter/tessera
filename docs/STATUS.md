@@ -844,3 +844,96 @@ HANA graph persistence; BTP serving (container → AI Core/Kyma).
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #61–#68 merged. Tagged
   `milestone-6`.
+
+---
+
+## 2026-06-27 — Milestone 7 COMPLETE (embeddings beyond retrieval: ER + de-diluted logs, ran on SAP)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-27): act on both M6-named
+limitations — embedding-assisted ER + finer log chunking; ER scope = close
+checkout-svc recall **and** attempt the generic-suffix over-merge, recording the
+residual honestly; online HANA re-measurement **yes**. Eight units, each spec →
+branch → implement → gate → PR → CI-green → squash-merge.
+
+**The problem this milestone answers.** Milestone 6 confined embeddings to
+retrieval and named two limitations: ER had never seen an embedding (the
+undeclared `checkout-svc` 0.846 recall miss; the generic-suffix over-merge), and
+long error-logs diluted (the 404 line buried under provisioning boilerplate, so
+the synonymy answer surfaced the run, not the line). M7 acts on both — and runs it
+on SAP.
+
+**Done this session (8 units, PRs #70–#77)**
+- **Phase plan** (spec 0060, #70) + the three recorded scope decisions.
+- **ER embedding seam** (spec 0061, ADR 0016, #71): `tessera/er_semantic.py` —
+  a second additive regime that proposes merges from the cosine of the two names'
+  **distinctive stems** (name minus generic tokens). One stem-gated rule resolves
+  the opposite-direction tension; retrieval/link-only, leak-guard extended. Stub
+  mechanism proof.
+- **ER precision/recall, measured** (spec 0062, #72): a labeled pair-set —
+  `difflib` 0.50/0.50 vs stem-embedding 1.00/1.00; reported, not gated. The honest
+  residual asserted: the union's precision gap is *entirely* `difflib`'s existing
+  over-merge (additive can't remove it).
+- **Applied to the devex graph** (spec 0063, #73): vertical-side, behind
+  `TESSERA_EMBEDDINGS`; none-path byte-identical; stub-proven close (checkout-svc
+  resolves; precision held; reversible; faithful). HANA-native `via_index`
+  proposer for the online path.
+- **Finer log chunking** (spec 0064, ADR 0017, #74): `parse_log_chunks` isolates
+  the `##[error]` cluster (3-line context window keeps ruff's "Would reformat"
+  attached); stable role-tagged ids (`chunk{n}`/`error{n}`); gold-01/02 re-pointed;
+  RCA unchanged; offline numbers byte-identical.
+- **Eval cloud-mode** (spec 0065, #75): the devex on-call gold case 09 (offline
+  miss → devex gold 0.950/0.889) + de-diluted gold-05 re-point; offline-miss
+  recorded.
+- **The online measurement — RAN ON SAP** (spec 0066, #76 prep + #77 record): the
+  HANA smoke test surfaced that HANA embeddings are **asymmetric** (`QUERY`/
+  `DOCUMENT`, identical text ≈ 0.889); one `TESSERA_EMBEDDINGS=hana` one-shot
+  closed **both** misses online — devex gold 0.950→1.000, github_actions gold
+  0.833→1.000, faithfulness 1.0 — recorded in `eval/history.jsonl`. Earned, not a
+  re-saturation: distinct services did **not** over-merge online (cross-service
+  stem cosines 0.49–0.58 < 0.85; only the four catalog↔on-call matches fired).
+- **Close** (spec 0067, this entry): WRITEUP M7 section + updated limitations/
+  future-work; README numbers (devex 0.950, github_actions 0.833, both closes
+  explained); CHANGELOG `[milestone-7]`; empty-diff core check (clean); verified
+  under `PYTHONHASHSEED` 0/1/2026; tag `milestone-7`; memory.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **business — gold 9: 1.000 / 1.000 / 1.000; synthetic 52: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online
+  HANA), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 (offline) / 1.000
+  (online HANA), quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- Two trust-loop pairs recorded: devex checkout-svc **0.950 → 1.000** (embedding
+  ER) and github_actions synonymy **0.833 → 1.000** (de-diluted log + embeddings),
+  both online points timestamped, both offline misses kept in CI. Engine core
+  unchanged (empty-diff over the ADR 0008 frozen list, milestone-6..HEAD).
+
+**Milestone check:** both M6-named limitations closed by a method upgrade,
+**measured on SAP HANA**; faithfulness gated 1.0 throughout; embeddings stayed
+link-only and the verifier embedding-free (leak-guard incl. the ER module); the
+close is earned (no online over-merge) and the unfixable residual (the additive
+regime can't cure `difflib`'s over-merge) is recorded with its next lever
+(stem-gate the `difflib` pass / multi-field ER). **Met.** Tagged `milestone-7`.
+
+**Open questions / risks**
+- The online numbers are **timestamped, not CI-reproducible** (the cloud model can
+  change; HANA embeddings are asymmetric). CI's public numbers stay the offline
+  misses (devex 0.950, github_actions 0.833).
+- **The generic-suffix over-merge residual** stands: an additive embedding regime
+  can't remove a `difflib` false positive. Stem-gating the `difflib` pass (a
+  deterministic change altering `resolve_entities`/`test_scale`) or multi-field ER
+  is the named, measured next lever.
+- ADR 0005 (LLM-judge) and ADR 0006 (semantic routing) triggers remain live and
+  unacted; no measured case forces either.
+- A `TESSERA.TESSERA_ER_VECTORS` table now exists on the HANA instance alongside
+  `TESSERA_DOC_VECTORS`; the eval re-upserts idempotently. The run used the `.env`
+  credentials present from M6.
+
+**Next milestone — to be defined with the maintainer.** Candidates: cure the
+generic-suffix over-merge (stem-gate the `difflib` pass, or multi-field ER — the
+recorded next lever); a second real connector (Jira / PR-and-issue export);
+agentic / MCP-exposed grounded mode; full HANA graph persistence; BTP serving.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #70–#77 merged. Tagged
+  `milestone-7`.

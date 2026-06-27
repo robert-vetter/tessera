@@ -13,6 +13,51 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-7] — 2026-06-27
+
+Carry the working SAP HANA embeddings **beyond retrieval** — into entity
+resolution and log-chunk granularity, the two limitations Milestone 6 named.
+Faithfulness gated at 1.0 throughout; embeddings stay link-only and the verifier
+stays embedding-free (leak-guard extended); CI stays offline, lexical, key-free.
+
+### Added
+
+- **Embedding-assisted entity resolution (ADR 0016).** A second, additive
+  resolution regime (`tessera/er_semantic.py`) that proposes same-entity
+  `Resolution`s from the cosine of two names' **distinctive stems** (the name
+  minus its generic tokens). One stem-gated rule resolves the opposite-direction
+  ER tension: it bridges the undeclared `checkout-svc` abbreviation (recall) while
+  distinct generic-suffix firms reduce to distinct stems (precision). Additive and
+  reversible; applied vertical-side; the engine `resolve_entities` stays
+  embedding-free.
+- **A HANA-native ER path.** `propose_semantic_resolutions_via_index` embeds the
+  stems in-database (vectors never enter Python), sharing the stem-gating core
+  with the provider path.
+- **ER precision/recall, measured (`tests/test_er_metrics.py`).** A labeled
+  pair-set scores `difflib` (0.50 / 0.50) vs the stem-embedding regime
+  (1.00 / 1.00) — a reported measurement, not a new gated floor.
+- **Finer log chunking with stable chunk ids (ADR 0017).** `parse_log_chunks`
+  isolates a runner log's `##[error]` cluster into its own short chunk, so the
+  Pages-deploy 404 surfaces instead of diluting under ~49 lines of provisioning.
+  Chunk ids became role-tagged (`chunk{n}`/`error{n}`), stable across re-chunking.
+- **Two recorded eval cases + their online closes.** A devex on-call lookup
+  (offline gold coverage 0.950 — `checkout-svc` unresolved) and the de-diluted
+  synonymy case (offline 0.833); one SAP HANA one-shot closed **both** to
+  1.000 / 1.000, faithfulness 1.0, recorded in `eval/history.jsonl`. Earned, not a
+  re-saturation: distinct services did not over-merge online.
+- **`tessera-eval --recorded YYYY-MM-DD`** to stamp a one-shot online point; the
+  DEPLOYMENT runbook gained the Milestone-7 one-shot.
+
+### Notes
+
+- The embedding regime is *additive*, so it cannot remove `difflib`'s existing
+  generic-suffix over-merge; stem-gating the `difflib` pass or multi-field ER is
+  the recorded next lever (WRITEUP limitations).
+- A real-model finding: HANA embeddings are asymmetric (`QUERY`/`DOCUMENT`), so
+  identical text scores ~0.889 — above threshold, the close holds with margin.
+- Engine core unchanged: `git diff milestone-6..milestone-7` over the ADR 0008
+  frozen list is empty.
+
 ## [milestone-6] — 2026-06-27
 
 Act on ADR 0010: real semantic embeddings, **run on SAP HANA Cloud**, to close
