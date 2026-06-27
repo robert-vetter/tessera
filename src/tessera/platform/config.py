@@ -54,6 +54,12 @@ class PlatformConfig:
     # ``embeddings`` vs OpenAI-style ``v1/embeddings``); overridable so the
     # one-shot online run is never blocked by a URL suffix (spec 0052).
     genai_embedding_path: str = "embeddings"
+    # --- SAP HANA Cloud vector store (ADR 0015) ----------------------------
+    hana_host: str = ""
+    hana_port: str = "443"
+    hana_user: str = ""
+    hana_password: str = ""
+    hana_database: str = ""  # used as the schema that qualifies the vector table
 
 
 def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
@@ -94,4 +100,9 @@ def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
         genai_embedding_path=variables.get(
             "TESSERA_GENAI_EMBEDDING_PATH", "embeddings"
         ),
+        hana_host=variables.get("HANA_HOST", ""),
+        hana_port=variables.get("HANA_PORT", "443"),
+        hana_user=variables.get("HANA_USER", ""),
+        hana_password=variables.get("HANA_PASSWORD", ""),
+        hana_database=variables.get("HANA_DATABASE", ""),
     )
