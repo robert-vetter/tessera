@@ -85,6 +85,49 @@ afternoon, not a research project:
 7. **Serving (optional)**: build the repository's Docker image and deploy it
    to the chosen BTP runtime; the container needs only the variables above.
 
+## Semantic retrieval on HANA Cloud — the recorded path (ADR 0015)
+
+This is the path actually run and recorded for Milestone 6: HANA Cloud generates
+the embeddings *in-database* (`VECTOR_EMBEDDING`) and stores/searches them with
+its vector engine — one SAP service, no GenAI Hub. It closes the error-class
+synonymy miss (`github_actions` gold coverage 0.833 → 1.000).
+
+1. **HANA Cloud instance**: provision in the subaccount. The vector engine
+   (`REAL_VECTOR`, `COSINE_SIMILARITY`) is **core** — no NLP/PAL/data-lake needed
+   for storage. The SQL endpoint is host `:443`.
+2. **Enable the NLP feature**: edit the instance → *Additional Features* →
+   **Natural Language Processing** → save (it restarts). This turns on the
+   in-database `VECTOR_EMBEDDING()` function. (It adds memory/licensing cost; it
+   is a reversible toggle.)
+3. **Dedicated least-privilege app user** (do not connect as `DBADMIN`):
+   ```sql
+   CREATE USER TESSERA_APP PASSWORD "<strong-password>" NO FORCE_FIRST_PASSWORD_CHANGE;
+   CREATE SCHEMA TESSERA OWNED BY TESSERA_APP;
+   -- The owner can DDL/DML in its own schema; VECTOR_EMBEDDING and
+   -- COSINE_SIMILARITY are built-ins needing no extra grant. If a call returns
+   -- an insufficient-privilege error, grant the instance's documented
+   -- NLP/embedding usage privilege to TESSERA_APP and retry.
+   ```
+   Then set `HANA_USER=TESSERA_APP`, `HANA_PASSWORD=…`, `HANA_DATABASE=TESSERA`.
+4. **Install the optional driver**: `uv sync --extra cloud` (pulls `hdbcli`; the
+   default install stays pure-stdlib).
+5. **Smoke test** (confirm the feature + the model version before spending a
+   real run):
+   ```sql
+   SELECT VECTOR_EMBEDDING('hello world', 'QUERY', 'SAP_NEB.20240715') FROM DUMMY;
+   ```
+   If the instance reports an unknown model, set `HANA_EMBEDDING_MODEL` to the
+   version it offers.
+6. **Record the close** (one shot, online):
+   ```bash
+   cp .env.example .env   # then fill in the HANA_* values
+   set -a; source .env; set +a
+   TESSERA_EMBEDDINGS=hana uv run tessera-eval --record \
+     --note "M6 synonymy: online HANA-embedding close"
+   ```
+   The `github_actions` synonymy gold case closes; the point is appended to
+   `eval/history.jsonl`. CI stays offline/lexical and key-free throughout.
+
 ## What is verified, and what is not — honestly
 
 - **Verified in CI, key-free:** the full engine, both verticals, the eval
@@ -97,6 +140,13 @@ afternoon, not a research project:
   `/v2/inference/deployments/{id}/chat/completions` shape and Anthropic's
   Messages API (`2023-06-01`); if either drifts, the adapter is one small,
   visible module per provider.
+- **HANA-native semantic retrieval (ADR 0015):** the SQL contract — table
+  creation, `VECTOR_EMBEDDING` upsert, `COSINE_SIMILARITY` KNN — is verified
+  offline against a fake connection (`tests/test_semantic.py`,
+  `tests/test_vectors.py`). The **live** `VECTOR_EMBEDDING` call and the
+  recorded online close of the synonymy miss are the one-shot run in step 6
+  above (spec 0058); until that point appears in `eval/history.jsonl`, treat the
+  HANA embedding path as *designed + contract-tested*, not *ran on*.
 
 This split is the point: everything trust-bearing is reproducible by anyone;
 everything cloud-bearing is documented, isolated, and optional.
