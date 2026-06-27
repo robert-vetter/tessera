@@ -21,6 +21,13 @@ PROVIDER_ANTHROPIC = "anthropic"
 
 _VALID_PROVIDERS = frozenset({PROVIDER_NONE, PROVIDER_GENAI_HUB, PROVIDER_ANTHROPIC})
 
+# Embedding selector values for TESSERA_EMBEDDINGS (ADR 0015). Independent of
+# the narrator: a deployment may use semantic retrieval without narration.
+EMBEDDINGS_NONE = "none"
+EMBEDDINGS_GENAI_HUB = "genai-hub"
+
+_VALID_EMBEDDINGS = frozenset({EMBEDDINGS_NONE, EMBEDDINGS_GENAI_HUB})
+
 # A deliberately small, cost-conscious default for narration; overridable.
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 
@@ -40,6 +47,13 @@ class PlatformConfig:
     # --- Anthropic API (the locally demoable fallback) ---------------------
     anthropic_api_key: str = ""
     anthropic_model: str = DEFAULT_ANTHROPIC_MODEL
+    # --- Embeddings: GenAI Hub for semantic retrieval (ADR 0015) -----------
+    embeddings: str = EMBEDDINGS_NONE
+    genai_embedding_deployment_id: str = ""
+    # The inference suffix differs by deployed model type (Azure-style
+    # ``embeddings`` vs OpenAI-style ``v1/embeddings``); overridable so the
+    # one-shot online run is never blocked by a URL suffix (spec 0052).
+    genai_embedding_path: str = "embeddings"
 
 
 def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
@@ -55,6 +69,12 @@ def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
             f"TESSERA_NARRATOR must be one of {sorted(_VALID_PROVIDERS)}, "
             f"got {provider!r}"
         )
+    embeddings = variables.get("TESSERA_EMBEDDINGS", EMBEDDINGS_NONE).strip().lower()
+    if embeddings not in _VALID_EMBEDDINGS:
+        raise ValueError(
+            f"TESSERA_EMBEDDINGS must be one of {sorted(_VALID_EMBEDDINGS)}, "
+            f"got {embeddings!r}"
+        )
     return PlatformConfig(
         provider=provider,
         aicore_auth_url=variables.get("AICORE_AUTH_URL", ""),
@@ -66,5 +86,12 @@ def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
         anthropic_api_key=variables.get("ANTHROPIC_API_KEY", ""),
         anthropic_model=variables.get(
             "TESSERA_ANTHROPIC_MODEL", DEFAULT_ANTHROPIC_MODEL
+        ),
+        embeddings=embeddings,
+        genai_embedding_deployment_id=variables.get(
+            "TESSERA_GENAI_EMBEDDING_DEPLOYMENT", ""
+        ),
+        genai_embedding_path=variables.get(
+            "TESSERA_GENAI_EMBEDDING_PATH", "embeddings"
         ),
     )

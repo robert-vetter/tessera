@@ -44,6 +44,9 @@ All platform behaviour is controlled by environment variables, read once by
 | `TESSERA_GENAI_DEPLOYMENT` | GenAI Hub deployment id to call | — |
 | `ANTHROPIC_API_KEY` | Anthropic key (the locally demoable fallback) | — |
 | `TESSERA_ANTHROPIC_MODEL` | Anthropic model for narration | `claude-haiku-4-5-20251001` |
+| `TESSERA_EMBEDDINGS` | `none` or `genai-hub` — semantic retrieval (ADR 0015) | `none` (lexical) |
+| `TESSERA_GENAI_EMBEDDING_DEPLOYMENT` | GenAI Hub **embedding** deployment id | — |
+| `TESSERA_GENAI_EMBEDDING_PATH` | inference suffix (`embeddings` or `v1/embeddings`, by model type) | `embeddings` |
 
 A misspelled `TESSERA_NARRATOR` fails loudly at startup; a half-configured
 provider fails at construction with the missing variable names — never
