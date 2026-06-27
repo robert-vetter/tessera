@@ -111,3 +111,24 @@ not a silently-tuned number.
 - **Persisting the whole knowledge graph in HANA now.** Out of scope: only the
   vector store lands. The graph rebuilds deterministically from data each run
   (ADR 0004), so persistence is an optimization, not a need, at this scale.
+
+## Addendum (2026-06-27) — GenAI Hub → HANA-native embeddings
+
+The GenAI Hub embedding deployment proved hard to configure and did not work for
+the maintainer; a second auth flow + service key was disproportionate to an easy
+semantic task. **Maintainer decision (asked): generate embeddings *in-database*
+with HANA's `VECTOR_EMBEDDING()`** — the in-DB alternative *rejected* above. The
+reason it lost (a second SAP service, GenAI Hub orchestration) is outweighed in
+practice by working on **one** service with credentials already in hand. This is
+still "ran on SAP" — arguably more so: a single SAP service does embedding +
+storage + KNN.
+
+- **Changes:** the recorded run (spec 0055/0057/0058) uses `HanaSemanticIndex`
+  (`VECTOR_EMBEDDING` in SQL), which requires the HANA **NLP feature** enabled.
+- **Holds:** embeddings stay retrieval-only and faithfulness stays structural and
+  embedding-free (the leak-guard is unchanged); lexical remains the offline/CI
+  fallback.
+- **Kept, not removed:** the GenAI Hub `EmbeddingProvider` + the external-vector
+  `HanaVectorStore` remain the documented, contract-tested **alternative** — the
+  seam is not HANA-locked, and the path works if a GenAI-Hub deployment is ever
+  wanted.

@@ -15,11 +15,14 @@ import subprocess
 import sys
 from collections.abc import Sequence
 
+import pytest
+
 from tessera.grounding import EvidenceRecord, KnowledgeBase, Locator, Origin
 from tessera.platform.config import load_config
 from tessera.platform.vectors import InMemoryVectorStore
 from tessera.retrieval import retrieve
 from tessera.semantic import (
+    HanaSemanticIndex,
     build_semantic_index,
     semantic_or_lexical,
 )
@@ -143,3 +146,108 @@ def test_metrics_verifier_imports_no_embedding_module() -> None:
         [sys.executable, "-c", code], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
+
+
+# --- HANA-native retriever (spec 0055): SQL contract against a fake -----------
+
+
+class _FakeHanaCursor:
+    def __init__(self, query_rows: list[tuple[object, ...]]) -> None:
+        self.calls: list[tuple[str, list[object]]] = []
+        self._query_rows = query_rows
+        self._fetch: list[tuple[object, ...]] = []
+
+    def execute(self, operation: str, parameters: Sequence[object]) -> object:
+        self.calls.append((operation, list(parameters)))
+        if "SYS.TABLES" in operation:
+            self._fetch = [(0,)]  # table missing → force CREATE
+        elif "COSINE_SIMILARITY" in operation:
+            self._fetch = list(self._query_rows)
+        else:
+            self._fetch = []
+        return None
+
+    def fetchall(self) -> list[tuple[object, ...]]:
+        return self._fetch
+
+    def close(self) -> None:
+        return None
+
+
+class _FakeHanaConnection:
+    def __init__(self, cursor: _FakeHanaCursor) -> None:
+        self._cursor = cursor
+        self.committed = False
+        self.closed = False
+
+    def cursor(self) -> _FakeHanaCursor:
+        return self._cursor
+
+    def commit(self) -> None:
+        self.committed = True
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_hana_semantic_index_embeds_documents_in_sql() -> None:
+    records = _synonymy_records()
+    cursor = _FakeHanaCursor(query_rows=[])
+    connection = _FakeHanaConnection(cursor)
+    config = load_config(
+        env={"TESSERA_EMBEDDINGS": "hana", "HANA_HOST": "h", "HANA_DATABASE": "TESSERA"}
+    )
+    index = HanaSemanticIndex(config=config, connect=lambda _c: connection)
+    index.index(records)
+
+    sqls = [sql for sql, _ in cursor.calls]
+    assert any("SYS.TABLES" in s for s in sqls)
+    assert any(
+        "CREATE TABLE TESSERA.TESSERA_DOC_VECTORS" in s and "REAL_VECTOR" in s
+        for s in sqls
+    )
+    upserts = [(s, p) for s, p in cursor.calls if s.startswith("UPSERT")]
+    assert len(upserts) == len(records)
+    assert "VECTOR_EMBEDDING(?, 'DOCUMENT', 'SAP_NEB.20240715')" in upserts[0][0]
+    assert upserts[0][1] == ["a", "HttpError: Not Found"]  # text bound, never in SQL
+    assert connection.committed
+
+
+def test_hana_semantic_index_query_ranks_by_cosine_similarity() -> None:
+    records = _synonymy_records()
+    cursor = _FakeHanaCursor(query_rows=[("a", 0.93), ("b", 0.88)])
+    connection = _FakeHanaConnection(cursor)
+    config = load_config(env={"TESSERA_EMBEDDINGS": "hana", "HANA_HOST": "h"})
+    index = HanaSemanticIndex(config=config, connect=lambda _c: connection)
+    index.index(records)
+
+    hits = index.retrieve("why did the deploy return 404", k=2)
+    query_sql = cursor.calls[-1][0]
+    assert "SELECT TOP 2 ID" in query_sql
+    assert (
+        "COSINE_SIMILARITY(VEC, VECTOR_EMBEDDING(?, 'QUERY', 'SAP_NEB.20240715'))"
+        in query_sql
+    )
+    assert "ORDER BY SCORE DESC" in query_sql
+    assert [r.id for r, _ in hits] == ["a", "b"]
+    assert hits[0][1] == 0.93
+
+
+def test_hana_semantic_index_rejects_unsafe_model_name() -> None:
+    config = load_config(
+        env={"HANA_HOST": "h", "HANA_EMBEDDING_MODEL": "evil'; DROP TABLE x;--"}
+    )
+    index = HanaSemanticIndex(
+        config=config,
+        connect=lambda _c: _FakeHanaConnection(_FakeHanaCursor([])),
+    )
+    with pytest.raises(ValueError, match="unsafe HANA embedding model"):
+        index.index(_synonymy_records())
+
+
+def test_build_semantic_index_selects_hana_mode() -> None:
+    # Empty records → index() returns before connecting, so no driver is needed.
+    index = build_semantic_index(
+        (), config=load_config(env={"TESSERA_EMBEDDINGS": "hana", "HANA_HOST": "h"})
+    )
+    assert isinstance(index, HanaSemanticIndex)

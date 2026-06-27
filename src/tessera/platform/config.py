@@ -23,10 +23,18 @@ _VALID_PROVIDERS = frozenset({PROVIDER_NONE, PROVIDER_GENAI_HUB, PROVIDER_ANTHRO
 
 # Embedding selector values for TESSERA_EMBEDDINGS (ADR 0015). Independent of
 # the narrator: a deployment may use semantic retrieval without narration.
+# ``hana`` generates embeddings in-database via VECTOR_EMBEDDING (the recorded
+# path, spec 0055); ``genai-hub`` generates them at GenAI Hub (the documented
+# alternative). Both store/search in HANA Cloud's vector engine.
 EMBEDDINGS_NONE = "none"
 EMBEDDINGS_GENAI_HUB = "genai-hub"
+EMBEDDINGS_HANA = "hana"
 
-_VALID_EMBEDDINGS = frozenset({EMBEDDINGS_NONE, EMBEDDINGS_GENAI_HUB})
+_VALID_EMBEDDINGS = frozenset({EMBEDDINGS_NONE, EMBEDDINGS_GENAI_HUB, EMBEDDINGS_HANA})
+
+# SAP's in-database embedding model version for VECTOR_EMBEDDING (spec 0055);
+# overridable, confirmed against the live instance at the recorded run.
+DEFAULT_HANA_EMBEDDING_MODEL = "SAP_NEB.20240715"
 
 # A deliberately small, cost-conscious default for narration; overridable.
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
@@ -60,6 +68,7 @@ class PlatformConfig:
     hana_user: str = ""
     hana_password: str = ""
     hana_database: str = ""  # used as the schema that qualifies the vector table
+    hana_embedding_model: str = DEFAULT_HANA_EMBEDDING_MODEL
 
 
 def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
@@ -105,4 +114,7 @@ def load_config(env: Mapping[str, str] | None = None) -> PlatformConfig:
         hana_user=variables.get("HANA_USER", ""),
         hana_password=variables.get("HANA_PASSWORD", ""),
         hana_database=variables.get("HANA_DATABASE", ""),
+        hana_embedding_model=variables.get(
+            "HANA_EMBEDDING_MODEL", DEFAULT_HANA_EMBEDDING_MODEL
+        ),
     )

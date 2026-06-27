@@ -44,9 +44,13 @@ All platform behaviour is controlled by environment variables, read once by
 | `TESSERA_GENAI_DEPLOYMENT` | GenAI Hub deployment id to call | — |
 | `ANTHROPIC_API_KEY` | Anthropic key (the locally demoable fallback) | — |
 | `TESSERA_ANTHROPIC_MODEL` | Anthropic model for narration | `claude-haiku-4-5-20251001` |
-| `TESSERA_EMBEDDINGS` | `none` or `genai-hub` — semantic retrieval (ADR 0015) | `none` (lexical) |
-| `TESSERA_GENAI_EMBEDDING_DEPLOYMENT` | GenAI Hub **embedding** deployment id | — |
-| `TESSERA_GENAI_EMBEDDING_PATH` | inference suffix (`embeddings` or `v1/embeddings`, by model type) | `embeddings` |
+| `TESSERA_EMBEDDINGS` | `none`, `hana` (in-DB, recorded), or `genai-hub` (alternative) — semantic retrieval (ADR 0015) | `none` (lexical) |
+| `HANA_HOST` / `HANA_PORT` | HANA Cloud SQL endpoint (port `443`) | — / `443` |
+| `HANA_USER` / `HANA_PASSWORD` | HANA Cloud credentials (use a least-privilege app user, not `DBADMIN`) | — |
+| `HANA_DATABASE` | schema that qualifies the vector table | — |
+| `HANA_EMBEDDING_MODEL` | in-DB `VECTOR_EMBEDDING` model — **requires the NLP feature enabled** | `SAP_NEB.20240715` |
+| `TESSERA_GENAI_EMBEDDING_DEPLOYMENT` | GenAI Hub **embedding** deployment id (alternative path) | — |
+| `TESSERA_GENAI_EMBEDDING_PATH` | GenAI Hub inference suffix (`embeddings` / `v1/embeddings`) | `embeddings` |
 
 A misspelled `TESSERA_NARRATOR` fails loudly at startup; a half-configured
 provider fails at construction with the missing variable names — never
