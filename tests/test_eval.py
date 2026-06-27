@@ -73,6 +73,23 @@ def test_cli_passes_on_faithful_gold_sets() -> None:
     assert main([]) == 0
 
 
+def test_cli_recorded_flag_overrides_the_timestamp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--recorded`` stamps a one-shot online measurement with an explicit date
+    (spec 0066); without it the recorded date defaults to today. Patched so the
+    real history file is never touched."""
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "tessera.eval.cli.record",
+        lambda report, note, recorded=None: captured.update(
+            note=note, recorded=recorded
+        ),
+    )
+    assert main(["--record", "--recorded", "2026-06-27", "--note", "online"]) == 0
+    assert captured == {"note": "online", "recorded": "2026-06-27"}
+
+
 def test_cli_fails_when_any_battery_breaks_the_floor(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
