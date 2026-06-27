@@ -1,0 +1,12 @@
+{
+  "id": "05_pages_synonymy_lookup",
+  "question": "Is the published documentation site unreachable for visitors?",
+  "engine": "lookup",
+  "kind": "answer",
+  "expected_support": [
+    "27285174461.failed:chunk1"
+  ],
+  "expected_facts": [
+    "HttpError: Not Found"
+  ]
+}

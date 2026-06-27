@@ -82,7 +82,10 @@ class SemanticIndex:
         hits: list[tuple[EvidenceRecord, float]] = []
         for match in self.store.query(query_vector, k):
             record = self._records.get(match.id)
-            if record is not None:
+            # Only positively-aligned records are surfaced — the semantic
+            # analogue of lexical's "shares a token" (score > 0), so an
+            # orthogonal/unrelated record is never returned (precision, ADR 0015).
+            if record is not None and match.score > 0:
                 hits.append((record, match.score))
         return hits
 
@@ -176,8 +179,10 @@ class HanaSemanticIndex:
         hits: list[tuple[EvidenceRecord, float]] = []
         for row in rows:
             record = self._records.get(str(row[0]))
-            if record is not None:
-                hits.append((record, float(str(row[1]))))
+            score = float(str(row[1]))
+            # Positively-aligned records only (precision, ADR 0015).
+            if record is not None and score > 0:
+                hits.append((record, score))
         return hits
 
 

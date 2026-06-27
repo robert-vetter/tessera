@@ -146,15 +146,25 @@ def retrieve(
     return [(record, score) for record, score in scored if score > 0][:k]
 
 
-def answer(question: str, kb: KnowledgeBase, *, k: int = 5) -> Answer:
-    """Answer ``question`` by surfacing the retrieved evidence, each sourced.
+def answer_over(question: str, hits: list[tuple[EvidenceRecord, float]]) -> Answer:
+    """Build a grounded answer from already-retrieved ``(record, score)`` hits.
 
-    Builds one claim per retrieved record (its snippet, traced to its origin). If
-    nothing is relevant enough, returns a principled refusal rather than surfacing
-    irrelevant evidence or guessing.
+    One claim per record (its snippet, traced to its origin); a principled
+    refusal if nothing was retrieved. Factored out so the same claim-building +
+    refusal logic serves both the lexical path (below) and the semantic path
+    (``tessera.semantic.semantic_or_lexical``) — the *retrieval* differs, the
+    answer shape and its provenance do not.
     """
-    hits = retrieve(question, kb, k)
     if not hits:
         return Answer(question=question, claims=(), refusal=REFUSAL_MESSAGE)
     claims = tuple(Claim(text=record.text, support=(record,)) for record, _ in hits)
     return Answer(question=question, claims=claims, refusal=None)
+
+
+def answer(question: str, kb: KnowledgeBase, *, k: int = 5) -> Answer:
+    """Answer ``question`` by surfacing the lexically retrieved evidence, sourced.
+
+    The deterministic, offline default (ADR 0003): retrieve by BM25, then build
+    the grounded answer. Behaviour-identical to before the ``answer_over`` split.
+    """
+    return answer_over(question, retrieve(question, kb, k))
