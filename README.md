@@ -152,9 +152,19 @@ uv run tessera-eval
 # [business]       synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [devex]          gold (8):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [devex]          synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [github_actions] gold (4):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [github_actions] gold (5):      faithfulness 1.000 (floor), coverage 0.833, quality 0.800
 # [github_actions] synthetic (8):  faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 ```
+
+That `github_actions` gold **0.833** is deliberate and honest: a question phrased
+in pure out-of-log vocabulary ("is the published documentation site unreachable
+for visitors?") shares zero tokens with the real Pages-deploy log, so the offline
+**lexical** path misses it (faithfulness stays gated at 1.0). Milestone 6 closed
+it **on SAP** — HANA Cloud in-database `VECTOR_EMBEDDING` + `COSINE_SIMILARITY`
+took that case to **coverage 1.000, quality 1.000** in a recorded online run
+([`eval/history.jsonl`](eval/history.jsonl); [ADR 0015](docs/adr/0015-embeddings-on-sap.md)).
+CI stays offline and key-free, so the public number is the lexical 0.833 — the
+embedding close is a timestamped measurement, not a CI gate.
 
 The numbers are real and **auditable**, scored against the answers the engine
 actually produces over hand-curated gold sets in [`eval/gold/`](eval/gold/)
