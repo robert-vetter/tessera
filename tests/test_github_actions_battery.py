@@ -21,6 +21,7 @@ from tessera.platform.vectors import InMemoryVectorStore
 from tessera.semantic import SemanticIndex
 
 _PAGES_LOG = "27285174461.failed:chunk1"
+_PAGES_RUN = "Run:27285174461"
 _RUFF_LOG = "27014662820.failed:chunk1"
 _SYNONYMY_QUESTION = "Is the published documentation site unreachable for visitors?"
 
@@ -97,12 +98,14 @@ def test_synonymy_case_misses_offline_and_closes_with_a_semantic_index() -> None
     offline = _devex_answer(case, graph, kb, None)
     assert not offline.is_grounded
 
-    # With a semantic index that groups the synonyms: the case closes.
+    # With a semantic index that groups the synonyms: the case closes by
+    # surfacing the failed Docs run (what SAP's model ranks top on the real run;
+    # the long error-log chunk dilutes lower — spec 0058's recorded finding).
     closed = _devex_answer(case, graph, kb, _stub_index())
     assert closed.is_grounded
     cited = {rec.id for claim in closed.claims for rec in claim.support}
-    assert _PAGES_LOG in cited
-    assert "HttpError: Not Found" in closed.render()
+    assert _PAGES_RUN in cited
+    assert "Deploy to GitHub Pages" in closed.render()
 
 
 def test_semantic_retrieval_precision_no_cross_cause_conflation() -> None:

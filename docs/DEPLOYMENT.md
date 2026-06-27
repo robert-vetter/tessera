@@ -140,13 +140,14 @@ synonymy miss (`github_actions` gold coverage 0.833 → 1.000).
   `/v2/inference/deployments/{id}/chat/completions` shape and Anthropic's
   Messages API (`2023-06-01`); if either drifts, the adapter is one small,
   visible module per provider.
-- **HANA-native semantic retrieval (ADR 0015):** the SQL contract — table
-  creation, `VECTOR_EMBEDDING` upsert, `COSINE_SIMILARITY` KNN — is verified
-  offline against a fake connection (`tests/test_semantic.py`,
-  `tests/test_vectors.py`). The **live** `VECTOR_EMBEDDING` call and the
-  recorded online close of the synonymy miss are the one-shot run in step 6
-  above (spec 0058); until that point appears in `eval/history.jsonl`, treat the
-  HANA embedding path as *designed + contract-tested*, not *ran on*.
+- **HANA-native semantic retrieval (ADR 0015) — RAN ON SAP.** The SQL contract
+  is verified offline against a fake connection (`tests/test_semantic.py`,
+  `tests/test_vectors.py`), **and** the live path was actually run: HANA Cloud
+  in-database `VECTOR_EMBEDDING` (`SAP_NEB.20240715`, 768-dim) + `COSINE_SIMILARITY`
+  KNN closed the `github_actions` synonymy miss (gold coverage 0.833 → 1.000,
+  quality 0.800 → 1.000, faithfulness 1.0), recorded in `eval/history.jsonl`
+  (spec 0058). This is a **timestamped online measurement**, not a CI-reproducible
+  one — CI stays offline on the lexical path; the cloud embedding model can change.
 
 This split is the point: everything trust-bearing is reproducible by anyone;
 everything cloud-bearing is documented, isolated, and optional.

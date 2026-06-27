@@ -251,3 +251,17 @@ def test_build_semantic_index_selects_hana_mode() -> None:
         (), config=load_config(env={"TESSERA_EMBEDDINGS": "hana", "HANA_HOST": "h"})
     )
     assert isinstance(index, HanaSemanticIndex)
+
+
+def test_hana_existence_check_matches_upper_cased_identifiers() -> None:
+    """Regression (spec 0058): HANA stores unquoted identifiers upper-cased, so
+    the SYS.TABLES existence check must bind upper-cased names — else it never
+    finds an existing table and tries to re-CREATE it on every run."""
+    cursor = _FakeHanaCursor(query_rows=[])
+    config = load_config(env={"HANA_HOST": "h", "HANA_DATABASE": "tessera"})  # lower
+    index = HanaSemanticIndex(
+        config=config, connect=lambda _c: _FakeHanaConnection(cursor)
+    )
+    index.index(_synonymy_records())
+    check = next((sql, params) for sql, params in cursor.calls if "SYS.TABLES" in sql)
+    assert check[1] == ["TESSERA_DOC_VECTORS", "TESSERA"]  # both upper-cased
