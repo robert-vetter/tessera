@@ -66,6 +66,7 @@ nav:
       - 0012 SAP deployment path: adr/0012-sap-deployment-path.md
       - 0013 The narration boundary: adr/0013-narration-boundary.md
       - 0014 Real connector snapshot boundary: adr/0014-real-connector-snapshot-boundary.md
+      - 0015 Embeddings on SAP: adr/0015-embeddings-on-sap.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

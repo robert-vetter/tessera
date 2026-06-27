@@ -17,8 +17,10 @@ from tessera.platform.config import (
 )
 from tessera.platform.providers import (
     AnthropicProvider,
+    GenAIHubEmbeddingProvider,
     GenAIHubProvider,
     ProviderError,
+    embedding_provider_from_env,
     provider_from_env,
 )
 
@@ -149,3 +151,140 @@ def test_protocol_breakage_degrades_to_provider_error() -> None:
     )
     with pytest.raises(ProviderError):
         anthropic.complete("s", "p")
+
+
+# --- Embeddings seam (spec 0052 / ADR 0015) ----------------------------------
+
+
+def _genai_embed_env() -> dict[str, str]:
+    return {
+        "TESSERA_EMBEDDINGS": "genai-hub",
+        "AICORE_AUTH_URL": "https://sub.authentication.sap.hana.ondemand.com",
+        "AICORE_CLIENT_ID": "sb-client",
+        "AICORE_CLIENT_SECRET": "secret",
+        "AICORE_BASE_URL": "https://api.ai.prod.eu-central-1.aws.ml.hana.ondemand.com",
+        "AICORE_RESOURCE_GROUP": "tessera",
+        "TESSERA_GENAI_EMBEDDING_DEPLOYMENT": "d-emb-789",
+    }
+
+
+def test_default_local_mode_has_no_embedding_provider() -> None:
+    """A fresh clone has no TESSERA_EMBEDDINGS: none, and the factory returns
+    None without touching the transport — embeddings are strictly opt-in."""
+    config = load_config(env={})
+    assert config.embeddings == "none"
+
+    def exploding_transport(
+        url: str, headers: dict[str, str], payload: dict[str, object]
+    ) -> dict[str, object]:
+        raise AssertionError("local mode must not construct an embedding provider")
+
+    assert embedding_provider_from_env(config, transport=exploding_transport) is None
+
+
+def test_unknown_embeddings_selector_fails_loudly() -> None:
+    with pytest.raises(ValueError, match="TESSERA_EMBEDDINGS"):
+        load_config(env={"TESSERA_EMBEDDINGS": "word2vec-magic"})
+
+
+def test_half_configured_genai_embeddings_fails_at_construction() -> None:
+    config = load_config(
+        env={"TESSERA_EMBEDDINGS": "genai-hub", "AICORE_AUTH_URL": "https://auth"}
+    )
+    with pytest.raises(ProviderError, match="TESSERA_GENAI_EMBEDDING_DEPLOYMENT"):
+        embedding_provider_from_env(config)
+
+
+def test_genai_embedding_request_contract_and_input_order() -> None:
+    """Token from XSUAA, then a batch embeddings call against the embedding
+    deployment; vectors are returned in INPUT order even when the response data
+    arrives out of order (keyed on `index`)."""
+    calls: list[tuple[str, dict[str, str], dict[str, object]]] = []
+
+    def fake_transport(
+        url: str, headers: dict[str, str], payload: dict[str, object]
+    ) -> dict[str, object]:
+        calls.append((url, headers, payload))
+        if "/oauth/token" in url:
+            return {"access_token": "tok-emb"}
+        # Deliberately reversed to prove re-ordering by `index`.
+        return {
+            "data": [
+                {"index": 1, "embedding": [0.4, 0.5, 0.6]},
+                {"index": 0, "embedding": [0.1, 0.2, 0.3]},
+            ]
+        }
+
+    provider = embedding_provider_from_env(
+        load_config(env=_genai_embed_env()), fake_transport
+    )
+    assert provider is not None and provider.name == "sap-genai-hub-embeddings"
+    vectors = provider.embed(["first", "second"])
+    assert vectors == [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+
+    token_url, token_headers, _ = calls[0]
+    assert token_url.endswith("/oauth/token?grant_type=client_credentials")
+    assert token_headers["Authorization"].startswith("Basic ")
+
+    emb_url, emb_headers, emb_payload = calls[1]
+    assert emb_url == (
+        "https://api.ai.prod.eu-central-1.aws.ml.hana.ondemand.com"
+        "/v2/inference/deployments/d-emb-789/embeddings"
+    )
+    assert emb_headers["Authorization"] == "Bearer tok-emb"
+    assert emb_headers["AI-Resource-Group"] == "tessera"
+    assert emb_payload["input"] == ["first", "second"]
+
+
+def test_genai_embedding_path_is_overridable() -> None:
+    """The inference suffix differs by model type; the override lets the one-shot
+    online run correct it without a code change (spec 0052)."""
+    env = _genai_embed_env() | {"TESSERA_GENAI_EMBEDDING_PATH": "v1/embeddings"}
+    seen: list[str] = []
+
+    def fake_transport(
+        url: str, headers: dict[str, str], payload: dict[str, object]
+    ) -> dict[str, object]:
+        seen.append(url)
+        if "/oauth/token" in url:
+            return {"access_token": "t"}
+        return {"data": [{"index": 0, "embedding": [1.0]}]}
+
+    provider = embedding_provider_from_env(load_config(env=env), fake_transport)
+    assert provider is not None
+    provider.embed(["x"])
+    assert seen[1].endswith("/v2/inference/deployments/d-emb-789/v1/embeddings")
+
+
+def test_embedding_count_mismatch_is_provider_error() -> None:
+    """A response with fewer vectors than inputs is caught, never silently
+    mis-aligned with the records being indexed."""
+
+    def fake_transport(
+        url: str, headers: dict[str, str], payload: dict[str, object]
+    ) -> dict[str, object]:
+        if "/oauth/token" in url:
+            return {"access_token": "t"}
+        return {"data": [{"index": 0, "embedding": [1.0]}]}
+
+    provider = embedding_provider_from_env(
+        load_config(env=_genai_embed_env()), fake_transport
+    )
+    assert provider is not None
+    with pytest.raises(ProviderError, match="expected 2 embedding"):
+        provider.embed(["a", "b"])
+
+
+def test_embedding_protocol_breakage_degrades_to_provider_error() -> None:
+    def broken_transport(
+        url: str, headers: dict[str, str], payload: dict[str, object]
+    ) -> dict[str, object]:
+        if "/oauth/token" in url:
+            return {"access_token": "t"}
+        return {"unexpected": True}
+
+    provider = GenAIHubEmbeddingProvider(
+        config=load_config(env=_genai_embed_env()), transport=broken_transport
+    )
+    with pytest.raises(ProviderError):
+        provider.embed(["a"])
