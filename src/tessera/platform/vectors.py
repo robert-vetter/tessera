@@ -143,16 +143,18 @@ class HanaVectorStore:
 
     def _ensure_table(self, cursor: _Cursor, dim: int) -> None:
         schema = self.config.hana_database.strip()
+        # HANA upper-cases unquoted identifiers; match the upper-cased names or
+        # the check never finds an existing table (see HanaSemanticIndex).
         if schema:
             cursor.execute(
                 "SELECT COUNT(*) FROM SYS.TABLES "
                 "WHERE TABLE_NAME = ? AND SCHEMA_NAME = ?",
-                [self.table, schema],
+                [self.table.upper(), schema.upper()],
             )
         else:
             cursor.execute(
                 "SELECT COUNT(*) FROM SYS.TABLES WHERE TABLE_NAME = ?",
-                [self.table],
+                [self.table.upper()],
             )
         rows = cursor.fetchall()
         exists = bool(rows) and int(str(rows[0][0])) > 0
