@@ -105,7 +105,7 @@ class _Connection(Protocol):
 Connect = Callable[[PlatformConfig], _Connection]
 
 
-def _hdbcli_connect(config: PlatformConfig) -> _Connection:
+def hdbcli_connect(config: PlatformConfig) -> _Connection:
     """Open a HANA Cloud connection via the optional ``hdbcli`` driver.
 
     Imported here, lazily, so the driver is needed only when the HANA backend is
@@ -133,7 +133,7 @@ class HanaVectorStore:
     """
 
     config: PlatformConfig
-    connect: Connect = _hdbcli_connect
+    connect: Connect = hdbcli_connect
     table: str = "TESSERA_VECTORS"
 
     @property
