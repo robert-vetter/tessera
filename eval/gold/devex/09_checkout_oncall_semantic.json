@@ -1,0 +1,8 @@
+{
+  "id": "09_checkout_oncall_semantic",
+  "question": "Who is on call for checkout-service?",
+  "engine": "route",
+  "kind": "answer",
+  "expected_support": ["Component:SVC-CHK", "Owner:checkout-svc"],
+  "expected_facts": ["Storefront", "Jonas Lindqvist"]
+}
