@@ -222,6 +222,56 @@ run-status *row* outranks the long, noisy error-*log* chunk, so the answer
 surfaces the failed run rather than the specific 404 line — recorded as a named
 limitation, not papered over by inflating the retrieval depth.
 
+### Milestone 7: embeddings beyond retrieval — entity resolution and de-diluted logs
+
+Milestone 6 confined embeddings to retrieval and named two limitations as the
+next steps. Milestone 7 acted on both, holding the same line — embeddings touch
+*linking*, never the claim path (the leak-guard now also bans the new ER module).
+
+**Embedding-assisted entity resolution.** ER had stayed pure-`difflib` character
+similarity, with two opposite-signed misses: `checkout-service ↔ checkout-svc`
+(0.846, just under the 0.85 threshold) needs *more* merging; the generic-suffix
+firms (`… Logistik GmbH`) over-merge at volume and need *less*. A naive name-cosine
+pass closes the first and worsens the second. The fix is to embed the **distinctive
+stem** — the name with its generic tokens (legal forms, universal descriptors,
+corpus-frequent words) removed — and merge on stem cosine: `checkout-service` and
+`checkout-svc` both reduce to `checkout` and merge, while `Granite`/`Pyrite`
+`Logistik GmbH` reduce to distinct stems and stay apart (ADR 0016). A new module
+proposes ordinary additive, reversible `Resolution`s; the deterministic
+`difflib` pass and the engine graph are untouched, and the application is
+vertical-side (the ADR 0010 alias precedent). A labeled ER pair-set
+(`tests/test_er_metrics.py`) **measures** the effect: `difflib` alone scores
+precision 0.50 / recall 0.50 on the set; the stem-embedding regime scores
+**1.00 / 1.00**.
+
+**Finer log chunking.** `parse_log_chunks` now splits a runner-log group at its
+`##[error]` marker, isolating the failure cluster (with a few lines of diagnostic
+context) into its own short chunk — the Pages-deploy 404 becomes a focused
+14-line `error1`, not lines 50–57 of a 60-line wall. Chunk ids became **stable and
+role-tagged** (`chunk{n}`/`error{n}`, ADR 0017) so the gold cases survive
+re-chunking; RCA needed no change.
+
+Then the **recorded online run**, again on SAP HANA Cloud in-database
+`VECTOR_EMBEDDING`. A new devex gold case (the `checkout-service` on-call lookup)
+reads coverage **0.950**, quality **0.889** offline — `difflib` leaves
+`checkout-svc` unresolved, so the answer is a faithful *partial* — and the
+de-diluted `github_actions` synonymy case stays the lexical **0.833** offline
+miss. The one online one-shot closed **both**: devex gold **1.000 / 1.000**
+(the embedding resolved `checkout-svc`) and `github_actions` gold **1.000 /
+1.000** (the answer now surfaces the actual 404 line). Faithfulness 1.0
+throughout; both points in `eval/history.jsonl`.
+
+Two honesties, again. The close is **earned, not a re-saturation** (ADR 0015,
+verified online): distinct services did **not** over-merge (cross-service stem
+cosines 0.49–0.58, all under 0.85); only the catalog↔on-call stem matches fired.
+And a real-model finding: HANA's embeddings are **asymmetric** (`QUERY` vs
+`DOCUMENT` mode), so even identical text scores ~0.889, not 1.0 — above threshold,
+the close holds with margin, but it is a reminder that the cloud number is a
+measurement, not a constant. One residual is recorded plainly: the embedding
+regime is *additive*, so it cannot remove `difflib`'s existing generic-suffix
+over-merge — closing that needs the same stem-gating applied to the `difflib` pass
+(a deterministic change) or multi-field ER, the named next lever.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -295,21 +345,24 @@ Named with the same prominence as the results:
   validation) and the batteries now *do* sample free-form phrasing, but
   intent-only words (`rank`, `lead`, `best`) stay the named ADR 0006 ceiling;
   its measured-miss trigger has not fired (a correct refusal is the fallback).
-- **ER is name-only and threshold-based.** Multi-field matching (name +
-  address + keys) is an additive extension the assertion layer was designed
-  for, not yet built. Transitive over-merge is no longer only "possible in
-  principle": at volume, distinct firms sharing a long generic suffix
-  demonstrably cross the 0.85 threshold (`tests/test_scale.py`) — the conservative
-  threshold and disjointness tests bound it on the *current* corpora, and
-  multi-field ER or embeddings (ADR 0004/0010) is the recorded remedy.
-- **Semantic retrieval ran on SAP, but is retrieval-only and cloud-measured.**
-  Milestone 6 closed the error-class-synonymy miss with HANA Cloud in-database
-  embeddings — but embeddings touch *retrieval*, not entity resolution and never
-  the faithfulness verifier; the recorded close is a **timestamped online
-  measurement** (CI stays on the lexical path, where `github_actions` gold reads
-  0.833); and long error-logs embed weakly versus concise records, so the answer
-  surfaced the failed *run*, not the 404 *line*. Finer log chunking and
-  embedding-assisted ER are the recorded next steps.
+- **ER recall now uses embeddings; the over-merge residual stands.** Milestone 7
+  added an embedding-assisted resolution regime (stem-gated, additive, ADR 0016)
+  that closed the undeclared `checkout-svc` recall miss online (devex gold
+  0.950 → 1.000) without over-merging distinct services — measured both ways on a
+  labeled pair-set (`tests/test_er_metrics.py`). But the regime is *additive*, so
+  it cannot remove `difflib`'s **existing** generic-suffix over-merge (distinct
+  firms sharing `… Logistik GmbH` still cross 0.85, `tests/test_scale.py`):
+  closing that needs the stem-gating applied to the `difflib` pass itself, or
+  multi-field matching (name + address + keys) — the named, recorded next lever.
+- **Semantic embeddings ran on SAP for retrieval *and* ER, but stay link-only and
+  cloud-measured.** Milestones 6–7 closed the synonymy miss, the `checkout-svc` ER
+  miss, and the long-log dilution on HANA Cloud in-database embeddings — but
+  embeddings only ever decide *what is surfaced or linked*, never *what is claimed*
+  (a subprocess leak-guard pins the verifier imports no embedding module, ER
+  module included). The closes are **timestamped online measurements** — CI stays
+  on the deterministic path, where `github_actions` gold reads 0.833 and devex gold
+  0.950 — and HANA's asymmetric (`QUERY`/`DOCUMENT`) embeddings mean even identical
+  text scores ~0.889, so the cloud number is a measurement, not a constant.
 - **The narration guard is conservative, not complete.** It catches
   fabricated quantities and identifiers, not every semantic drift — which is
   why narration is presentation below canonical claims, never evidence.
@@ -321,12 +374,13 @@ Named with the same prominence as the results:
 
 More real connectors (the first — GitHub Actions — now exists and proves the
 synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
-next) · embedding-assisted **entity resolution** and finer error-log chunking
-(Milestone 6 ran embeddings for *retrieval* on SAP HANA, ADR 0015; applying them
-to ER and de-diluting long logs are the next steps) · multi-field ER · LLM-judged
-faithfulness alongside the deterministic floor · an agentic / MCP-exposed mode
-(grounded actions, not just answers — the 2026-shaped extension of the same trust
-substrate) · persistence, multi-tenancy, access governance.
+next) · **curing the generic-suffix over-merge** (Milestone 7 added embedding ER
+for *recall* on SAP HANA, ADR 0016, and de-diluted long logs, ADR 0017; the
+additive regime cannot remove `difflib`'s existing over-merge — stem-gating the
+`difflib` pass, or multi-field ER on name + address + keys, is the recorded next
+step) · LLM-judged faithfulness alongside the deterministic floor · an agentic /
+MCP-exposed mode (grounded actions, not just answers — the 2026-shaped extension
+of the same trust substrate) · persistence, multi-tenancy, access governance.
 
 ## What was learned
 

@@ -150,21 +150,30 @@ vertical as a separate battery
 uv run tessera-eval
 # [business]       gold (9):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [business]       synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [devex]          gold (8):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [devex]          gold (9):      faithfulness 1.000 (floor), coverage 0.950, quality 0.889
 # [devex]          synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [github_actions] gold (5):      faithfulness 1.000 (floor), coverage 0.833, quality 0.800
 # [github_actions] synthetic (8):  faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 ```
 
-That `github_actions` gold **0.833** is deliberate and honest: a question phrased
-in pure out-of-log vocabulary ("is the published documentation site unreachable
-for visitors?") shares zero tokens with the real Pages-deploy log, so the offline
-**lexical** path misses it (faithfulness stays gated at 1.0). Milestone 6 closed
-it **on SAP** — HANA Cloud in-database `VECTOR_EMBEDDING` + `COSINE_SIMILARITY`
-took that case to **coverage 1.000, quality 1.000** in a recorded online run
-([`eval/history.jsonl`](eval/history.jsonl); [ADR 0015](docs/adr/0015-embeddings-on-sap.md)).
-CI stays offline and key-free, so the public number is the lexical 0.833 — the
-embedding close is a timestamped measurement, not a CI gate.
+Those two sub-1.0 gold numbers are deliberate and honest — **embedding-closable
+misses kept visible in CI**, faithfulness gated at 1.0 throughout:
+
+- `github_actions` **0.833**: a question in pure out-of-log vocabulary ("is the
+  published documentation site unreachable for visitors?") shares zero tokens
+  with the real Pages-deploy log, so offline **lexical** retrieval misses it.
+- `devex` **0.950**: the undeclared `checkout-svc` abbreviation (`difflib` 0.846,
+  just under the 0.85 threshold) leaves the on-call uncited — a faithful *partial*.
+
+Both close **on SAP** — HANA Cloud in-database `VECTOR_EMBEDDING` +
+`COSINE_SIMILARITY` — in one recorded online run: `github_actions` → **1.000 /
+1.000** (semantic retrieval over a finer-chunked log surfaces the 404 line,
+[ADR 0017](docs/adr/0017-stable-log-chunk-ids.md)) and `devex` → **1.000 / 1.000**
+(an embedding-assisted, stem-gated resolution regime resolves `checkout-svc`,
+[ADR 0016](docs/adr/0016-embedding-assisted-entity-resolution.md)), each *earned*
+— distinct entities stay unmerged. CI stays offline and key-free, so the public
+numbers are 0.833 / 0.950; the closes are timestamped measurements in
+[`eval/history.jsonl`](eval/history.jsonl), not CI gates.
 
 The numbers are real and **auditable**, scored against the answers the engine
 actually produces over hand-curated gold sets in [`eval/gold/`](eval/gold/)
