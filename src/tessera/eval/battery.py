@@ -18,10 +18,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tessera.eval.metrics import ClaimShape
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer, KnowledgeBase
+
+if TYPE_CHECKING:
+    from tessera.semantic import SemanticRetriever
 
 
 @dataclass(frozen=True)
@@ -56,6 +60,13 @@ class Battery:
     gold_dir: Path
     build_graph: Callable[[], KnowledgeGraph]
     build_kb: Callable[[], KnowledgeBase]
-    answer: Callable[[GoldCase, KnowledgeGraph, KnowledgeBase], Answer]
+    answer: Callable[
+        [GoldCase, KnowledgeGraph, KnowledgeBase, SemanticRetriever | None],
+        Answer,
+    ]
     synthetic: Callable[[KnowledgeGraph, KnowledgeBase], list[GoldCase]]
     claim_shapes: tuple[ClaimShape, ...] = ()
+    # When True, the harness builds a semantic index over this battery's records
+    # (when embeddings are configured) and passes it to ``answer`` (ADR 0015).
+    # Default False: the battery is scored on the deterministic lexical path.
+    uses_semantic: bool = False

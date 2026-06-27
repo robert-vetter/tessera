@@ -11,17 +11,26 @@ readable in one place, and a battery cannot go silently missing.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tessera.eval.battery import Battery, GoldCase
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer, KnowledgeBase
 
+if TYPE_CHECKING:
+    from tessera.semantic import SemanticRetriever
+
 GOLD_ROOT = Path(__file__).resolve().parents[3] / "eval" / "gold"
 
 
 def _business_answer(
-    case: GoldCase, graph: KnowledgeGraph, kb: KnowledgeBase
+    case: GoldCase,
+    graph: KnowledgeGraph,
+    kb: KnowledgeBase,
+    index: SemanticRetriever | None = None,
 ) -> Answer:
+    # Business answers are graph/compose/route based; it does not use semantic
+    # retrieval, so ``index`` is accepted (uniform signature) and ignored.
     from tessera.business.composition import compose
     from tessera.business.routing import route
     from tessera.retrieval import answer as retrieve_answer
@@ -50,11 +59,17 @@ def business_battery() -> Battery:
     )
 
 
-def _devex_answer(case: GoldCase, graph: KnowledgeGraph, kb: KnowledgeBase) -> Answer:
+def _devex_answer(
+    case: GoldCase,
+    graph: KnowledgeGraph,
+    kb: KnowledgeBase,
+    index: SemanticRetriever | None = None,
+) -> Answer:
     from tessera.devex.rca import explain_failure
     from tessera.devex.routing import route
     from tessera.devex.summaries import summarize_change
-    from tessera.retrieval import answer as retrieve_answer
+    from tessera.retrieval import answer_over
+    from tessera.semantic import semantic_or_lexical
 
     if case.engine == "rca":
         return explain_failure(case.question, graph)
@@ -62,7 +77,12 @@ def _devex_answer(case: GoldCase, graph: KnowledgeGraph, kb: KnowledgeBase) -> A
         return summarize_change(case.question, graph)
     if case.engine == "route":
         return route(case.question, graph, kb)[1]
-    return retrieve_answer(case.question, kb)
+    # The lookup path: semantic when an index is present (cloud), else exactly
+    # the deterministic lexical answer (offline / devex). ``index`` is None for
+    # the devex battery (uses_semantic=False), so its numbers do not move.
+    return answer_over(
+        case.question, semantic_or_lexical(case.question, kb, index=index)
+    )
 
 
 def devex_battery() -> Battery:
@@ -105,6 +125,10 @@ def github_actions_battery() -> Battery:
         answer=_devex_answer,
         synthetic=generate_cases,
         claim_shapes=(),
+        # The only battery that uses semantic retrieval: its real-log
+        # error-class-synonymy case is a lexical miss the embeddings close
+        # (ADR 0010 / ADR 0015, spec 0056). Offline it falls back to lexical.
+        uses_semantic=True,
     )
 
 
