@@ -27,13 +27,21 @@ def main(argv: list[str] | None = None) -> int:
         default="",
         help="Why this run is being recorded (stored in the history entry).",
     )
+    parser.add_argument(
+        "--recorded",
+        default=None,
+        help=(
+            "Override the recorded date (ISO 'YYYY-MM-DD') for the history entry; "
+            "defaults to today. Use to stamp a one-shot online measurement."
+        ),
+    )
     args = parser.parse_args(argv)
 
     report = run_eval()
     print(report.summary())
 
     if args.record:
-        record(report, note=args.note)
+        record(report, note=args.note, recorded=args.recorded)
         print("Recorded to eval/history.jsonl; badge refreshed.")
 
     # Faithfulness is the one hard floor, on BOTH batteries: an unsupported
