@@ -137,7 +137,8 @@ def test_metrics_verifier_imports_no_embedding_module() -> None:
         "banned = {"
         "'tessera.semantic', "
         "'tessera.platform.vectors', "
-        "'tessera.platform.providers'"
+        "'tessera.platform.providers', "
+        "'tessera.er_semantic'"  # embedding-assisted ER (spec 0061): linking-only
         "}; "
         "leaked = banned & set(sys.modules); "
         "assert not leaked, sorted(leaked)"
