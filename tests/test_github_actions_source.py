@@ -10,7 +10,7 @@ recurrence fragment.
 from __future__ import annotations
 
 from tessera.devex.knowledge import build_github_actions_graph
-from tessera.sources.github_actions import GitHubActionsSource
+from tessera.sources.github_actions import GitHubActionsSource, parse_log_chunks
 
 RUFF_FAILURE = "Run:27014662820"  # CI — "Format check" step failed
 PAGES_FAILURE_A = "Run:27285174461"  # Docs — Pages deploy 404
@@ -100,3 +100,45 @@ def test_graph_links_failed_logs_to_their_run() -> None:
     ruff_chunks = graph.sources_of({RUFF_FAILURE}, "log_of")
     assert ruff_chunks
     assert all(cid.startswith("27014662820.failed:") for cid in ruff_chunks)
+
+
+# --- finer chunking: the error cluster is isolated and de-diluted (spec 0064) ---
+
+
+def test_error_cluster_is_isolated_and_de_diluted() -> None:
+    """A long runner log splits into a boilerplate ``chunk1`` and the isolated
+    ``error1`` cluster, so the failure is no longer buried under ~50 lines of
+    provisioning. The error chunk keeps a few lines of diagnostic context above
+    the marker, so the formatter's ``Would reformat`` lines stay attached."""
+    recs = {
+        r.id: r
+        for r in GitHubActionsSource().ingest()
+        if r.origin.locator.kind == "log-span"
+    }
+    # Pages-deploy: a 60-line group → preamble chunk + a SHORT error chunk that
+    # carries the 404 cause itself (the spec 0058 dilution, removed).
+    assert "27285174461.failed:chunk1" in recs  # the preamble is still citable
+    pages_error = recs["27285174461.failed:error1"]
+    assert len(pages_error.text.splitlines()) < 20  # was the full 60-line log
+    for line in (
+        "HttpError: Not Found",
+        "status: 404",
+        "Ensure GitHub Pages has been enabled",
+    ):
+        assert line in pages_error.text
+    # ruff: the error chunk keeps the diagnostic just above the exit marker.
+    ruff_error = recs["27014662820.failed:error1"]
+    assert "Would reformat" in ruff_error.text
+    assert "##[error]Process completed with exit code 1." in ruff_error.text
+
+
+def test_chunk_ids_are_stable_role_tagged_not_positional() -> None:
+    """Ids are role-derived (``chunk{n}``/``error{n}``, ADR 0017), so a gold case
+    cites the failure cluster by a name that survives re-chunking of context."""
+    log = (
+        GitHubActionsSource().data_dir / "logs" / "27285174461.failed.log"
+    ).read_text("utf-8")
+    chunks = parse_log_chunks(log)
+    assert [c.name for c in chunks] == ["chunk1", "error1"]
+    error = next(c for c in chunks if c.name == "error1")
+    assert error.start_line > 40  # a late sub-span, not the whole file
