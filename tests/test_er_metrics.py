@@ -24,10 +24,14 @@ distinctive (non-generic) signal, so Granite/Pyrite (0.865) and Cobalt/Basalt
 embedding's job). The matcher here applies the *same* gate the engine's
 ``resolve_entities`` runs, over this labelled corpus.
 
-The residual that remains is no longer difflib's over-merge but name-only ER's
-floor — two distinct firms with character-identical names (see
-``tests/test_scale.py``), for which multi-field ER (name + address, ADR 0004) is
-the recorded next lever.
+The residual difflib's over-merge left — name-only ER's floor, two distinct firms
+with character-identical names — is **closed in Milestone 9** by multi-field ER (name
++ address, spec 0073/0074, ADR 0019): the address signal splits two same-named firms
+at different postal codes. This name-pair set stays a *name-matcher* measurement (it
+has no addresses); the multi-field cure is measured on graphs with addresses in
+``tests/test_multifield_er.py``, ``tests/test_scale.py``, and
+``tests/test_m9_multifield_close.py``. The remaining floor is two distinct firms with
+the same name **and** the same address — a registration/tax key, named future work.
 
 The stub embedder is a keyword-axis toy: it proves a model that places synonym
 stems close achieves the measured recall WITHOUT adding false merges. The real

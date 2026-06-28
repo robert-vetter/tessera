@@ -1,0 +1,8 @@
+{
+  "id": "10_same_name_address_refusal",
+  "question": "Summarise Hanseatic Trading GmbH.",
+  "engine": "compose",
+  "kind": "refuse",
+  "expected_support": [],
+  "expected_facts": []
+}
