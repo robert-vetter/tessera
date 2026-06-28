@@ -443,7 +443,7 @@ MCP SDK rides as the opt-in `agent` extra, exactly as `hdbcli` is the `cloud` ex
 (ADR 0015). The default clone-and-run graph and CI never import it — a subprocess pin
 asserts the server module pulls no `mcp`, and CI's `uv sync --frozen` stays
 pure-stdlib. The honesty analogue of "ran on SAP" here is a **real MCP client ↔
-server session**, captured to [`data/mcp_session/`](data/mcp_session/TRANSCRIPT.md):
+server session**, captured to `data/mcp_session/TRANSCRIPT.md`:
 a grounded answer per domain, a refusal carried as a refusal, the ER trail — every
 claim `verified=true` across the protocol.
 
