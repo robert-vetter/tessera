@@ -112,11 +112,15 @@ data. City is a secondary field (umlaut/diacritic folding makes it match exactly
 street is left out as a decisive key (abbreviation variants make it noisy).
 
 **This is the second intentional change to the frozen core** (ADR 0008's empty-diff
-list) since the verticals were built — the first was Milestone 8's stem gate. It is
-justified on the same grounds: a *general* ER capability belongs in the
-vertical-neutral engine, not a vertical (the schema knowledge stays in the source).
-The empty-diff check at the milestone close documents `resolve_entities` +
-`resolution.py` as the one sanctioned core delta.
+list) since the verticals were built — the first was Milestone 8's stem gate. The
+sanctioned `milestone-8..HEAD` deltas are three frozen-list files: `graph.py` +
+`resolution.py` (the general engine gate — a vertical-neutral ER capability belongs in
+the engine) and `sources/salt.py` (the business source's **additive** address-signature
+attributes — the schema knowledge of *which* columns are an address stays in the
+source, not the engine, so the engine never learns "address"). Everything else in the
+frozen list is empty-diff (the verifier `eval/metrics.py` included — the leak-guard);
+`business/knowledge.py` (which opts in via `match_fields`) is vertical, relocated out
+of the core in Phase 4. The milestone-close audit records exactly these three files.
 
 ## Consequences
 

@@ -148,8 +148,8 @@ vertical as a separate battery
 
 ```bash
 uv run tessera-eval
-# [business]       gold (9):      faithfulness 1.000 (floor), coverage 1.000, quality 1.000
-# [business]       synthetic (52): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business]       gold (10):     faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business]       synthetic (53): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [devex]          gold (9):      faithfulness 1.000 (floor), coverage 0.950, quality 0.889
 # [devex]          synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [github_actions] gold (5):      faithfulness 1.000 (floor), coverage 0.833, quality 0.800
@@ -215,15 +215,22 @@ GmbH", the address master's "Mueller Logistik Gmbh", and the agreement that name
 the same firm. Resolution is **additive and reversible**: a same-entity assertion
 records *why* (the matched names + a similarity score) and a confidence, and
 withdrawing it leaves the raw records untouched — merges are never destructive.
-Matching is deterministic name-similarity (umlaut/case fold + edit-distance), with
-a tunable threshold; it is honest about precision/recall and about known misses
-(a reference that drops a legal form isn't linked yet). A character match is
-**stem-gated** so a long shared *generic* suffix can't collapse distinct firms
-(`Granite`/`Pyrite Logistik GmbH`): the names must also share a distinctive,
-non-generic signal, with genericness derived from the corpus — `difflib` precision
-0.50 → 1.00 on the labelled pair-set, fully offline. Design and trade-offs:
+Matching is deterministic and **multi-field** (name + address), with tunable
+thresholds; it is honest about precision/recall and about known misses (a reference
+that drops a legal form isn't linked yet). A character match is **stem-gated** so a
+long shared *generic* suffix can't collapse distinct firms (`Granite`/`Pyrite
+Logistik GmbH`): the names must also share a distinctive, non-generic signal, with
+genericness derived from the corpus (`difflib` precision 0.50 → 1.00 on the labelled
+pair-set). On top of the name decision, the **address** is a second deterministic
+signal, a two-way gate: a contradicting postal code **vetoes** an over-merge of two
+*same-named* firms at different locations, and an agreeing one **bridges** a
+double-typo pair — so two distinct "Hanseatic Trading GmbH" firms at different
+addresses stay separate (and the ambiguous-name question correctly refuses instead of
+answering one wrong entity — a measured quality 0.900 → 1.000). All fully offline and
+CI-reproducible. Design and trade-offs:
 [ADR 0004](docs/adr/0004-graph-and-entity-resolution.md),
-[ADR 0018](docs/adr/0018-stem-gated-deterministic-er.md).
+[ADR 0018](docs/adr/0018-stem-gated-deterministic-er.md),
+[ADR 0019](docs/adr/0019-multi-field-entity-resolution.md).
 
 ### Cross-source answers
 
@@ -311,7 +318,7 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus four post-roadmap milestones**
+**Phases 0–4 complete, plus five post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
@@ -323,8 +330,12 @@ phrasing landed, and scale and the ER over-merge risk were measured. **Milestone
 error-class synonymy retrieval miss, then carrying embeddings into ER recall and
 log granularity. **Milestone 8** cured the generic-suffix ER over-merge by
 stem-gating the deterministic pass (`difflib` precision 0.50 → 1.00, fully offline,
-ADR 0018). The [write-up](docs/WRITEUP.md) tells the story — including what is
-honestly not yet done (more connectors, multi-field ER, agentic/MCP mode, true
+ADR 0018). **Milestone 9** made ER **multi-field** — the address is a second
+deterministic signal that splits two distinct firms sharing a name, closing the M8
+residuals with a measured before/after (business gold quality 0.900 → 1.000) and the
+demo clusters provably unchanged except the one intended split (ADR 0019). The
+[write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
+(more connectors, registration/tax-key matching, agentic/MCP mode, true
 million-record scale).
 
 ## License
