@@ -16,17 +16,24 @@ HANA Cloud is the documented future persistence target (ADR 0004).
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from tessera.grounding import EvidenceRecord
 from tessera.resolution import (
     DEFAULT_RESOLUTION_THRESHOLD,
+    FieldSignal,
+    compare_match_fields,
     confirm_name_match,
     corpus_generic_tokens,
     normalize,
     similarity,
     strip_legal_suffix,
 )
+
+# The address signal when no corroborating fields are compared (the none-path):
+# resolution falls back to the pure name decision, byte-identical to Milestone 8.
+_NO_FIELD_SIGNAL = FieldSignal("neutral", "")
 
 
 @dataclass(frozen=True)
@@ -87,6 +94,43 @@ class Mention:
     node: str
     confidence: float
     reason: str
+
+
+def _merge_reason(
+    name_a: str,
+    name_b: str,
+    score: float,
+    gate_reason: str | None,
+    signal: FieldSignal,
+) -> str | None:
+    """The two-way multi-field ER gate (ADR 0019).
+
+    Given the name-pass result — ``gate_reason`` is the Milestone-8 stem gate's
+    verdict (a string when it confirms a shared distinctive signal, ``None`` when it
+    vetoes) — and the corroborating-field ``signal`` (address AGREE / CONTRADICT /
+    NEUTRAL), return the assertion ``reason`` to record, or ``None`` to veto the merge:
+
+    | name (stem gate) | address | outcome |
+    |---|---|---|
+    | confirmed | contradict | **veto** — same name, different address → distinct |
+    | confirmed | agree / neutral | merge (reason notes any agreement) |
+    | vetoed | agree | **merge** — address bridges a name-vetoed near-match |
+    | vetoed | contradict / neutral | veto (as Milestone 8) |
+
+    With ``signal`` NEUTRAL (the none-path, ``match_fields=()``) the returned reason
+    is **byte-identical** to Milestone 8.
+    """
+    base = f"{normalize(name_a)!r} ~ {normalize(name_b)!r} (similarity {score:.3f}"
+    if gate_reason is not None:
+        # Name confirms — a contradicting address vetoes the over-merge.
+        if signal.verdict == "contradict":
+            return None
+        address = f"; {signal.detail}" if signal.verdict == "agree" else ""
+        return f"name match: {base}; {gate_reason}{address})"
+    # Name vetoed by the stem gate — an agreeing address bridges the near-match.
+    if signal.verdict == "agree":
+        return f"name match stem-vetoed, bridged by address: {base}; {signal.detail})"
+    return None
 
 
 class KnowledgeGraph:
@@ -152,30 +196,41 @@ class KnowledgeGraph:
         return [m for m in self._mentions if m.node in node_ids]
 
     # --- resolution layer -----------------------------------------------------
-    def resolve_entities(self, threshold: float = DEFAULT_RESOLUTION_THRESHOLD) -> None:
+    def resolve_entities(
+        self,
+        threshold: float = DEFAULT_RESOLUTION_THRESHOLD,
+        match_fields: Sequence[str] = (),
+    ) -> None:
         """Assert same-entity over name-bearing node pairs at/above ``threshold``.
 
         Deterministic and additive: it appends :class:`Resolution`s, leaving every
         node untouched. Each assertion records the matched normalized forms, the
         score, and the shared distinctive token, so it is inspectable.
 
-        A character-similarity match is **gated** on a shared distinctive signal
-        (:func:`~tessera.resolution.confirm_name_match`): a pair clears the
+        A character-similarity match is first **gated** on a shared distinctive
+        signal (:func:`~tessera.resolution.confirm_name_match`): a pair clears the
         threshold *and* must share a distinctive signal (a non-generic token, or a
         near-identical distinctive stem), so distinct firms whose high similarity
         comes only from a shared generic suffix ("… Logistik GmbH") no longer
-        over-merge (spec 0070, ADR 0018). Genericness is corpus-derived
-        (:func:`~tessera.resolution.corpus_generic_tokens`) so the demo graphs'
-        typo/abbreviation variants are preserved while the generic-suffix cohort is
-        split.
+        over-merge (spec 0070, ADR 0018).
 
-        The gate is a conjunctive tightening — it only ever *removes* a pairwise
-        merge the bare ratio would have made, never adds one. The merges it removes
-        are *usually* generic-suffix over-merges, but it can also drop a genuine
-        match whose distinctive tokens are *both* typo'd at once (no shared token,
-        stems too far apart); on the demo data those are rescued by transitivity
-        through a cleaner co-referent, so the resolved clusters are byte-identical —
-        but that is a property of this corpus, not a guarantee (ADR 0018).
+        **Multi-field gate (spec 0073, ADR 0019).** When ``match_fields`` is given —
+        an *ordered* tuple of corroborating attribute keys (e.g.
+        ``("postal_code", "city_name")``) the source attaches to nodes — a second
+        deterministic signal (the address) is folded into the name decision as a
+        TWO-WAY gate (:func:`_merge_reason`): a contradicting address **vetoes** an
+        over-merge of two same-named-but-distinct firms (residuals 1 & 2 of ADR
+        0018), and an agreeing address **bridges** a name-vetoed near-match — a pair
+        whose distinctive tokens are *both* typo'd (residual 3). The corroboration
+        arm is reached only for pairs already at/above the name ``threshold``, so a
+        low-name-similarity pair sharing an address (two firms in one building) can
+        never false-merge.
+
+        Default ``match_fields=()`` is **byte-identical** to Milestone 8 (the devex /
+        github_actions none-path): no corroborating field is compared and the name
+        decision stands alone. The model stays additive and reversible (ADR 0004):
+        each confirmed pair is an ordinary :class:`Resolution`; clusters are derived
+        connected components; ``remove_resolution`` re-splits.
         """
         candidates = self.name_nodes()
         generic = corpus_generic_tokens(
@@ -188,13 +243,21 @@ class KnowledgeGraph:
                 if score < threshold:
                     continue
                 gate_reason = confirm_name_match(left.name, right.name, generic)
-                if gate_reason is None:
-                    continue  # no shared distinctive signal — a generic-suffix
-                    # over-merge (or a rare double-typo the gate cannot bridge)
-                reason = (
-                    f"name match: {normalize(left.name)!r} ~ "
-                    f"{normalize(right.name)!r} (similarity {score:.3f}; {gate_reason})"
+                signal = (
+                    compare_match_fields(
+                        {field: left.attr(field) for field in match_fields},
+                        {field: right.attr(field) for field in match_fields},
+                        match_fields,
+                    )
+                    if match_fields
+                    else _NO_FIELD_SIGNAL
                 )
+                reason = _merge_reason(
+                    left.name, right.name, score, gate_reason, signal
+                )
+                if reason is None:
+                    continue  # vetoed: generic-suffix over-merge, a contradicting
+                    # address, or a double-typo with no bridging address
                 self.add_resolution(
                     Resolution(
                         node_a=left.id,
