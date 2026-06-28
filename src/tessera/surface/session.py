@@ -13,8 +13,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from tessera.eval.metrics import ClaimShape, is_supported
-from tessera.graph import KnowledgeGraph, Mention, Node, Resolution
+from tessera.agent.grounded import domain, verify_claims
+from tessera.eval.metrics import ClaimShape
+from tessera.graph import KnowledgeGraph, Mention, Resolution
 from tessera.grounding import Answer, Claim, KnowledgeBase
 from tessera.routing import Route
 
@@ -53,27 +54,22 @@ class _VerticalContext:
         return self._engines
 
 
-def _business_context() -> _VerticalContext:
-    from tessera.business.claims import BUSINESS_CLAIM_SHAPES
-    from tessera.business.knowledge import build_demo_graph, build_demo_kb
-    from tessera.business.routing import route
-
+def _context_from_domain(name: str) -> _VerticalContext:
+    """Build a chat context from the shared grounded-tool domain registry, so the
+    set of verticals and how they route + verify has one source of truth (the
+    agent layer); the chat surface adds only the stateful, exploratory concerns."""
+    dom = domain(name)
     return _VerticalContext(
-        build=lambda: (build_demo_graph(), build_demo_kb()),
-        route=route,
-        claim_shapes=BUSINESS_CLAIM_SHAPES,
+        build=dom.build, route=dom.route, claim_shapes=dom.claim_shapes
     )
+
+
+def _business_context() -> _VerticalContext:
+    return _context_from_domain("business")
 
 
 def _devex_context() -> _VerticalContext:
-    from tessera.devex.knowledge import build_devex_graph, build_devex_kb
-    from tessera.devex.routing import route
-
-    return _VerticalContext(
-        build=lambda: (build_devex_graph(), build_devex_kb()),
-        route=route,
-        claim_shapes=(),
-    )
+    return _context_from_domain("devex")
 
 
 VERTICALS: tuple[str, ...] = ("business", "devex")
@@ -108,11 +104,7 @@ class ChatSession:
         context = self._context(self.vertical)
         graph, kb = context.engines()
         decision, answer = context.route(question, graph, kb)
-        nodes: dict[str, Node] = {node.id: node for node in graph.nodes}
-        verified = tuple(
-            is_supported(claim, nodes, graph, context.claim_shapes)
-            for claim in answer.claims
-        )
+        verified = verify_claims(answer, graph, context.claim_shapes)
         self.last_turn = TurnResult(
             vertical=self.vertical, route=decision, answer=answer, verified=verified
         )
