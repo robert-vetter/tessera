@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from tessera.grounding import EvidenceRecord
 from tessera.resolution import (
     DEFAULT_RESOLUTION_THRESHOLD,
+    confirm_name_match,
+    corpus_generic_tokens,
     normalize,
     similarity,
     strip_legal_suffix,
@@ -154,28 +156,54 @@ class KnowledgeGraph:
         """Assert same-entity over name-bearing node pairs at/above ``threshold``.
 
         Deterministic and additive: it appends :class:`Resolution`s, leaving every
-        node untouched. Each assertion records the matched normalized forms and the
-        score, so it is inspectable.
+        node untouched. Each assertion records the matched normalized forms, the
+        score, and the shared distinctive token, so it is inspectable.
+
+        A character-similarity match is **gated** on a shared distinctive signal
+        (:func:`~tessera.resolution.confirm_name_match`): a pair clears the
+        threshold *and* must share a distinctive signal (a non-generic token, or a
+        near-identical distinctive stem), so distinct firms whose high similarity
+        comes only from a shared generic suffix ("… Logistik GmbH") no longer
+        over-merge (spec 0070, ADR 0018). Genericness is corpus-derived
+        (:func:`~tessera.resolution.corpus_generic_tokens`) so the demo graphs'
+        typo/abbreviation variants are preserved while the generic-suffix cohort is
+        split.
+
+        The gate is a conjunctive tightening — it only ever *removes* a pairwise
+        merge the bare ratio would have made, never adds one. The merges it removes
+        are *usually* generic-suffix over-merges, but it can also drop a genuine
+        match whose distinctive tokens are *both* typo'd at once (no shared token,
+        stems too far apart); on the demo data those are rescued by transitivity
+        through a cleaner co-referent, so the resolved clusters are byte-identical —
+        but that is a property of this corpus, not a guarantee (ADR 0018).
         """
         candidates = self.name_nodes()
+        generic = corpus_generic_tokens(
+            [n.name for n in candidates if n.name is not None]
+        )
         for i, left in enumerate(candidates):
             for right in candidates[i + 1 :]:
                 assert left.name is not None and right.name is not None
                 score = similarity(left.name, right.name)
-                if score >= threshold:
-                    reason = (
-                        f"name match: {normalize(left.name)!r} ~ "
-                        f"{normalize(right.name)!r} (similarity {score:.3f})"
+                if score < threshold:
+                    continue
+                gate_reason = confirm_name_match(left.name, right.name, generic)
+                if gate_reason is None:
+                    continue  # no shared distinctive signal — a generic-suffix
+                    # over-merge (or a rare double-typo the gate cannot bridge)
+                reason = (
+                    f"name match: {normalize(left.name)!r} ~ "
+                    f"{normalize(right.name)!r} (similarity {score:.3f}; {gate_reason})"
+                )
+                self.add_resolution(
+                    Resolution(
+                        node_a=left.id,
+                        node_b=right.id,
+                        score=score,
+                        confidence=score,
+                        reason=reason,
                     )
-                    self.add_resolution(
-                        Resolution(
-                            node_a=left.id,
-                            node_b=right.id,
-                            score=score,
-                            confidence=score,
-                            reason=reason,
-                        )
-                    )
+                )
 
     def link_document_mentions(self) -> None:
         """Link document chunks to org-name nodes by normalized name containment.

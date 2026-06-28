@@ -13,11 +13,20 @@ the properties that could plausibly break with size:
 - **Faithfulness holds at volume:** a superlative ranking and a pairwise compare
   over the large graph emit only claims the verifier re-derives.
 
-And it **measures the over-merge risk** the WRITEUP names rather than only
-asserting around it: firms sharing a long generic suffix with similar short
-stems ("… Logistik GmbH") transitively over-merge at 0.85 — which is exactly why
-distinctive master-data tokens matter and why the threshold is a revisitable
-knob (ADR 0004). Deterministic (seeded, process-independent) so it reproduces.
+And it pins the **deterministic stem gate** (spec 0070 / ADR 0018): firms sharing
+a long generic suffix with distinct short stems ("Granite/Pyrite/… Logistik GmbH")
+once transitively over-merged at 0.85 because the shared suffix dominated the
+character ratio. The gate now confirms a character match only when the names share
+a *distinctive* signal (a non-generic token, or a near-identical distinctive stem),
+so the cohort stays four firms — measured here so the cure is a number, not a
+footnote.
+
+It also pins the **residual the cure cannot reach**: two genuinely distinct firms
+whose names are character-identical (they share the distinctive identity; only an
+address or registration number tells them apart) still over-merge under name-only
+resolution. That is name-only ER's floor, and the recorded next lever is
+multi-field ER (name + address, ADR 0004 future work) — kept as a measured edge,
+not papered over. Deterministic (seeded, process-independent) so it reproduces.
 """
 
 from __future__ import annotations
@@ -29,6 +38,7 @@ from tessera.business.reasoning import compare, find_named_entities, superlative
 from tessera.eval.metrics import is_supported
 from tessera.graph import Edge, KnowledgeGraph, Node
 from tessera.grounding import EvidenceRecord, Locator, Origin
+from tessera.resolution import similarity
 
 N_ENTITIES = 180
 VARIANT_COHORT = 40  # firms that also appear under a merging name variant
@@ -198,15 +208,15 @@ def test_faithfulness_holds_at_volume() -> None:
         assert is_supported(claim, nodes, graph, BUSINESS_CLAIM_SHAPES)
 
 
-def test_generic_suffix_firms_over_merge_at_the_threshold() -> None:
-    """The measured scale risk (WRITEUP / ADR 0004): distinct firms that share a
-    long generic suffix AND have similar short stems cross the 0.85 threshold and
-    transitively over-merge. This is exactly why the distinctive master-data
-    tokens above matter, and why 0.85 is a documented, revisitable knob — not a
-    solved problem. Measured here so the limitation is a number, not a footnote."""
+def test_generic_suffix_firms_no_longer_over_merge() -> None:
+    """The cured over-merge (spec 0070 / ADR 0018). Four DISTINCT firms share a
+    long generic suffix ("… Logistik GmbH") and have short stems that the bare 0.85
+    character ratio collapses (Granite~Pyrite 0.865, Cobalt~Basalt 0.889). The stem
+    gate recognizes the shared suffix as corpus-generic and confirms a merge only on
+    a shared *distinctive* signal — which these firms do not have — so they stay
+    four separate entities. This is the milestone's headline ER precision win,
+    pinned as a number."""
     graph = KnowledgeGraph()
-    # Four DISTINCT firms; the shared "Logistik GmbH" suffix dominates the name
-    # and the short stems (Granite/Pyrite, Cobalt/Basalt) are themselves similar.
     names = (
         "Granite Logistik GmbH",
         "Pyrite Logistik GmbH",
@@ -223,8 +233,84 @@ def test_generic_suffix_firms_over_merge_at_the_threshold() -> None:
         )
     graph.resolve_entities()
     clusters = {frozenset(graph.entity_of(f"Customer:{k}")) for k in range(len(names))}
-    # The threshold collapses four firms into fewer clusters — a real over-merge.
-    assert len(clusters) < len(names)
+    # Cured: four distinct firms resolve to four distinct entities — no over-merge.
+    assert len(clusters) == len(names)
+    # And the cure is a *veto*, not an absence of candidates: the two stem-similar
+    # pairs clear the 0.85 character threshold, so the bare ratio would have merged
+    # them — it is the gate that keeps them apart.
+    assert similarity("Granite Logistik GmbH", "Pyrite Logistik GmbH") >= 0.85
+    assert similarity("Cobalt Logistik GmbH", "Basalt Logistik GmbH") >= 0.85
+
+
+def test_character_identical_distinct_firms_still_over_merge() -> None:
+    """The residual the stem gate cannot reach (spec 0070 / ADR 0018), kept as a
+    measured edge. Two genuinely distinct firms — different cities, different
+    registrations — carry the *same* name. They share their distinctive identity
+    token, so name-only resolution correctly cannot tell them apart and merges them.
+    This is name-only ER's floor: only a non-name signal (address / registration
+    number) separates them, which is exactly multi-field ER (ADR 0004 future work) —
+    the recorded next lever. Pinned so the limitation stays a number, not a
+    footnote, in the Milestone-5 keep-a-measured-edge tradition."""
+    graph = KnowledgeGraph()
+    # Same name, two distinct legal entities at different addresses.
+    for cid, city in [("Customer:HH", "Hamburg"), ("Customer:M", "Munich")]:
+        graph.add_node(
+            Node(
+                record=_record(cid, "Customer", 0, "Hanseatic Trading GmbH"),
+                kind="Customer",
+                name="Hanseatic Trading GmbH",
+            )
+        )
+        addr_id = f"Address:{cid}"
+        graph.add_node(
+            Node(
+                record=_record(
+                    addr_id, "Address", 0, f"Hanseatic Trading GmbH, {city}"
+                ),
+                kind="Address",
+                name=None,
+            )
+        )
+        graph.add_edge(Edge(src=cid, dst=addr_id, relation="has_address"))
+    graph.resolve_entities()
+    # Over-merge: the two distinct firms collapse into one entity on name alone.
+    assert graph.entity_of("Customer:HH") == graph.entity_of("Customer:M")
+    # The distinguishing signal exists in the graph (distinct addresses) but
+    # name-only resolution does not consult it — multi-field ER is the lever.
+    addresses = {e.dst for e in graph.edges if e.relation == "has_address"}
+    assert addresses == {"Address:Customer:HH", "Address:Customer:M"}
+
+
+def test_two_firm_generic_suffix_is_a_recorded_residual() -> None:
+    """The second recorded residual (spec 0070 / ADR 0018): the gate recognizes a
+    suffix as generic only once it spans ``min_df`` (=3) distinct firms. A
+    *two*-firm generic-suffix collision is below that floor — frequency alone cannot
+    tell it from a two-firm typo pair — so it still over-merges. Multi-field ER is
+    the lever, same as the character-identical case. Pinned so the floor stays a
+    number."""
+
+    def _resolved(names: tuple[str, ...]) -> KnowledgeGraph:
+        graph = KnowledgeGraph()
+        for k, name in enumerate(names):
+            graph.add_node(
+                Node(
+                    record=_record(f"Customer:{k}", "Customer", k, name),
+                    kind="Customer",
+                    name=name,
+                )
+            )
+        graph.resolve_entities()
+        return graph
+
+    # Only two firms share "Logistik GmbH": below the min_df=3 generic floor, so it
+    # still over-merges.
+    two = _resolved(("Granite Logistik GmbH", "Pyrite Logistik GmbH"))
+    assert two.entity_of("Customer:0") == two.entity_of("Customer:1")
+    # A third distinct firm with the same suffix crosses the floor → cured.
+    three = _resolved(
+        ("Granite Logistik GmbH", "Pyrite Logistik GmbH", "Cobalt Logistik GmbH")
+    )
+    assert len({frozenset(three.entity_of(f"Customer:{k}")) for k in range(3)}) == 3
 
 
 def test_scale_build_is_fast_enough() -> None:

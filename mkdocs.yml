@@ -69,6 +69,7 @@ nav:
       - 0015 Embeddings on SAP: adr/0015-embeddings-on-sap.md
       - 0016 Embedding-assisted entity resolution: adr/0016-embedding-assisted-entity-resolution.md
       - 0017 Finer log chunking, stable chunk ids: adr/0017-stable-log-chunk-ids.md
+      - 0018 Stem-gated deterministic ER: adr/0018-stem-gated-deterministic-er.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
