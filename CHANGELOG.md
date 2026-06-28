@@ -13,6 +13,53 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-9] — 2026-06-28
+
+Make entity resolution **multi-field** (name + address), closing the three
+Milestone-8 residuals that name-only ER could not reach. Fully **offline and
+CI-reproducible** — no embedding, no cloud (the same posture as Milestone 8).
+Faithfulness gated at 1.0 throughout; the second intentional change to the ADR 0008
+frozen core, kept honest by a cluster-equivalence pin, a pre-merge adversarial
+review, and a measured before/after.
+
+### Added
+
+- **Multi-field entity resolution: the two-way address gate (ADR 0019).**
+  `resolve_entities` takes an optional ordered `match_fields`; the address (already in
+  the graph as `has_address` edges) is folded into the Milestone-8 stem-gate name
+  decision both ways — a contradicting postal code **vetoes** an over-merge of two
+  same-named firms at different locations, and an agreeing one **bridges** a
+  double-typo pair the stem gate had vetoed. A hard gate, not a confidence tweak,
+  because resolved entities are connected components. `resolution.compare_match_fields`
+  (pure-stdlib, embedding-free) computes the agree/contradict/neutral signal by **exact
+  normalized equality** (a `difflib` ratio would call `D-20095` ~ `20095` near-identical
+  — caught by the adversarial review).
+- **A same-name/different-address disambiguation pair** in the synthetic SALT corpus
+  (two distinct "Hanseatic Trading GmbH" firms, Hamburg / Munich), appended outside the
+  RNG stream so existing rows stay byte-identical. The new gold case (kind=refuse) is
+  the **measured before/after**: name-only ER over-merges and wrongly answers the
+  ambiguous-name question (business gold quality **0.900**); multi-field ER splits the
+  firms and correctly refuses (**1.000**) — both points in `eval/history.jsonl`,
+  CI-reproducible.
+
+### Changed
+
+- **`build_demo_graph` and `sources/salt.py` opt the business graph into multi-field
+  ER** (`ADDRESS_MATCH_FIELDS = ("postal_code", "city_name")`, postal before city).
+  devex / github_actions pass no `match_fields`, so their none-path is byte-identical.
+  The resolved clusters are unchanged on the existing data except the one intended
+  Hanseatic split (pinned, not assumed). Business gold 9 → 10, synthetic 52 → 53, every
+  metric still 1.0.
+
+### Notes
+
+- **Second sanctioned frozen-core delta** (after Milestone 8): `graph.py` +
+  `resolution.py`. A general ER capability belongs in the engine; the schema knowledge
+  of which attributes are an address stays in the source (ADR 0011 pattern).
+- **Measured edge kept** (the Milestone-5 discipline): two distinct firms with the same
+  name *and* the same address still over-merge — only a registration/tax key separates
+  them, the recorded next lever.
+
 ## [milestone-8] — 2026-06-28
 
 Cure Milestone 7's recorded ER residual: the generic-suffix **over-merge** in the

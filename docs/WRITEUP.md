@@ -115,18 +115,22 @@ Two design rules keep the 1.0 from being decorative:
 | Phase 2 close | NFKD diacritic folding + suffix-tolerant mentions close the named miss (ADR 0004 addendum) | **1.000** | — |
 | Phase 3 close | the DevEx battery lands; the *planted, predicted* `notif-svc` miss is measured | 1.000 | **0.917** |
 | Phase 4, unit 2 | a **declared catalog alias** closes the measured miss (ADR 0010) | 1.000 | **1.000** |
+| Milestone 9 | a same-name/different-address pair: name-only ER wrongly *answers* the ambiguous question (**quality 0.900**); multi-field ER (ADR 0019) splits the firms and it correctly *refuses* (**quality 1.000**) | 1.000 | 1.000 |
 
-Faithfulness was 1.000 (gated) and quality 1.000 at every recorded point;
-synthetic batteries (52 business + 24 devex cases) have been at 1.000
-across all three metrics since they landed.
+Faithfulness was 1.000 (gated) at every recorded point. Coverage and quality were
+1.000 at every point *except* Milestone 9's deliberately-measured name-only baseline,
+where quality reads **0.900** — the over-merge answering a question it should refuse —
+before multi-field ER closes it to 1.000 (both points in `eval/history.jsonl`).
+Synthetic batteries (now 53 business + 24 devex cases) have been at 1.000 across all
+three metrics since they landed.
 
 The trail is the story: at no point did a number improve by weakening a
-check. The two coverage recoveries are the project's central pattern — the
+check. These coverage and quality recoveries are the project's central pattern — the
 **trust loop**: *plant or discover a realistic difficulty → let the metric
 measure it as a named miss → fix it with the smallest honest mechanism →
-re-measure → record*. Both misses were known and documented before the eval
-ever saw them; both fixes are deterministic and inspectable (a Unicode
-normalization rule; a declared alias in a catalog file).
+re-measure → record*. Each miss was known and documented before the eval
+ever saw it; each fix is deterministic and inspectable (a Unicode
+normalization rule; a declared alias; a postal-anchored address gate).
 
 ### Why not embeddings (yet)
 
@@ -319,6 +323,52 @@ split two distinct firms with character-identical names, a two-firm suffix colli
 below the genericness floor, or a double-typo pair with no cleaner co-referent —
 each pinned by a test, all pointing at multi-field ER as the next lever.
 
+### Milestone 9: multi-field entity resolution — the floor name alone can't cross
+
+Milestone 8 left three residuals, each pinned by a test, all naming the **same**
+next lever: name-only ER cannot split two distinct firms with the *same* name, nor a
+two-firm suffix collision below the genericness floor, nor rescue a double-typo pair
+whose tokens are both misspelled. The fix is a second deterministic signal — the
+**address**, which already lives in the graph as `has_address` edges (ADR 0004 had
+named multi-field matching "an additive extension, not a redesign"). The maintainer
+scoped it: match on name + address, combine via a **two-way gate**, and add a
+same-name/different-address pair so the fix becomes a *measured* before/after.
+
+The combine rule has to be a **gate**, not a confidence tweak — resolved entities are
+connected components, so a confidence number can't change cluster membership. So the
+address is folded into the M8 stem-gate decision both ways (ADR 0019): a name match
+whose addresses *contradict* is **vetoed** (two same-named firms at different postal
+codes are different firms — residuals 1 and 2); a name match the stem gate *vetoed*
+but whose addresses *agree* is **bridged** (the double-typo pair — residual 3 —
+merges directly instead of leaning on transitivity). The engine stays general: it
+compares whatever ordered `match_fields` the source hands it (postal before city);
+the knowledge of *which* attributes are an address lives in `sources/salt.py`. Default
+`match_fields=()` is byte-identical to Milestone 8, so devex and github_actions —
+which carry no address — are provably untouched.
+
+Two properties make the close honest. First, **it changes nothing it shouldn't**: on
+the existing demo data the gate is inert (every genuine merge already agrees on
+postal; no character-identical distinct firm existed yet), pinned by a test that the
+resolved clusters are identical with and without the address signal — multi-field
+differs in *exactly one* place, the new pair. Second, the close is **CI-reproducible**
+(unlike the M6/M7 online closes): the synthetic corpus gains two genuinely distinct
+firms both named "Hanseatic Trading GmbH" at different addresses, and the
+ambiguous-name gold question flips from a wrongly-*answered* miss to a correct
+ambiguity *refusal* — **business gold quality 0.900 → 1.000**, both points recorded in
+`eval/history.jsonl`, faithfulness 1.0 throughout (the name-only answer is faithful to
+its *merged* cluster — the gate measures structure, not the right entity).
+
+The pre-merge **adversarial multi-agent review** earned its place again: it caught
+that a `difflib` *ratio* on postal codes calls genuinely different ones near-identical
+(`D-20095` ~ `20095` = 0.909), which would have broken the veto arm. The field match
+is therefore **exact normalized equality** (`normalize` still folds umlauts, so a
+city's `München`/`Muenchen` variants agree while a postal code must match exactly) —
+fixed at the root, pinned by a regression test. This is the **second** intentional
+frozen-core change (after M8); the empty-diff audit names `graph.py` + `resolution.py`
+as the one sanctioned delta. The milestone keeps a measured edge in turn: two distinct
+firms with the same name *and* the same address still over-merge — only a
+registration/tax key would separate them, the recorded next lever.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -392,17 +442,21 @@ Named with the same prominence as the results:
   validation) and the batteries now *do* sample free-form phrasing, but
   intent-only words (`rank`, `lead`, `best`) stay the named ADR 0006 ceiling;
   its measured-miss trigger has not fired (a correct refusal is the fallback).
-- **ER over-merge cured deterministically; name-only ER's floor remains.**
-  Milestone 7 added embedding-assisted recall (ADR 0016); Milestone 8 cured the
-  generic-suffix over-merge by stem-gating the deterministic `difflib` pass itself
-  (ADR 0018) — `difflib` precision 0.50 → 1.00, the labelled-set union 0.67 → 1.00,
-  fully offline and CI-reproducible, with the business/devex cluster signatures
-  byte-identical before and after. What name-only ER still cannot do is recorded and
-  pinned by tests: split two **distinct firms with character-identical names**, split
-  a two-firm suffix collision below the genericness floor, or rescue a double-typo
-  pair with no cleaner co-referent (caught by transitivity on the demo data). All
-  three point at **multi-field matching** (name + address + keys) — the recorded next
-  lever, and the stronger precision tool.
+- **ER is now multi-field; one address-blind floor remains.** Milestone 7 added
+  embedding-assisted recall (ADR 0016); Milestone 8 cured the generic-suffix
+  over-merge by stem-gating the deterministic `difflib` pass (ADR 0018); Milestone 9
+  added the **address** as a second deterministic signal (ADR 0019), a two-way gate
+  that vetoes an over-merge of two same-named firms at different addresses and bridges
+  a double-typo pair at the same address — closing all three M8 residuals, fully
+  offline and CI-reproducible, with the demo clusters provably unchanged except the
+  one intended split (business gold quality 0.900 → 1.000 on the new disambiguation
+  pair). What multi-field ER still cannot do is recorded and pinned: split two distinct
+  firms with the **same name *and* the same address** — name and postal both agree, so
+  only a **registration/tax key** (the named next lever) separates them. The address
+  comparison is exact normalized equality, so it is postal-anchored, not
+  postal-perfect: a genuine same-firm pair whose records carried *different* postals
+  would be wrongly split (absent from the synthetic data, where postal is the
+  canonical value).
 - **Semantic embeddings ran on SAP for retrieval *and* ER, but stay link-only and
   cloud-measured.** Milestones 6–7 closed the synonymy miss, the `checkout-svc` ER
   miss, and the long-log dilution on HANA Cloud in-database embeddings — but
@@ -423,13 +477,14 @@ Named with the same prominence as the results:
 
 More real connectors (the first — GitHub Actions — now exists and proves the
 synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
-next) · **multi-field entity resolution** (name + address + keys) — Milestone 8
-cured the generic-suffix over-merge by stem-gating the `difflib` pass (ADR 0018),
-and the residuals it leaves (character-identical distinct firms, two-firm suffix
-collisions, double-typo pairs) are precisely what a second matching signal would
-resolve · LLM-judged faithfulness alongside the deterministic floor · an agentic /
-MCP-exposed mode (grounded actions, not just answers — the 2026-shaped extension
-of the same trust substrate) · persistence, multi-tenancy, access governance.
+next) · **registration/tax-key matching** — Milestone 9 made ER multi-field (name +
+address, ADR 0019), closing the M8 residuals; the one floor it leaves is two distinct
+firms with the same name *and* the same address, which an exact registration/tax key
+would separate (a new synthetic column, an exact-match third field into the same
+assertion layer) · LLM-judged faithfulness alongside the deterministic floor · an
+agentic / MCP-exposed mode (grounded actions, not just answers — the 2026-shaped
+extension of the same trust substrate) · persistence, multi-tenancy, access
+governance.
 
 ## What was learned
 
@@ -456,6 +511,12 @@ of the same trust substrate) · persistence, multi-tenancy, access governance.
    review surfaced. Hashing the resolved cluster signature before/after, and
    pinning each rescued case as a test, turned "I think it's safe" into a checkable
    fact (ADR 0018).
+7. **The obvious metric for a key is the wrong one.** Multi-field ER's first cut
+   compared postal codes with the same `difflib` ratio used for names — and the
+   adversarial review showed it scores `D-20095` and `20095` at 0.909, a false match
+   that breaks the very veto the address is there to provide. A short structured
+   identity key wants *exact* equality, not fuzzy similarity; reusing the name
+   comparator was a category error the review caught before it shipped (ADR 0019).
 
 ## Reproduce everything
 

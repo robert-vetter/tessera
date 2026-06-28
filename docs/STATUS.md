@@ -1029,3 +1029,99 @@ persistence; BTP serving.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #79–#81 merged. Tagged
   `milestone-8`.
+
+---
+
+## 2026-06-28 — Milestone 9 COMPLETE (multi-field entity resolution: name + address)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-28): **(a)** match on name + address
+(no new key column — address already lives in the graph as `has_address` edges);
+**(b)** combine via a **two-way deterministic gate** (address disagreement vetoes an
+over-merge, agreement bridges a corroborated near-match — a hard gate, since clusters
+are connected components and confidence can't change membership); **(c)** add a
+same-name/different-address pair so the fix is a **measured before/after**. Five units,
+each spec → branch → implement → gate → PR → CI-green → squash-merge. Fully **offline /
+CI-reproducible — no embedding, no cloud** (the same posture as M8).
+
+**The problem this milestone answers.** Milestone 8 cured the generic-suffix over-merge
+but left three residuals, each pinned by a test, all naming the **same** next lever:
+name-only ER cannot split two distinct firms with the *same* name, nor a two-firm
+suffix collision below the genericness floor, nor rescue a double-typo pair whose
+tokens are both misspelled. ADR 0004 had named multi-field matching (name + address)
+"an additive extension, not a redesign." M9 takes it.
+
+**Done this session (5 units, PRs #83–#86 + this close)**
+- **Phase plan** (spec 0072, #83) + the three recorded scope decisions.
+- **Multi-field engine + ADR 0019** (spec 0073, #84): `resolve_entities` gains an
+  optional ordered `match_fields`; `resolution.compare_match_fields` (pure-stdlib,
+  embedding-free) yields an agree/contradict/neutral address signal; `graph._merge_reason`
+  folds it into the M8 stem-gate decision as a **two-way gate** (veto an over-merge,
+  bridge a double-typo). Default `()` is byte-identical to M8 (none-path).
+  A **pre-merge 5-lens adversarial review** confirmed **7 of 9** findings — the
+  headline a root-cause major (a `difflib` ratio scores `D-20095` ~ `20095` at 0.909,
+  a false postal AGREE that breaks the veto arm); **fixed** with **exact normalized
+  equality** (`normalize` still folds umlauts, so a city's variants agree) + the
+  byte-exact none-path pin, the 6th truth-table-cell test, and code-honest
+  corroboration wording.
+- **Business wiring, no regression measured** (spec 0074, #85): `sources/salt.py`
+  emits the address signature (`postal_code` + `city_name`) on customer + address
+  nodes; `build_demo_graph` opts in. The business resolved clusters are **byte-identical
+  with and without** `match_fields` (308 both ways) — proven, not assumed; the
+  corroboration arm adds exactly one assertion (the Noridc/Nordic Timbre double-typo
+  pair now bridges directly, residual 3 on the real graph).
+- **The disambiguation pair + the measured close** (spec 0075, #86): two distinct
+  "Hanseatic Trading GmbH" firms at different addresses (Hamburg / Munich), appended
+  outside the RNG stream (existing rows byte-identical). New gold case (kind=refuse):
+  name-only ER over-merges and wrongly **answers** the ambiguous-name question
+  (**business gold quality 0.900**); multi-field ER splits the firms and correctly
+  **refuses** (**1.000**) — both points in `eval/history.jsonl`
+  (`scripts/record_m9_close.py`), faithfulness 1.0 throughout, **CI-reproducible**.
+- **Close** (spec 0076, this entry): WRITEUP M9 section + updated limitations/
+  future-work + a seventh "what was learned"; README ER section + numbers; CHANGELOG
+  `[milestone-9]`; ADR nav/index; frozen-core check; tag `milestone-9`; memory; kickoff.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **business — gold 10: faithfulness 1.000, coverage 1.000, quality 1.000 (multi-field)
+  / 0.900 (name-only baseline, the recorded miss); synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- Trust-loop pair recorded: business gold quality **0.900 (name-only) → 1.000
+  (multi-field)** — the ambiguous-name miss, closed offline and CI-reproducibly (unlike
+  the M6/M7 online closes). Deterministic across `PYTHONHASHSEED` 0/1/42/2026.
+
+**Milestone check:** the three M8 residuals are closed by a second deterministic
+signal (the address), **provably in CI**; the over-merge → split is a measured eval
+before/after; faithfulness stayed gated at 1.0; the leak-guard holds (the gate is
+embedding-free in `resolution.py`); the business/devex clusters are unchanged except
+the one intended Hanseatic split (pinned); and a new measured edge is kept (same name
+**and** same address → a registration/tax key is the next lever). **Met.** Tagged
+`milestone-9`.
+
+**Open questions / risks**
+- **Frozen core touched again** (ADR 0008): the sanctioned `milestone-8..HEAD` deltas
+  are three frozen-list files — `graph.py` + `resolution.py` (the general engine gate)
+  and `sources/salt.py` (the source's additive address attributes; schema knowledge
+  stays in the source). Everything else empty-diff, the verifier included (ADR 0019).
+- **Postal-anchored, not postal-perfect.** Field agreement is exact normalized
+  equality; a genuine same-firm pair whose records carried *different* postals would be
+  wrongly split (absent from the synthetic data, where postal is the canonical value).
+  The corroboration arm's residual precision risk (two distinct firms, name-similar +
+  same exact address) is a recorded measured edge, not a code guarantee (ADR 0019).
+- **The remaining ER floor:** two distinct firms with the same name **and** the same
+  address — only a registration/tax key separates them, the named next lever.
+- ADR 0005 (LLM-judge) and ADR 0006 (semantic routing) triggers remain live and
+  unacted; no measured case forces either. The M6/M7 online HANA numbers remain
+  timestamped, not CI-reproducible; M9 added no online number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates:
+**registration/tax-key matching** (the recorded next lever — a new exact-match field
+into the same assertion layer, resolves the last ER floor, fully offline); a second
+real connector (Jira / PR-and-issue export); agentic / MCP-exposed grounded mode; full
+HANA graph persistence; BTP serving.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #83–#86 merged. Tagged
+  `milestone-9`.
