@@ -44,8 +44,6 @@ modules one-directionally — they never import it.
 
 from __future__ import annotations
 
-import re
-from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from typing import Protocol
 
@@ -53,7 +51,28 @@ from tessera.graph import Resolution
 from tessera.grounding import EvidenceRecord, Locator, Origin
 from tessera.platform.providers import EmbeddingProvider
 from tessera.platform.vectors import InMemoryVectorStore, VectorStore
-from tessera.resolution import LEGAL_SUFFIXES, normalize
+from tessera.resolution import (
+    DEFAULT_MIN_GENERIC_DF,
+    ORG_DESCRIPTORS,
+    distinctive_stem,
+    generic_tokens,
+    tokenize,
+)
+
+# The distinctive-stem primitives now live in :mod:`tessera.resolution` (an
+# embedding-free, verifier-reachable module) so the deterministic difflib gate can
+# share them without risking the leak-guard. They are re-exported here for
+# backward compatibility — ``tessera.er_semantic.tokenize`` etc. still resolve.
+__all__ = [
+    "DEFAULT_MIN_GENERIC_DF",
+    "DEFAULT_SEMANTIC_THRESHOLD",
+    "ORG_DESCRIPTORS",
+    "distinctive_stem",
+    "generic_tokens",
+    "propose_semantic_resolutions",
+    "propose_semantic_resolutions_via_index",
+    "tokenize",
+]
 
 
 class _IndexableRetriever(Protocol):
@@ -74,62 +93,6 @@ class _IndexableRetriever(Protocol):
 # its revisit trigger. It is a **cosine** threshold (a different metric than the
 # ``difflib`` ratio), applied to the stems, not the full names.
 DEFAULT_SEMANTIC_THRESHOLD = 0.85
-
-# A token shared across at least this many names is treated as generic (a
-# corpus-frequency stoplist, so "Logistik" across four firms becomes generic
-# without anyone naming it). Tunable; small by design so single-occurrence
-# distinctive stems are never stripped.
-DEFAULT_MIN_GENERIC_DF = 3
-
-# Universal organizational descriptors — generic regardless of corpus frequency,
-# because they describe *kind*, not *identity* (unlike a per-entity alias, ADR
-# 0010). Kept small and explicit; legal forms are folded in from
-# :data:`tessera.resolution.LEGAL_SUFFIXES`.
-ORG_DESCRIPTORS = frozenset(
-    {"service", "services", "svc", "svcs", "system", "systems", "platform", "app"}
-)
-
-_TOKEN_SPLIT = re.compile(r"[\s\-_/.,&]+")
-
-
-def tokenize(name: str) -> list[str]:
-    """Split a name into normalized tokens (lowercased, umlaut/diacritic-folded).
-
-    Each token is run through :func:`tessera.resolution.normalize` so
-    ``"Müller"`` and ``"Mueller"`` tokenize identically, and empty tokens are
-    dropped. Splitting happens on whitespace and the common name separators
-    before normalization collapses each token to ``[a-z0-9]``.
-    """
-    return [tok for raw in _TOKEN_SPLIT.split(name) if (tok := normalize(raw))]
-
-
-def generic_tokens(
-    names: Sequence[str],
-    *,
-    min_df: int = DEFAULT_MIN_GENERIC_DF,
-    descriptors: frozenset[str] = ORG_DESCRIPTORS,
-) -> frozenset[str]:
-    """The generic-token set for a name corpus: descriptors ∪ legal forms ∪
-    tokens whose document frequency across ``names`` is ``>= min_df``.
-
-    Document frequency counts each name once per distinct token (so a token
-    repeated within one name is not double-counted). The result is what
-    :func:`distinctive_stem` strips away.
-    """
-    document_frequency: Counter[str] = Counter()
-    for name in names:
-        document_frequency.update(set(tokenize(name)))
-    frequent = {tok for tok, df in document_frequency.items() if df >= min_df}
-    return frozenset(descriptors) | frozenset(LEGAL_SUFFIXES) | frozenset(frequent)
-
-
-def distinctive_stem(name: str, generic: frozenset[str]) -> str:
-    """The name reduced to its non-generic tokens, space-joined in order.
-
-    ``""`` when every token is generic — such a name carries no distinctive
-    signal and is never proposed for a merge.
-    """
-    return " ".join(tok for tok in tokenize(name) if tok not in generic)
 
 
 def _embeddable_stems(
