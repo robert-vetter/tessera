@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from tessera.business.knowledge import build_demo_graph
 from tessera.graph import KnowledgeGraph
+from tessera.sources.salt import ADDRESS_MATCH_FIELDS
 
 MUELLER = "I_Customer:0010000007"
 MUELLER_ADDR = "I_AddrOrgNamePostalAddress:A0007"
@@ -118,9 +119,32 @@ def test_multifield_moves_only_the_intended_disambiguation_pair() -> None:
 def test_multifield_bridges_the_double_typo_pair_directly() -> None:
     """The residual-3 improvement realized on the real demo graph: the Noridc/Nordic
     Timbre double-typo pair (which name-only leaves to transitivity) now merges
-    DIRECTLY via an agreeing address — exactly one ``bridged by address`` assertion,
-    naming the timber/timbre stems, without moving any cluster (ADR 0019)."""
+    DIRECTLY via an agreeing corroborating field — exactly one ``bridged by
+    corroborating field`` assertion, naming the timber/timbre stems, without moving any
+    cluster (ADR 0019). Under Milestone 10 the deciding field is the registration key:
+    the two records are the same firm, so they share a VAT, and the key — leading
+    ``CUSTOMER_MATCH_FIELDS`` — bridges them (spec 0078 / ADR 0020)."""
     multi = build_demo_graph()
-    bridged = [r for r in multi.resolutions if "bridged by address" in r.reason]
+    bridged = [
+        r for r in multi.resolutions if "bridged by corroborating field" in r.reason
+    ]
     assert len(bridged) == 1
     assert "timber" in bridged[0].reason and "timbre" in bridged[0].reason
+    assert "vat_registration" in bridged[0].reason
+
+
+def test_vat_first_moves_no_cluster_on_existing_data() -> None:
+    """The Milestone-10 non-regression guarantee, **pinned not assumed** (spec 0078,
+    ADR 0020). Adding a VATRegistration to every customer and leading the ordered
+    match_fields with it changes the *deciding field* (postal → key) but not the
+    *outcome*: on the existing data (no same-name/same-address pair yet — that lands in
+    Unit 3) the resolved clusters are byte-identical between the VAT-first default and
+    the Milestone-9 address-only path. Every genuine merge agrees on the key (same firm
+    → same VAT), and the Hanseatic disambiguation pair contradicts on it as it did on
+    the postal — so no cluster moves. A mis-assigned per-entity VAT would split a
+    genuine merge and fail here."""
+    vat_first = frozenset(build_demo_graph().clusters())
+    address_only = frozenset(
+        build_demo_graph(match_fields=ADDRESS_MATCH_FIELDS).clusters()
+    )
+    assert vat_first == address_only
