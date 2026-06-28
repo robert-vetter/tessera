@@ -93,27 +93,42 @@ _HANSEATIC = frozenset(
     }
 )
 
+# The Milestone-10 same-name / SAME-address pair (spec 0079): two distinct "Havel
+# Kontor GmbH" firms at one address, split only by their different VAT registration.
+_HAVEL = frozenset(
+    {
+        "I_Customer:0010000011",
+        "I_Customer:0010000012",
+        "I_AddrOrgNamePostalAddress:A0011",
+        "I_AddrOrgNamePostalAddress:A0012",
+    }
+)
 
-def test_multifield_moves_only_the_intended_disambiguation_pair() -> None:
-    """The Milestone-9 precision guarantee, **pinned not assumed** (spec 0074/0075,
-    ADR 0019). Multi-field ER changes the resolved clusters in EXACTLY one place — the
-    same-name/different-address disambiguation pair (spec 0075) — and nowhere else.
-    Every cluster away from that pair is byte-identical to name-only resolution (the
-    Milestone-8 state); the pair itself splits from one over-merged cluster (name-only)
-    into two same-named entities (multi-field, the cure)."""
-    multi = build_demo_graph()  # match_fields = postal + city (the default)
+
+def test_multifield_moves_only_the_intended_disambiguation_pairs() -> None:
+    """The precision guarantee, **pinned not assumed** (spec 0074/0075/0079, ADR
+    0019/0020). The default (registration-key) ER changes the resolved clusters in
+    EXACTLY two places vs name-only — the two same-name disambiguation pairs (the
+    Hanseatic different-address pair, spec 0075; the Havel same-address pair, spec
+    0079) — and nowhere else. Every other cluster is byte-identical to name-only
+    resolution; each pair splits from one over-merged cluster (name-only) into two
+    same-named entities (the cure)."""
+    multi = build_demo_graph()  # the registration-key default
     name_only = build_demo_graph(match_fields=())  # the Milestone-8 name-only state
 
     def others(graph: KnowledgeGraph) -> frozenset[frozenset[str]]:
-        return frozenset(c for c in graph.clusters() if not (c & _HANSEATIC))
+        return frozenset(c for c in graph.clusters() if not (c & (_HANSEATIC | _HAVEL)))
 
-    # Every cluster not touching the disambiguation pair is unchanged.
+    # Every cluster not touching a disambiguation pair is unchanged.
     assert others(multi) == others(name_only)
-    # The one intended change: name-only over-merges the pair into one entity...
-    a, b = "I_Customer:0010000009", "I_Customer:0010000010"
-    assert name_only.entity_of(a) == name_only.entity_of(b)
-    # ...multi-field splits it into two same-named entities (residual 1, the cure).
-    assert multi.entity_of(a) != multi.entity_of(b)
+    # The intended changes: name-only over-merges each pair into one entity...
+    for a, b in (
+        ("I_Customer:0010000009", "I_Customer:0010000010"),
+        ("I_Customer:0010000011", "I_Customer:0010000012"),
+    ):
+        assert name_only.entity_of(a) == name_only.entity_of(b)
+        # ...the default ER splits each into two same-named entities (the cure).
+        assert multi.entity_of(a) != multi.entity_of(b)
 
 
 def test_multifield_bridges_the_double_typo_pair_directly() -> None:
@@ -133,18 +148,25 @@ def test_multifield_bridges_the_double_typo_pair_directly() -> None:
     assert "vat_registration" in bridged[0].reason
 
 
-def test_vat_first_moves_no_cluster_on_existing_data() -> None:
-    """The Milestone-10 non-regression guarantee, **pinned not assumed** (spec 0078,
-    ADR 0020). Adding a VATRegistration to every customer and leading the ordered
-    match_fields with it changes the *deciding field* (postal → key) but not the
-    *outcome*: on the existing data (no same-name/same-address pair yet — that lands in
-    Unit 3) the resolved clusters are byte-identical between the VAT-first default and
-    the Milestone-9 address-only path. Every genuine merge agrees on the key (same firm
-    → same VAT), and the Hanseatic disambiguation pair contradicts on it as it did on
-    the postal — so no cluster moves. A mis-assigned per-entity VAT would split a
-    genuine merge and fail here."""
-    vat_first = frozenset(build_demo_graph().clusters())
-    address_only = frozenset(
-        build_demo_graph(match_fields=ADDRESS_MATCH_FIELDS).clusters()
-    )
-    assert vat_first == address_only
+def test_registration_key_splits_only_the_same_address_pair() -> None:
+    """The Milestone-10 cluster-level close, **pinned not assumed** (spec 0078/0079,
+    ADR 0020). The registration key changes the resolved clusters in EXACTLY one place
+    vs the Milestone-9 address-only path — the same-name/SAME-address Havel Kontor pair,
+    which the address gate over-merges (the address agrees) and the key splits (the two
+    firms carry different VATs) — and nowhere else. This is both the non-regression
+    guarantee (VAT-on-all moves no other cluster; a mis-assigned per-entity VAT would
+    split a genuine merge and fail here) and the cluster-level demonstration of the
+    key's contribution beyond the address."""
+    key = build_demo_graph()  # the registration-key default
+    address_only = build_demo_graph(match_fields=ADDRESS_MATCH_FIELDS)
+
+    def others(graph: KnowledgeGraph) -> frozenset[frozenset[str]]:
+        return frozenset(c for c in graph.clusters() if not (c & _HAVEL))
+
+    # Every cluster away from the same-address pair is byte-identical.
+    assert others(key) == others(address_only)
+    # The one intended change: the address gate over-merges the same-address firms...
+    a, b = "I_Customer:0010000011", "I_Customer:0010000012"
+    assert address_only.entity_of(a) == address_only.entity_of(b)
+    # ...the registration key splits them — the floor the address cannot reach.
+    assert key.entity_of(a) != key.entity_of(b)

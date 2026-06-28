@@ -249,9 +249,10 @@ def test_character_identical_firms_split_by_address() -> None:
     """Residual 1 cured by multi-field ER (spec 0073 / ADR 0019). Two genuinely
     distinct firms carry the *same* name; name-only resolution shares their
     distinctive token and merges them (the floor the stem gate could not reach), but
-    the address — passed as ``match_fields`` — contradicts and splits them. The new
-    floor is same name AND same address, which only a registration/tax key would
-    separate (the recorded next lever; kept as a measured edge below)."""
+    the address — passed as ``match_fields`` — contradicts and splits them. When even
+    the address coincides, the registration key splits them (spec 0078/0079, ADR 0020;
+    the tail of this test); the FINAL floor is same name AND same address AND same key,
+    separable only by an external registry."""
     cities = {"Customer:HH": ("Hamburg", "20095"), "Customer:M": ("Munich", "80331")}
 
     def _build() -> KnowledgeGraph:
@@ -288,20 +289,39 @@ def test_character_identical_firms_split_by_address() -> None:
     multi.resolve_entities(match_fields=("postal_code", "city_name"))
     assert multi.entity_of("Customer:HH") != multi.entity_of("Customer:M")
 
-    # The new floor: same name AND same address still over-merges — only a
-    # registration/tax key would separate them (multi-field ER's remaining lever).
-    same_addr = KnowledgeGraph()
-    for cid in ("Customer:HH", "Customer:M"):
-        same_addr.add_node(
-            Node(
-                record=_record(cid, "Customer", 0, "Hanseatic Trading GmbH"),
-                kind="Customer",
-                name="Hanseatic Trading GmbH",
-                attributes=(("postal_code", "20095"), ("city_name", "Hamburg")),
+    # Same name AND same address: the address agrees, so address-only ER over-merges
+    # (the floor Milestone 9 leaves) — but the registration key splits them
+    # (Milestone 10). Distinct firms carry different keys.
+    def _same_addr(keys: tuple[str, str]) -> KnowledgeGraph:
+        graph = KnowledgeGraph()
+        for cid, vat in zip(("Customer:HH", "Customer:M"), keys, strict=True):
+            graph.add_node(
+                Node(
+                    record=_record(cid, "Customer", 0, "Hanseatic Trading GmbH"),
+                    kind="Customer",
+                    name="Hanseatic Trading GmbH",
+                    attributes=(
+                        ("vat_registration", vat),
+                        ("postal_code", "20095"),
+                        ("city_name", "Hamburg"),
+                    ),
+                )
             )
+        graph.resolve_entities(
+            match_fields=("vat_registration", "postal_code", "city_name")
         )
-    same_addr.resolve_entities(match_fields=("postal_code", "city_name"))
-    assert same_addr.entity_of("Customer:HH") == same_addr.entity_of("Customer:M")
+        return graph
+
+    # Different keys → the key splits the same-address firms (the Milestone-10 close).
+    different_key = _same_addr(("DE111111111", "DE222222222"))
+    assert different_key.entity_of("Customer:HH") != different_key.entity_of(
+        "Customer:M"
+    )
+    # The FINAL floor: same name AND same address AND same key still over-merges —
+    # the two firms are indistinguishable from the signals in the data, separable only
+    # by an external registry (the honest recorded boundary, ADR 0020).
+    same_key = _same_addr(("DE111111111", "DE111111111"))
+    assert same_key.entity_of("Customer:HH") == same_key.entity_of("Customer:M")
 
 
 def test_two_firm_generic_suffix_split_by_address() -> None:

@@ -20,8 +20,9 @@ from tessera.eval.registry import GOLD_ROOT, batteries, business_battery
 
 def test_business_gold_set_is_loaded() -> None:
     cases = load_gold_set(GOLD_ROOT / "business")
-    # 9 → 10 (spec 0075): the same-name/different-address disambiguation refusal.
-    assert len(cases) == 10
+    # 9 → 10 (spec 0075): the same-name/different-address disambiguation refusal;
+    # 10 → 11 (spec 0079): the same-name/SAME-address disambiguation refusal.
+    assert len(cases) == 11
     assert {c.kind for c in cases} == {"answer", "refuse"}
     # compose, retrieve, and the routed multi-step path (the phrasing cases)
     assert {c.engine for c in cases} == {"compose", "retrieve", "route"}
@@ -34,14 +35,16 @@ def _business_result() -> BatteryResult:
 
 
 def test_business_numbers_hold_with_multifield_er() -> None:
-    """The business numbers under the default multi-field ER (spec 0075): gold 10
-    (the spec-0075 disambiguation refusal added) and synthetic 53, **all three
-    metrics 1.0**. The metrics held through every refactor since Phase 2 (spec 0032)
-    and through multi-field ER — the same-name pair refuses correctly under the
-    address gate, so quality stays 1.0 (it is 0.900 under name-only ER, the recorded
-    miss; see test_m9_multifield_close)."""
+    """The business numbers under the default registration-key ER (spec 0078/0079):
+    gold 11 (the spec-0075 different-address + spec-0079 same-address disambiguation
+    refusals) and synthetic 53, **all three metrics 1.0**. The metrics held through
+    every refactor since Phase 2 (spec 0032), through multi-field ER, and through the
+    registration key — both same-name pairs refuse correctly (the different-address
+    pair under the address gate, the same-address pair under the key), so quality stays
+    1.0 (the same-address pair is 0.909 under address-only ER, the recorded M10 miss;
+    see test_m10_registration_key_close)."""
     result = _business_result()
-    assert result.gold_case_count == 10
+    assert result.gold_case_count == 11
     assert result.faithfulness == 1.0
     assert result.coverage == 1.0
     assert result.quality == 1.0
