@@ -19,6 +19,7 @@ from tessera.agent.grounded import (
     available_domains,
     domain,
     ground,
+    serialize_answer,
     verify_claims,
 )
 
@@ -32,5 +33,6 @@ __all__ = [
     "available_domains",
     "domain",
     "ground",
+    "serialize_answer",
     "verify_claims",
 ]
