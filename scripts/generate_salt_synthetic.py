@@ -436,6 +436,42 @@ def main() -> None:
             }
         )
 
+    # --- Same-name / SAME-address pair: the registration-key floor. ----------------
+    # Milestone 10 (spec 0079): two DISTINCT firms with an IDENTICAL name AND an
+    # IDENTICAL address (Am Kanal 5, 14467 Potsdam) — the floor name + address ER
+    # (Milestone 9) cannot reach: the address AGREES, so it corroborates a merge and the
+    # firms over-merge. Only the exact registration key (their DIFFERENT VATs) splits
+    # them. The two records use DISTINCT AddressIDs that carry the SAME postal address
+    # (each firm's own master record), so each address node carries its own firm's key
+    # and the two split into two connected components. Fixed (no RNG) and appended last,
+    # so existing rows stay byte-identical. No sales orders (as Milestone 9), so the
+    # demonstration is the customer-master ambiguity, not a same-name compare case.
+    for cust_id, addr_id in (("0010000011", "A0011"), ("0010000012", "A0012")):
+        customers.append(
+            {
+                "Customer": cust_id,
+                "CustomerName": "Havel Kontor GmbH",
+                "AddressID": addr_id,
+                "CustomerAccountGroup": "KUNA",
+                "Country": "DE",
+                # Two DISTINCT firms, same name AND same address → seed on the unique
+                # customer id so they get DISTINCT VATs (the only signal that splits
+                # them; address agrees, name agrees).
+                "VATRegistration": _assign_vat(cust_id, "DE"),
+            }
+        )
+        addresses.append(
+            {
+                "AddressID": addr_id,
+                "OrganizationName": "Havel Kontor GmbH",
+                "StreetName": "Am Kanal",
+                "HouseNumber": "5",
+                "PostalCode": "14467",
+                "CityName": "Potsdam",
+                "Country": "DE",
+            }
+        )
+
     _write_csv(
         "I_Customer.csv",
         customers,
