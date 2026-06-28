@@ -11,7 +11,7 @@
     "I_SalesDocument:0000500020",
     "I_SalesDocument:0000500028",
     "I_SalesDocument:0000500060",
-    "mueller_logistik_msa:chunk6"
+    "mueller_logistik_msa:chunk3"
   ],
   "expected_facts": ["EUR 77,500.00", "auto-renews"]
 }

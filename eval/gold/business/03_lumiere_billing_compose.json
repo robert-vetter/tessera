@@ -3,6 +3,6 @@
   "question": "What are Lumière Énergie's billing terms?",
   "engine": "compose",
   "kind": "answer",
-  "expected_support": ["lumiere_energie_letter:chunk4"],
+  "expected_support": ["lumiere_energie_letter:chunk3"],
   "expected_facts": ["Total net order value"]
 }
