@@ -7,6 +7,7 @@ sources to its entity.
 from __future__ import annotations
 
 from tessera.business.knowledge import build_demo_graph
+from tessera.graph import KnowledgeGraph
 
 MUELLER = "I_Customer:0010000007"
 MUELLER_ADDR = "I_AddrOrgNamePostalAddress:A0007"
@@ -80,3 +81,33 @@ def test_lumiere_letter_links_via_suffix_stripped_mention() -> None:
     assert mentions
     assert all(m.confidence == 0.9 for m in mentions)
     assert all("legal suffix stripped" in m.reason for m in mentions)
+
+
+def _cluster_signature(graph: KnowledgeGraph) -> frozenset[frozenset[str]]:
+    """A canonical, order-independent signature of the resolved clusters."""
+    return frozenset(graph.clusters())
+
+
+def test_multifield_resolution_does_not_move_any_existing_cluster() -> None:
+    """The Milestone-9 no-regression guarantee, **pinned not assumed** (spec 0074 /
+    ADR 0019). Multi-field ER must be inert on the existing demo data: every genuine
+    merge already agrees on postal, and no character-identical distinct firm exists
+    yet, so the resolved clusters are byte-identical to name-only resolution (the
+    Milestone-8 state)."""
+    multi = build_demo_graph()  # match_fields = postal + city (the default)
+    name_only = build_demo_graph(match_fields=())  # the Milestone-8 name-only state
+    assert _cluster_signature(multi) == _cluster_signature(name_only)
+
+
+def test_multifield_bridges_the_double_typo_pair_directly() -> None:
+    """The residual-3 improvement realized on the real demo graph: the Noridc/Nordic
+    Timbre double-typo pair (which name-only leaves to transitivity) now merges
+    DIRECTLY via an agreeing address — exactly one extra assertion, same clusters.
+    This strengthens the assertion set without moving any cluster (ADR 0019)."""
+    multi = build_demo_graph()
+    bridged = [r for r in multi.resolutions if "bridged by address" in r.reason]
+    assert len(bridged) == 1
+    assert "timber" in bridged[0].reason and "timbre" in bridged[0].reason
+    # Exactly one MORE assertion than name-only, and the clusters are unchanged.
+    name_only = build_demo_graph(match_fields=())
+    assert len(multi.resolutions) == len(name_only.resolutions) + 1
