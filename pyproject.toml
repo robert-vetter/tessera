@@ -17,6 +17,7 @@ tessera-chat = "tessera.surface.cli:main"
 tessera-eval = "tessera.eval.cli:main"
 tessera-compose = "tessera.business.composition:main"
 tessera-devex = "tessera.devex.cli:main"
+tessera-mcp = "tessera.agent.mcp_server:main"
 
 [project.optional-dependencies]
 # SAP HANA Cloud driver — the only non-stdlib runtime dependency, and it is
@@ -24,6 +25,12 @@ tessera-devex = "tessera.devex.cli:main"
 # (ADR 0015); the default clone-and-run graph never touches it (guarded by
 # tests/test_vectors.py::test_default_import_graph_has_no_hdbcli).
 cloud = ["hdbcli>=2.19"]
+# Model Context Protocol server SDK — OPT-IN: `uv sync --extra agent`. Imported
+# lazily only by tessera.agent.mcp_server's build_server()/main(); the default
+# clone-and-run graph and CI never touch it (guarded by
+# tests/test_agent.py and tests/test_mcp_server.py). The grounded-tool
+# substance (tessera.agent.grounded) carries no MCP dependency (ADR 0022).
+agent = ["mcp>=1.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -74,6 +81,21 @@ files = ["src", "tests"]
 # under the 'cloud' extra (ADR 0015), so its absence must not fail the gate.
 module = ["hdbcli.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The optional MCP server SDK is imported lazily and only under the 'agent' extra
+# (ADR 0022); CI runs the base graph without it, so its absence must not fail the
+# gate (mirrors the hdbcli override; the wiring is contract-tested where installed).
+module = ["mcp.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The MCP server's tool decorators are FastMCP's. Under the base graph (no 'agent'
+# extra) the SDK is Any (ignore_missing_imports above), which makes those decorators
+# "untyped" under strict mode; the thin wiring is contract-tested where the SDK is
+# installed, so this strict check is relaxed for this module only.
+module = ["tessera.agent.mcp_server"]
+disallow_untyped_decorators = false
 
 # --- pytest -----------------------------------------------------------------
 [tool.pytest.ini_options]
