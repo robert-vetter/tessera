@@ -10,6 +10,7 @@ trips through JSON; and importing/calling the layer pulls no embedding / LLM / c
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 
@@ -117,6 +118,27 @@ def test_domain_metadata_is_descriptive() -> None:
         dom = domain(name)
         assert dom.name == name
         assert len(dom.description) > 40  # a usable tool description for an agent
+
+
+def test_ground_output_is_deterministic_across_hash_seeds() -> None:
+    """The serialized boundary result must be byte-stable regardless of
+    PYTHONHASHSEED — a claim's co-supporting records are a set, so their order is
+    sorted at the boundary (spec 0084). Run in subprocesses to vary the seed."""
+    code = (
+        "import json, sys; from tessera.agent.grounded import ground;"
+        "print(json.dumps(ground('business',"
+        "'What is Müller Logistik\\'s total order value?').to_dict(), sort_keys=True))"
+    )
+
+    def run(seed: str) -> str:
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        result = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, env=env
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
+
+    assert run("0") == run("1") == run("2026")
 
 
 def test_agent_layer_pulls_no_embedding_llm_or_mcp_module() -> None:
