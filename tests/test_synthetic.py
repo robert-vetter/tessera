@@ -31,8 +31,11 @@ def test_battery_composition(graph: KnowledgeGraph, kb: KnowledgeBase) -> None:
     cases = generate_cases(graph, kb)
     by_kind = {c.id.split("_")[1] for c in cases}
     assert by_kind == {"lookup", "aggregate", "compare", "superlative", "refuse"}
-    assert len(cases) == 52
-    assert sum(1 for c in cases if c.kind == "refuse") == 7
+    # 52 → 53 (spec 0075): the same-name disambiguation pair adds one ambiguous-token
+    # refusal ("Trading", now shared by Atlas + the two Hanseatic firms); the pair
+    # itself generates no answerable case (its name is ambiguous, filtered out).
+    assert len(cases) == 53
+    assert sum(1 for c in cases if c.kind == "refuse") == 8
 
 
 def test_expectations_are_data_derived(
