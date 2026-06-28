@@ -1229,3 +1229,114 @@ spent — the residual floor is registry-only, not a heuristic gap.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #88–#90 merged. Tagged
   `milestone-10`.
+
+---
+
+## 2026-06-28 — Milestone 11 COMPLETE (agentic / MCP-exposed grounded mode)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-28): **(1) thrust** — agentic /
+MCP-exposed grounded mode (over a second connector / HANA persistence / BTP serving);
+**(2) posture** — deterministic, offline, CI-reproducible (no LLM on the trust path,
+no cloud, no spend); **(3) surface scope** — read-only grounded tools (no effectful
+actions or proposals). Six units, each spec → branch → implement → gate → PR →
+CI-green → squash-merge. Fully **offline / CI-reproducible** (the M8–M10 posture); the
+MCP SDK rides as an opt-in extra, so CI stays pure-stdlib.
+
+**The problem this milestone answers.** The project's thesis is "a trust layer for
+**enterprise AI agents**," but through ten milestones Tessera only ever answered a
+*human*. The Phase-4 close even removed an overclaim that asserted agentic/MCP was
+present, recording it as future work. The ER lever was spent (M10's residual is
+registry-only), so M11 opens a **new dimension**: let an agent consume Tessera as its
+grounded substrate, and prove the trust contract survives the protocol.
+
+**Done this session (6 units, PRs #92–#96 + this close)**
+- **Phase plan** (spec 0081, #92) + the three recorded scope decisions.
+- **Heading-chunk retrieval fix** (spec 0082, ADR 0021, #93): the folded-in M10
+  fragility. `ingestion.chunk_text` merges a pure ATX-heading block (`^#{1,6}[ \t]+\S`
+  — never `##[error]`) into the content it introduces, so a heading no longer competes
+  in BM25 with its own clause; the renewal clause is a stable rank-1 again (18.54 vs
+  12.08) and the renewal test is restored to a **strict** top-1 assertion. Gold
+  01/03/07 + test_conflicts re-pointed; devex/github numbers **byte-identical**.
+  **Pre-merge 5-lens adversarial review** (frozen-core change): 4 clean, 1 minor caught
+  — the merge re-joined text with a single blank, which under multi-blank gaps would
+  make the cited line range over-claim the backing lines; fixed by reconstructing from
+  the **verbatim source span** and pinned by a contiguity invariant.
+- **Grounded-tool layer** (spec 0083, ADR 0022, #94): `src/tessera/agent/` —
+  `ground(domain, question)` over all three domains (business, devex, real
+  github_actions; the devex router applies unchanged over the snapshot), each claim
+  **live-verified at the boundary** with the eval's own `is_supported`, returning a
+  JSON-serializable `GroundedResult` (route, claims with per-claim verdict + full
+  provenance inline, refusal carried explicitly). A second tool `assertions` surfaces
+  the reversible ER trail. `ChatSession` refactored to share the registry + verify loop
+  (behaviour byte-identical; test_surface unchanged). Leak-guard extended (the layer
+  pulls no embedding/LLM/`hdbcli`/`mcp` import; `platform.providers` is the documented
+  inert transitive exclusion).
+- **MCP server** (spec 0084, #95): `tessera-mcp`, a thin transport (no grounding logic)
+  over the SDK's stdio transport. SDK = opt-in `agent` extra; default graph + CI never
+  import `mcp` (subprocess pin; `uv sync --frozen` base; mypy `mcp.*` ignore +
+  per-module untyped-decorator relaxation so the gate is green with or without the
+  extra). A **real MCP client↔server session** captured to `data/mcp_session/`
+  (TRANSCRIPT.md + session.json): grounded answer per domain, a refusal carried as a
+  refusal, the ER trail — every claim `verified=true`. Also made the boundary output
+  deterministic across hash seeds (sort a claim's support by id; the recorder surfaced
+  the seed-dependent set order).
+- **Trust across the boundary** (spec 0085, #96): extracted `serialize_answer` (the one
+  `Answer → GroundedResult` projection) and added `tests/test_boundary.py`, the
+  recorded CI-gated measurement over **every gold case in all three batteries**: the
+  projection is **lossless** (same claims/support/verdicts as the engine `Answer`) and
+  **faithfulness is 1.0 across the boundary**. Two honest router-vs-engine divergences
+  pinned + explained (below).
+- **Close** (spec 0086, this entry): frozen-core empty-diff audit; WRITEUP M11 section
+  + limitations/future-work + a 9th "what was learned"; README (the agent/MCP door, the
+  reverse-overclaim fixed, stale gold count 10→11); CHANGELOG `[milestone-11]`; ADR
+  0021/0022 nav + index; STATUS; tag `milestone-11`; memory; kickoff.
+
+**Current eval numbers (unchanged — the agent layer is a consumer, not a new path)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- **New, recorded and gated in CI: faithfulness is 1.0 *across the MCP boundary*** over
+  every gold case (`tests/test_boundary.py`), and the boundary projection is lossless.
+  Deterministic across `PYTHONHASHSEED` 0/1/42/2026; **348 tests pass, 2 contract
+  tests skip** without the `agent` extra (350 collected).
+
+**Milestone check:** an enterprise AI agent can call Tessera over MCP and receive
+grounded, cited, verifier-checked answers and principled refusals for both verticals
+and the real connector; the trust contract is **measured** to survive the protocol
+boundary (faithfulness 1.0, lossless projection, refusals preserved); the MCP SDK is
+opt-in and CI stays pure-stdlib; the verifier is empty-diff and the leak-guard holds;
+the one sanctioned frozen-core delta (the heading-chunk fix, ADR 0021) retired the M10
+fragility. **Met.** Tagged `milestone-11`.
+
+**Open questions / risks**
+- **Frozen core touched once** (ADR 0008): `ingestion.py` (`chunk_text`, ADR
+  0021-sanctioned) is the only frozen-list delta `milestone-10..HEAD`; `eval/metrics.py`
+  (verifier), `graph.py`, `resolution.py`, and the rest are empty-diff (per-file
+  audited). The agent layer + MCP server are new; `surface/session.py` (not frozen) was
+  refactored behaviour-preservingly.
+- **Two honest router-vs-engine divergences (pinned, neither a faithfulness breach):**
+  `github_actions/05` — the offline synonymy miss the agent path inherits as a refusal
+  (only embeddings bridge it; M11 is offline by choice); `business/05` — the bare term
+  `"Logistik"` the production **router** answers with lexical matches where the eval's
+  `compose` engine refuses as ambiguous. Pre-existing (the chat surface shares it);
+  recorded as the **next lever** (align the router's ambiguity handling with `compose`).
+- **The agent surface is read-only.** Grounded *actions* (effectful, or
+  propose-and-approve, each grounded/cited/verifier-checked the same way) are the named
+  next step — deferred by the maintainer's M11 scope, not a gap missed.
+- ADR 0005 (LLM-judge) and ADR 0006 (semantic routing) triggers **re-examined at the
+  boundary and recorded NOT forced** — no measured case forces either. The M6/M7 online
+  HANA numbers remain timestamped, not CI-reproducible; M11 added no online number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates:
+**grounded actions over MCP** (the natural M11 follow-through — propose-and-approve
+tools, grounded and verifier-checked); **router-ambiguity alignment** (close the
+business/05 agent-path gap, deterministic); a **second real connector** (Jira /
+PR-and-issue export); full HANA graph persistence; BTP serving. The ER lever is spent;
+ADR 0005/0006 triggers remain live and unacted.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #92–#96 merged. Tagged
+  `milestone-11`.

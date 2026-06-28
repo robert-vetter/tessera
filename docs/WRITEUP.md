@@ -418,6 +418,51 @@ vs its first clause, both surfaced from the right document with provenance); the
 pins the robust invariant and the heading-chunk root cause is filed as retrieval future
 work. The eval's hard floor was untouched at 1.0.
 
+### Milestone 11: the agentic boundary — Tessera as an agent's evidence oracle
+
+Through ten milestones Tessera only ever answered a *human*. Its thesis — "a trust
+layer for enterprise AI agents" — named a capability it had never had: letting an
+*agent* consume it. Milestone 11 builds it, deterministic and offline (the
+maintainer's posture), as **read-only grounded tools over the Model Context
+Protocol** (ADR 0022).
+
+The substance already existed: the chat surface routes a question and live-verifies
+every claim with the eval's own `is_supported`. Milestone 11 gives that a
+serializable contract. A vertical-neutral grounded-tool layer (`tessera/agent/`,
+outside the frozen core) exposes `ground(domain, question)` over all three domains —
+business, devex, and the real `github_actions` connector — returning a
+JSON-serializable `GroundedResult`: the routing decision, the claims each with a
+**per-claim verifier verdict** and full provenance inline (record id, source,
+locator, text), and — for a refusal — the reason carried explicitly, so *a refusal
+can never become an answer across the boundary*. A second tool, `assertions`,
+surfaces the reversible entity-resolution trail. The chat surface was refactored to
+share the same registry and verify loop, with its behaviour pinned byte-identical.
+
+The MCP server (`tessera-mcp`) is a **thin transport** with no grounding logic; the
+MCP SDK rides as the opt-in `agent` extra, exactly as `hdbcli` is the `cloud` extra
+(ADR 0015). The default clone-and-run graph and CI never import it — a subprocess pin
+asserts the server module pulls no `mcp`, and CI's `uv sync --frozen` stays
+pure-stdlib. The honesty analogue of "ran on SAP" here is a **real MCP client ↔
+server session**, captured to `data/mcp_session/TRANSCRIPT.md`:
+a grounded answer per domain, a refusal carried as a refusal, the ER trail — every
+claim `verified=true` across the protocol.
+
+The headline is *measured*, not asserted (`tests/test_boundary.py`, the recorded
+CI-gated measurement over every gold case in all three batteries): the boundary
+projection is **lossless** — same claims, same support ids, same verdicts as the
+engine's `Answer` — and **faithfulness is 1.0 across the boundary**. The measurement
+also surfaced two honest router-vs-engine divergences, pinned and explained (neither
+a faithfulness breach): the offline synonymy case the agent path inherits as a
+refusal (only embeddings bridge it, and Milestone 11 is offline by choice), and the
+bare ambiguous term `"Logistik"` that the production router answers with lexical
+matches where the eval's `compose` engine refuses as ambiguous — a *pre-existing*
+router gap (the chat surface shares it), now the recorded next lever. The one
+sanctioned frozen-core delta this milestone was the heading-chunk fix folded in as
+the opening unit (a Markdown heading now leads its section's content chunk instead of
+competing with it in BM25, ADR 0021), which retired the Milestone-10 retrieval
+fragility and let its renewal test return to a strict assertion. The verifier
+(`eval/metrics.py`) is empty-diff; the leak-guard, extended to the new layer, holds.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -523,6 +568,15 @@ Named with the same prominence as the results:
 - **Conversation is stateless.** Each question is answered from evidence
   alone; follow-ups ("and what about its renewal terms?") need the entity
   repeated.
+- **The agent boundary is read-only, and the agent calls the router.** Milestone 11
+  exposes Tessera to an AI agent over MCP as read-only grounded tools (ADR 0022) —
+  it grounds, cites, and refuses; it does not act or *propose* actions (effectful and
+  proposing tools are deferred). The boundary preserves faithfulness exactly
+  (measured, `tests/test_boundary.py`), but the agent calls the production **router**,
+  not the eval's per-case engine dispatch, and the two diverge on a bare ambiguous
+  term: `"Logistik"` is answered with lexical matches where `compose` refuses as
+  ambiguous. A pre-existing router gap (the chat surface shares it), recorded as the
+  next lever; faithfulness is unaffected (the answer is faithful to its citations).
 
 ## Deliberately deferred (future work, not gaps missed)
 
@@ -531,12 +585,14 @@ synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
 next) · ER is now multi-field down to an exact key (name + address, ADR 0019; the
 **registration key** `VATRegistration`, ADR 0020), leaving only the registry-only
 floor — two distinct firms identical in name, address *and* key, which only an
-external registry or human adjudication separates · the **heading-chunk retrieval
-fragility** surfaced in Milestone 10 (a Markdown section heading competes with its
-content in BM25) is filed as retrieval future work · LLM-judged faithfulness alongside
-the deterministic floor · an agentic / MCP-exposed mode (grounded actions, not just
-answers — the 2026-shaped extension of the same trust substrate) · persistence,
-multi-tenancy, access governance.
+external registry or human adjudication separates · an **agentic / MCP-exposed mode
+now exists** for read-only grounded answers (Milestone 11, ADR 0022) — the remaining
+extension is **grounded *actions*** (effectful, or propose-and-approve tools, each
+grounded, cited, and verifier-checked the same way) · **aligning the router's
+ambiguity handling with `compose`** (the agent path answers the bare term `"Logistik"`
+where `compose` refuses — measured in `tests/test_boundary.py`) · LLM-judged
+faithfulness alongside the deterministic floor · persistence, multi-tenancy, access
+governance.
 
 ## What was learned
 
@@ -578,6 +634,14 @@ multi-tenancy, access governance.
    that it doesn't tell them. Adding the demo data also flipped a 0.05% BM25 near-tie in
    an unrelated test; the honest response was to record the fragility, pin the robust
    invariant, and file the root cause — not to quietly retune until the number looked right.
+9. **A trust contract is only as good as it is under projection.** Exposing the engine
+   to an agent over MCP (Milestone 11) was tempting to call "done" once the server
+   spoke the protocol. The discipline was to *measure* that the boundary changed
+   nothing — same claims, same provenance, same verdicts, faithfulness still 1.0 —
+   and to surface, rather than smooth over, the two places the production router and
+   the eval's engine dispatch disagree. Building the surface was easy; proving it
+   preserved the contract, and naming where the agent path is weaker than the engine,
+   was the work worth keeping.
 
 ## Reproduce everything
 
@@ -589,6 +653,10 @@ uv run tessera-chat             # the Joule-style session (deterministic by defa
 uv run tessera "Which customer has the greatest total order value in EUR?"
 uv run tessera-devex "Why did run R-1042 fail, and how was it fixed?"
 bash scripts/gate.sh            # format · lint · strict types · tests · eval floor
+
+uv sync --extra agent           # opt-in: the MCP server SDK (CI stays pure-stdlib)
+uv run tessera-mcp              # the read-only grounded tools over MCP (stdio)
+uv run --extra agent python scripts/record_mcp_session.py  # a real client↔server session
 ```
 
 The development history itself is part of the result: every unit of work has
