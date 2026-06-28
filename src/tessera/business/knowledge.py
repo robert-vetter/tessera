@@ -10,11 +10,13 @@ in :mod:`tessera.grounding` general and vertical-neutral.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from tessera.graph import Edge, KnowledgeGraph, Node
 from tessera.grounding import KnowledgeBase
 from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD
 from tessera.sources.documents import DocumentSource
-from tessera.sources.salt import SaltSyntheticSource
+from tessera.sources.salt import ADDRESS_MATCH_FIELDS, SaltSyntheticSource
 
 # A question that retrieves structured evidence (the spotlight customer's sales
 # rows). Try also: "When does Müller Logistik's service agreement renew?" — which
@@ -30,10 +32,17 @@ def build_demo_kb() -> KnowledgeBase:
 
 def build_demo_graph(
     threshold: float = DEFAULT_RESOLUTION_THRESHOLD,
+    match_fields: Sequence[str] = ADDRESS_MATCH_FIELDS,
 ) -> KnowledgeGraph:
     """Assemble the knowledge graph: nodes from both sources, SALT structural
     edges, then the additive (non-destructive) resolution and document-mention
-    layers. Answering over the graph is Unit 5 — not done here."""
+    layers. Answering over the graph is Unit 5 — not done here.
+
+    Entity resolution is **multi-field** (spec 0074 / ADR 0019): name similarity is
+    corroborated by the address (``match_fields`` — postal code + city), so two
+    distinct firms with an identical name but different addresses no longer over-merge.
+    Pass ``match_fields=()`` for the name-only baseline (used by the cluster-equivalence
+    pin to prove multi-field changes nothing on the existing data)."""
     salt = SaltSyntheticSource()
     org_names = salt.org_names()
     node_attrs = salt.node_attributes()
@@ -55,7 +64,7 @@ def build_demo_graph(
     for src, dst, relation in salt.structural_edges():
         graph.add_edge(Edge(src=src, dst=dst, relation=relation))
 
-    graph.resolve_entities(threshold)
+    graph.resolve_entities(threshold, match_fields=match_fields)
     graph.link_document_mentions()
     return graph
 
