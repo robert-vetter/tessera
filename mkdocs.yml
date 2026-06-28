@@ -71,6 +71,7 @@ nav:
       - 0017 Finer log chunking, stable chunk ids: adr/0017-stable-log-chunk-ids.md
       - 0018 Stem-gated deterministic ER: adr/0018-stem-gated-deterministic-er.md
       - 0019 Multi-field entity resolution: adr/0019-multi-field-entity-resolution.md
+      - 0020 Registration-key entity resolution: adr/0020-registration-key-entity-resolution.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

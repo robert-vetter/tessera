@@ -1125,3 +1125,107 @@ HANA graph persistence; BTP serving.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #83–#86 merged. Tagged
   `milestone-9`.
+
+---
+
+## 2026-06-28 — Milestone 10 COMPLETE (registration-key entity resolution)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-28): **(a)** `VATRegistration` on
+**every** customer, per legal entity (realistic master data; clusters proven
+byte-identical); **(b)** field = `VATRegistration` (a real S/4HANA `I_Customer`
+field). I recommended and the maintainer accepted: the key as the **first
+`match_field`** reusing the existing Milestone-9 exact-equality gate — **no engine
+logic change**. Four units, each spec → branch → implement → gate → PR → CI-green →
+squash-merge. Fully **offline / CI-reproducible — no embedding, no cloud** (the M8/M9
+posture).
+
+**The problem this milestone answers.** Milestone 9 made ER multi-field (name +
+address) but left one floor, pinned by a test and recorded in ADR 0019: two genuinely
+distinct firms with the **same** name **and** the **same** address. The address
+*agrees*, so it corroborates a merge and the firms over-merge — only an exact identity
+key separates them. The recorded M9 next lever. M10 takes it.
+
+**The headline finding.** The M9 engine already supported it. `compare_match_fields`
+was already ordered / exact-equality / first-present-decides, and the two-way gate
+already vetoed on CONTRADICT and bridged on AGREE for *whatever* field led
+`match_fields`. A registration key **is** an exact-equality field, so it slots in as
+the **first** entry: `CUSTOMER_MATCH_FIELDS = ("vat_registration", "postal_code",
+"city_name")`. So M10 touched only the business source (additive attr + ordering), the
+data, the eval, and tests. **`resolution.py` empty-diff; `graph.py`'s only behavioural
+change is a one-line honesty wording generalization** (the bridge reason said "bridged
+by address", which under a key-led tuple misreports the field → "bridged by
+corroborating field"; `signal.detail` names the actual field). The smallest of the
+three frozen-core deltas.
+
+**Done this session (4 units, PRs #88–#90 + this close)**
+- **Phase plan** (spec 0077, #88) + the two recorded scope decisions + the
+  zero-engine-change finding.
+- **VATRegistration field + source wiring + ADR 0020** (spec 0078, #89): the column
+  (per-entity, all customers, distinct VATs for the same-name Hanseatic pair, a
+  collision guard); `vat_registration` on the customer node + **denormalized onto its
+  address node** (a shared/serviced-office address carries none — absence is never a
+  contradiction); `build_demo_graph` defaults to the key-first tuple. Proofs:
+  vat-first clusters byte-identical to the M9 address-only path on existing data; the
+  key decides above postal (retiring M9's postal-anchored cost); same-key merges,
+  different-key splits. **Pre-merge 5-lens adversarial review (8 agents): 3 findings,
+  0 majors, all fixed** — a real-SALT-safe denormalization guard and finishing the
+  graph.py "address" → field-general wording.
+- **The same-name/SAME-address pair + the measured close** (spec 0079, #90): two
+  distinct "Havel Kontor GmbH" firms at one address (distinct AddressIDs, distinct
+  VATs, no orders); existing rows byte-identical. New gold case 11 (kind=refuse):
+  name + address ER over-merges → **answers** (business gold quality 0.909); the key
+  splits → **refuses** (1.000) — both points in `eval/history.jsonl`
+  (`scripts/record_m10_close.py`), faithfulness 1.0, CI-reproducible. The new floor
+  (same name + address + key) pinned. **Honest disclosure:** adding 4 short records
+  shifted BM25 `avgdl` and flipped a 0.05% near-tie in an unrelated retrieval test (a
+  section heading vs its first clause, both surfaced top from the MSA with doc-span
+  provenance); the test now pins the robust top-2 invariant and the heading-chunk root
+  cause is filed as retrieval future work. The eval floor was untouched at 1.0.
+- **Close** (spec 0080, this entry): WRITEUP M10 section + limitations/future-work +
+  an 8th "what was learned"; README ER section + numbers; CHANGELOG `[milestone-10]`;
+  ADR 0020 nav/index; frozen-core empty-diff audit; tag `milestone-10`; memory; kickoff.
+
+**Current eval numbers (recorded in eval/history.jsonl)**
+- **business — gold 11: faithfulness 1.000, coverage 1.000, quality 1.000 (key) / 0.909
+  (M9 address-only baseline, the recorded miss); synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- Trust-loop pair recorded: business gold quality **0.909 (M9 address-only) → 1.000
+  (M10 registration key)** — the same-address ambiguous-name miss, closed offline and
+  CI-reproducibly. Deterministic across `PYTHONHASHSEED` 0/1/42/2026; 322 tests.
+
+**Milestone check:** the last name+address ER floor (same name + same address, distinct
+firms) is closed by an exact registration key, **provably in CI**; the over-merge →
+split is a measured eval before/after; faithfulness stayed gated at 1.0; the leak-guard
+holds (`resolution.py` empty-diff); the business/devex clusters are unchanged except the
+one intended Havel split (pinned); the engine logic is unchanged (only a one-line
+honesty wording delta in `graph.py`); and a new measured edge is kept (same name AND
+address AND key → only an external registry separates). **Met.** Tagged `milestone-10`.
+
+**Open questions / risks**
+- **Frozen core touched minimally** (ADR 0008): the `milestone-9..HEAD` engine delta is
+  `graph.py` alone (the bridge-wording generalization — behaviour-preserving;
+  `resolution.py` empty-diff). The source delta (`sources/salt.py`, additive key attr +
+  denormalization + ordering) is the sanctioned vertical-source change (ADR 0011/0020).
+- **The remaining ER floor (registry-only):** two distinct firms with the same name
+  **and** the same address **and** the same key are indistinguishable from the signals
+  in the data — only an external registry / human adjudication separates them.
+- **A retrieval fragility surfaced and was recorded:** a Markdown section heading
+  competes with its content in BM25 (a near-tie flipped by corpus size). Filed as a
+  follow-up task; the renewal test now pins the robust invariant; the eval is untouched.
+- ADR 0005 (LLM-judge) and ADR 0006 (semantic routing) triggers remain live and unacted;
+  no measured case forces either. The M6/M7 online HANA numbers remain timestamped, not
+  CI-reproducible; M10 added no online number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates: the
+**heading-chunk retrieval fix** (the surfaced fragility — a focused retrieval/chunking
+improvement); a second real connector (Jira / PR-and-issue export); agentic / MCP-exposed
+grounded mode; full HANA graph persistence; BTP serving. The ER lever is now largely
+spent — the residual floor is registry-only, not a heuristic gap.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #88–#90 merged. Tagged
+  `milestone-10`.
