@@ -25,6 +25,12 @@ from tessera.ingestion import read_csv_rows
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "salt_synthetic"
 
+# The corroborating identity fields multi-field ER compares beyond the name, ordered
+# by decisiveness — postal code (the stable key) before city (spec 0074 / ADR 0019).
+# The knowledge of *which* attributes are an address lives here, in the source; the
+# engine stays general and compares whatever fields it is handed.
+ADDRESS_MATCH_FIELDS = ("postal_code", "city_name")
+
 
 def _money(value: str, currency: str) -> str:
     """Render a raw decimal amount with thousands separators for readability."""
@@ -143,15 +149,34 @@ class SaltSyntheticSource:
         return names
 
     def node_attributes(self) -> dict[str, tuple[tuple[str, str], ...]]:
-        """Structured facts to attach to nodes: each sales document's net amount
-        and currency, so the graph can aggregate without parsing rendered text.
-        Schema knowledge stays here, in the source."""
+        """Structured facts to attach to nodes. Schema knowledge stays here:
+
+        - each **sales document's** net amount and currency, so the graph can
+          aggregate without parsing rendered text;
+        - each name-bearing node's **address signature** (``postal_code`` +
+          ``city_name``) for multi-field ER (spec 0074 / ADR 0019) — on the address
+          node (its own row) and, denormalized via ``AddressID``, on the customer node,
+          so :meth:`~tessera.graph.KnowledgeGraph.resolve_entities` can corroborate a
+          name match with the address (``ADDRESS_MATCH_FIELDS``).
+        """
         attrs: dict[str, tuple[tuple[str, str], ...]] = {}
         for row in read_csv_rows(self.data_dir / "I_SalesDocument.csv"):
             attrs[f"I_SalesDocument:{row['SalesDocument']}"] = (
                 ("net_amount", row["TotalNetAmount"]),
                 ("currency", row["TransactionCurrency"]),
             )
+        address_signature: dict[str, tuple[tuple[str, str], ...]] = {}
+        for row in read_csv_rows(self.data_dir / "I_AddrOrgNamePostalAddress.csv"):
+            signature = (
+                ("postal_code", row["PostalCode"]),
+                ("city_name", row["CityName"]),
+            )
+            address_signature[row["AddressID"]] = signature
+            attrs[f"I_AddrOrgNamePostalAddress:{row['AddressID']}"] = signature
+        for row in read_csv_rows(self.data_dir / "I_Customer.csv"):
+            customer_signature = address_signature.get(row["AddressID"], ())
+            if customer_signature:
+                attrs[f"I_Customer:{row['Customer']}"] = customer_signature
         return attrs
 
     def structural_edges(self) -> list[tuple[str, str, str]]:
