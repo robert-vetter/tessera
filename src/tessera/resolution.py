@@ -164,3 +164,172 @@ def distinctive_stem(name: str, generic: frozenset[str]) -> str:
     signal and is never proposed for a merge.
     """
     return " ".join(tok for tok in tokenize(name) if tok not in generic)
+
+
+# The difflib ratio at/above which two *distinctive stems* count as the same firm
+# modulo typos/abbreviations. Named and tunable like
+# :data:`DEFAULT_RESOLUTION_THRESHOLD`; the ER precision/recall measurement
+# (``tests/test_er_metrics.py``) is its revisit trigger. Spec 0070 / ADR 0018.
+DEFAULT_DISTINCTIVE_STEM_THRESHOLD = 0.85
+
+# The maximum character edit distance between two distinctive stems for them to
+# still count as a spelling variant of the same firm. The ``stem_threshold`` ratio
+# above penalizes a fixed typo more on a SHORT stem ("stein"~"stien" = 0.800), so a
+# small absolute bound rescues a single typo in a short head while still vetoing two
+# genuinely different heads ("granite"~"pyrite" = 4 edits, "cobalt"~"basalt" = 3).
+DEFAULT_MAX_STEM_EDITS = 2
+
+# Tokens generic regardless of corpus: organizational descriptors ∪ legal forms.
+# :func:`corpus_generic_tokens` adds the corpus-derived ones on top.
+_STATIC_GENERIC = ORG_DESCRIPTORS | frozenset(LEGAL_SUFFIXES)
+
+
+def significant_tokens(name: str) -> list[str]:
+    """Tokenize, dropping single-character tokens (spec 0070).
+
+    A punctuated legal form abbreviates into single-letter tokens — ``G.m.b.H`` →
+    ``[g, m, b, h]``, ``A/S`` → ``[a, s]``, ``S.A.R.L`` → ``[s, a, r, l]``. These
+    carry no firm identity, but left in they pollute a distinctive stem (so
+    ``"Nordwind G.m.b.H"`` would not match its ``"Nordwind Log GmbH"`` variant). The
+    gate works over the length-≥ 2 tokens; the full-name `normalize` still folds the
+    abbreviation to its legal form elsewhere.
+    """
+    return [tok for tok in tokenize(name) if len(tok) >= 2]
+
+
+def _edit_distance(a: str, b: str) -> int:
+    """Levenshtein distance between two short strings (stdlib, deterministic)."""
+    if a == b:
+        return 0
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        current = [i]
+        for j, cb in enumerate(b, 1):
+            current.append(
+                min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb))
+            )
+        previous = current
+    return previous[-1]
+
+
+def corpus_generic_tokens(
+    names: Sequence[str],
+    *,
+    min_df: int = DEFAULT_MIN_GENERIC_DF,
+    threshold: float = DEFAULT_RESOLUTION_THRESHOLD,
+) -> frozenset[str]:
+    """Tokens that are generic *in this corpus* — the gate's stoplist (spec 0070).
+
+    The static generics (:data:`_STATIC_GENERIC`) plus any token that spans at
+    least ``min_df`` **distinct firms**: ``>= min_df`` of the names containing it
+    stay mutually dissimilar (below ``threshold``) once that token **and all tokens
+    already known to be generic** are removed from each.
+
+    Removing the token before judging similarity is the crux. A shared generic
+    suffix makes the firms that share it look similar — ``Granite/Pyrite/Cobalt
+    Logistik GmbH`` are pairwise ``>= threshold`` *because of* ``logistik``, so a
+    naive document-frequency count would still see ``logistik`` as firm-specific
+    (or, worse, mark the genuinely distinctive ``Bayerische`` generic because it
+    repeats across one firm's four records). With ``logistik`` removed,
+    ``granite`` / ``pyrite`` / … are dissimilar → ``logistik`` spans distinct firms
+    → generic. With ``Bayerische`` removed, the four ``Stahlwerke AG`` records are
+    still similar → it spans **one** firm → kept distinctive.
+
+    **Iterated to a fixpoint, removing the known generics too.** A *multi-token*
+    generic suffix would otherwise defeat a one-token-at-a-time pass: removing
+    ``logistik`` from ``Granite Trade Logistik GmbH`` leaves ``trade`` still propping
+    similarity, so ``trade`` never reaches ``min_df`` distinct firms. Re-scanning
+    with ``logistik`` (and ``gmbh``) already stripped exposes ``granite`` vs
+    ``pyrite`` and flags ``trade`` too. The static generics seed the set, and tokens
+    are visited in sorted order over a canonicalized name list, so the result is
+    independent of ingestion order (a property pinned by test).
+    """
+    containing: dict[str, list[str]] = {}
+    for name in names:
+        for token in dict.fromkeys(significant_tokens(name)):
+            containing.setdefault(token, []).append(name)
+    # Canonical, order-independent traversal (the greedy distinct-firm count below
+    # is otherwise sensitive to the order names arrive in).
+    for token in containing:
+        containing[token] = sorted(containing[token], key=normalize)
+
+    generic = set(_STATIC_GENERIC)
+    changed = True
+    while changed:  # fixpoint: a newly-generic token can expose another (multi-word)
+        changed = False
+        for token in sorted(containing):
+            if token in generic or len(containing[token]) < min_df:
+                continue
+            firms: list[str] = []  # representatives of distinct firms (generics gone)
+            for name in containing[token]:
+                reduced = " ".join(
+                    t
+                    for t in significant_tokens(name)
+                    if t != token and t not in generic
+                )
+                if all(similarity(reduced, firm) < threshold for firm in firms):
+                    firms.append(reduced)
+                    if len(firms) >= min_df:
+                        generic.add(token)
+                        changed = True
+                        break
+    return frozenset(generic)
+
+
+def confirm_name_match(
+    a: str,
+    b: str,
+    generic: frozenset[str],
+    *,
+    stem_threshold: float = DEFAULT_DISTINCTIVE_STEM_THRESHOLD,
+    max_stem_edits: int = DEFAULT_MAX_STEM_EDITS,
+) -> str | None:
+    """Confirm a difflib name match rests on a shared **distinctive** signal, not on
+    generic tokens alone — the stem gate that cures the generic-suffix over-merge
+    (spec 0070, ADR 0018).
+
+    Called only for pairs the character similarity already accepts
+    (``similarity(a, b) >= DEFAULT_RESOLUTION_THRESHOLD``); ``generic`` is the
+    corpus stoplist from :func:`corpus_generic_tokens`. Returns a short reason
+    fragment to append to the assertion, or ``None`` to **veto** the merge (the
+    high full-name similarity was carried by a shared generic suffix → an
+    over-merge such as ``Granite`` vs ``Pyrite Logistik GmbH``).
+
+    1. **Shared distinctive token** → confirm. If the two names share any
+       non-generic token (the firm's identity head, e.g. ``maple``/``timber``/
+       ``schaefer``), they co-refer — robust to a typo or abbreviation elsewhere
+       in the name.
+    2. **Both distinctive stems empty** → confirm. Both names are made up entirely
+       of generic tokens; the character match (already ``>=`` the threshold) rests
+       on identical/near-identical generic forms (e.g. ``"Service GmbH"`` twice) —
+       a fully-generic variant merge, confirmed rather than silently dropped.
+    3. Otherwise compare the **distinctive stems** (names minus generic tokens):
+       confirm when their similarity is ``>= stem_threshold`` OR their character
+       edit distance is ``<= max_stem_edits``. The edit-distance fallback rescues a
+       single typo in a short head (``stein``~``stien``: ratio 0.800 but 2 edits)
+       that stripping the shared generic context would otherwise amplify below the
+       ratio threshold; two genuinely different heads still veto (``granite``~
+       ``pyrite``: 4 edits; ``cobalt``~``basalt``: 3 edits).
+    """
+    ta, tb = significant_tokens(a), significant_tokens(b)
+    shared_distinctive = [t for t in ta if t in set(tb) and t not in generic]
+    if shared_distinctive:
+        return f"shared distinctive token {shared_distinctive[0]!r}"
+
+    stem_a = " ".join(t for t in ta if t not in generic)
+    stem_b = " ".join(t for t in tb if t not in generic)
+    if not stem_a and not stem_b:
+        return "fully-generic names (no distinctive signal)"
+    if not stem_a or not stem_b:
+        return None
+
+    stem_sim = similarity(stem_a, stem_b)
+    if stem_sim >= stem_threshold:
+        return (
+            f"near-identical distinctive stems {stem_a!r} ~ {stem_b!r} "
+            f"(similarity {stem_sim:.3f})"
+        )
+    edits = _edit_distance(stem_a, stem_b)
+    if edits <= max_stem_edits:
+        return f"distinctive stems {stem_a!r} ~ {stem_b!r} ({edits} edit(s) apart)"
+    return None
