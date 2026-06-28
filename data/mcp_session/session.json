@@ -1,0 +1,1025 @@
+{
+  "server": {
+    "name": "tessera",
+    "version": "1.28.1"
+  },
+  "tools": [
+    {
+      "name": "list_domains",
+      "description": "List the Tessera domains you can ground a question in, each with a description of what it covers. Call this first to choose a domain for ground()."
+    },
+    {
+      "name": "ground",
+      "description": "Answer a question over a Tessera domain and return grounded, cited claims — or a principled refusal. Each claim carries its full provenance inline (the cited record id, source, locator, and text) and a 'verified' verdict from the same structural faithfulness check the eval gates on. If 'refused' is true, 'refusal' explains why and 'claims' is empty — do NOT treat a refusal as an answer. 'route' names which deterministic path answered and why. Args: domain (one of list_domains), question (natural language)."
+    },
+    {
+      "name": "assertions",
+      "description": "Inspect the entity-resolution provenance touching a cited record: the additive, reversible resolution/mention assertions (with their reason and confidence) that say why two records were linked as the same real-world entity. Args: domain, record_id (an id from a ground() result's claim support)."
+    }
+  ],
+  "exchange": [
+    {
+      "tool": "ground",
+      "arguments": {
+        "domain": "business",
+        "question": "What is Müller Logistik's total order value?"
+      },
+      "why": "a grounded business lookup — a sourced aggregate",
+      "result": {
+        "domain": "business",
+        "question": "What is Müller Logistik's total order value?",
+        "route": {
+          "kind": "entity",
+          "reason": "names one entity (Mueller Logistik Gmbh) — cross-source composition"
+        },
+        "grounded": true,
+        "refused": false,
+        "refusal": null,
+        "claims": [
+          {
+            "text": "'Mueller Logistik Gmbh' is one resolved entity spanning 1 customer record(s) and 1 address record(s).",
+            "verified": true,
+            "support": [
+              {
+                "id": "I_AddrOrgNamePostalAddress:A0007",
+                "source": "salt_synthetic/I_AddrOrgNamePostalAddress.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_AddrOrgNamePostalAddress"
+                    ],
+                    [
+                      "row",
+                      "1"
+                    ]
+                  ],
+                  "render": "table I_AddrOrgNamePostalAddress, row 1"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Address A0007: \"Mueller Logistik Gmbh\", Industriestr. 12, 20095 Hamburg, DE."
+              },
+              {
+                "id": "I_Customer:0010000007",
+                "source": "salt_synthetic/I_Customer.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_Customer"
+                    ],
+                    [
+                      "row",
+                      "1"
+                    ]
+                  ],
+                  "render": "table I_Customer, row 1"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Customer 0010000007: \"Müller Logistik GmbH\" (account group KUNA, country DE); address A0007."
+              }
+            ]
+          },
+          {
+            "text": "Total net order value across 5 order(s): EUR 77,500.00.",
+            "verified": true,
+            "support": [
+              {
+                "id": "I_SalesDocument:0000500001",
+                "source": "salt_synthetic/I_SalesDocument.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_SalesDocument"
+                    ],
+                    [
+                      "row",
+                      "1"
+                    ]
+                  ],
+                  "render": "table I_SalesDocument, row 1"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Sales document 0000500001: sold-to party 0010000007, net value EUR 20,000.00, dated 2026-02-10."
+              },
+              {
+                "id": "I_SalesDocument:0000500002",
+                "source": "salt_synthetic/I_SalesDocument.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_SalesDocument"
+                    ],
+                    [
+                      "row",
+                      "2"
+                    ]
+                  ],
+                  "render": "table I_SalesDocument, row 2"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Sales document 0000500002: sold-to party 0010000007, net value EUR 25,000.00, dated 2026-03-05."
+              },
+              {
+                "id": "I_SalesDocument:0000500020",
+                "source": "salt_synthetic/I_SalesDocument.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_SalesDocument"
+                    ],
+                    [
+                      "row",
+                      "20"
+                    ]
+                  ],
+                  "render": "table I_SalesDocument, row 20"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Sales document 0000500020: sold-to party 0010000007, net value EUR 1,000.00, dated 2026-03-05."
+              },
+              {
+                "id": "I_SalesDocument:0000500028",
+                "source": "salt_synthetic/I_SalesDocument.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_SalesDocument"
+                    ],
+                    [
+                      "row",
+                      "28"
+                    ]
+                  ],
+                  "render": "table I_SalesDocument, row 28"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Sales document 0000500028: sold-to party 0010000007, net value EUR 27,000.00, dated 2026-05-12."
+              },
+              {
+                "id": "I_SalesDocument:0000500060",
+                "source": "salt_synthetic/I_SalesDocument.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "I_SalesDocument"
+                    ],
+                    [
+                      "row",
+                      "60"
+                    ]
+                  ],
+                  "render": "table I_SalesDocument, row 60"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Sales document 0000500060: sold-to party 0010000007, net value EUR 4,500.00, dated 2026-06-22."
+              }
+            ]
+          },
+          {
+            "text": "# Amendment No. 2 to the Master Service Agreement\n\nThis Amendment No. 2 (the \"Amendment\") modifies the Master Service Agreement\nbetween Tessera Demonstrations Ltd and Müller Logistik GmbH.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_amendment:chunk1",
+                "source": "business_docs/mueller_logistik_amendment.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "1-4"
+                    ],
+                    [
+                      "chunk",
+                      "1"
+                    ]
+                  ],
+                  "render": "lines 1-4, chunk 1"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "# Amendment No. 2 to the Master Service Agreement\n\nThis Amendment No. 2 (the \"Amendment\") modifies the Master Service Agreement\nbetween Tessera Demonstrations Ltd and Müller Logistik GmbH."
+              }
+            ]
+          },
+          {
+            "text": "## 1. Change of renewal date\n\nSection 2 of the Agreement is amended as follows: the Agreement auto-renews\nannually on 1 February, aligning the contract year with the customer's fiscal\nyear. The sixty (60) days notice period for termination remains unchanged.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_amendment:chunk2",
+                "source": "business_docs/mueller_logistik_amendment.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "6-10"
+                    ],
+                    [
+                      "chunk",
+                      "2"
+                    ]
+                  ],
+                  "render": "lines 6-10, chunk 2"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 1. Change of renewal date\n\nSection 2 of the Agreement is amended as follows: the Agreement auto-renews\nannually on 1 February, aligning the contract year with the customer's fiscal\nyear. The sixty (60) days notice period for termination remains unchanged."
+              }
+            ]
+          },
+          {
+            "text": "## 2. No other changes\n\nAll other terms of the Agreement remain in full force and effect. In the event\nof inconsistency between this Amendment and the Agreement, the parties'\nintent shall be determined by their authorized representatives.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_amendment:chunk3",
+                "source": "business_docs/mueller_logistik_amendment.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "12-16"
+                    ],
+                    [
+                      "chunk",
+                      "3"
+                    ]
+                  ],
+                  "render": "lines 12-16, chunk 3"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 2. No other changes\n\nAll other terms of the Agreement remain in full force and effect. In the event\nof inconsistency between this Amendment and the Agreement, the parties'\nintent shall be determined by their authorized representatives."
+              }
+            ]
+          },
+          {
+            "text": "Signed for Müller Logistik GmbH and Tessera Demonstrations Ltd.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_amendment:chunk4",
+                "source": "business_docs/mueller_logistik_amendment.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "18-18"
+                    ],
+                    [
+                      "chunk",
+                      "4"
+                    ]
+                  ],
+                  "render": "lines 18-18, chunk 4"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "Signed for Müller Logistik GmbH and Tessera Demonstrations Ltd."
+              }
+            ]
+          },
+          {
+            "text": "# Master Service Agreement\n\nThis Master Service Agreement (\"Agreement\") is entered into between Tessera\nDemonstrations Ltd (\"Provider\") and Mueller Logistik Gmbh (\"Customer\"), a\nlogistics company registered in Hamburg, Germany.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_msa:chunk1",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "1-5"
+                    ],
+                    [
+                      "chunk",
+                      "1"
+                    ]
+                  ],
+                  "render": "lines 1-5, chunk 1"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "# Master Service Agreement\n\nThis Master Service Agreement (\"Agreement\") is entered into between Tessera\nDemonstrations Ltd (\"Provider\") and Mueller Logistik Gmbh (\"Customer\"), a\nlogistics company registered in Hamburg, Germany."
+              }
+            ]
+          },
+          {
+            "text": "## 1. Scope\n\nThe Provider shall supply warehouse-handling equipment and related maintenance\nservices to the Customer across its German distribution sites.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_msa:chunk2",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "7-10"
+                    ],
+                    [
+                      "chunk",
+                      "2"
+                    ]
+                  ],
+                  "render": "lines 7-10, chunk 2"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 1. Scope\n\nThe Provider shall supply warehouse-handling equipment and related maintenance\nservices to the Customer across its German distribution sites."
+              }
+            ]
+          },
+          {
+            "text": "## 2. Term and renewal\n\nThe initial term of this Agreement is twelve (12) months. Thereafter the\nAgreement auto-renews annually on 1 August unless either party gives at least\nsixty (60) days written notice of termination prior to the renewal date.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_msa:chunk3",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "12-16"
+                    ],
+                    [
+                      "chunk",
+                      "3"
+                    ]
+                  ],
+                  "render": "lines 12-16, chunk 3"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 2. Term and renewal\n\nThe initial term of this Agreement is twelve (12) months. Thereafter the\nAgreement auto-renews annually on 1 August unless either party gives at least\nsixty (60) days written notice of termination prior to the renewal date."
+              }
+            ]
+          },
+          {
+            "text": "## 3. Payment terms\n\nAll invoices are payable net 30 days from the invoice date. Late payment accrues\ninterest at 4% per annum above the statutory base rate.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_msa:chunk4",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "18-21"
+                    ],
+                    [
+                      "chunk",
+                      "4"
+                    ]
+                  ],
+                  "render": "lines 18-21, chunk 4"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 3. Payment terms\n\nAll invoices are payable net 30 days from the invoice date. Late payment accrues\ninterest at 4% per annum above the statutory base rate."
+              }
+            ]
+          },
+          {
+            "text": "## 4. Special conditions\n\nThe Customer is entitled to priority next-day dispatch on spare-part orders, a\ncondition negotiated in recognition of its time-critical operations.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_msa:chunk5",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "23-26"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 23-26, chunk 5"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 4. Special conditions\n\nThe Customer is entitled to priority next-day dispatch on spare-part orders, a\ncondition negotiated in recognition of its time-critical operations."
+              }
+            ]
+          },
+          {
+            "text": "Conflict: the cited documents disagree on the renewal date — '1 February' (business_docs/mueller_logistik_amendment.md); '1 August' (business_docs/mueller_logistik_msa.md). No single renewal date can be asserted.",
+            "verified": true,
+            "support": [
+              {
+                "id": "mueller_logistik_amendment:chunk2",
+                "source": "business_docs/mueller_logistik_amendment.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "6-10"
+                    ],
+                    [
+                      "chunk",
+                      "2"
+                    ]
+                  ],
+                  "render": "lines 6-10, chunk 2"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 1. Change of renewal date\n\nSection 2 of the Agreement is amended as follows: the Agreement auto-renews\nannually on 1 February, aligning the contract year with the customer's fiscal\nyear. The sixty (60) days notice period for termination remains unchanged."
+              },
+              {
+                "id": "mueller_logistik_msa:chunk3",
+                "source": "business_docs/mueller_logistik_msa.md",
+                "locator": {
+                  "kind": "doc-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "12-16"
+                    ],
+                    [
+                      "chunk",
+                      "3"
+                    ]
+                  ],
+                  "render": "lines 12-16, chunk 3"
+                },
+                "ingested_at": "2026-06-05",
+                "text": "## 2. Term and renewal\n\nThe initial term of this Agreement is twelve (12) months. Thereafter the\nAgreement auto-renews annually on 1 August unless either party gives at least\nsixty (60) days written notice of termination prior to the renewal date."
+              }
+            ]
+          }
+        ],
+        "all_verified": true
+      }
+    },
+    {
+      "tool": "ground",
+      "arguments": {
+        "domain": "devex",
+        "question": "Why did run R-1042 fail, and has this happened before?"
+      },
+      "why": "a grounded DevEx root-cause with recurrence",
+      "result": {
+        "domain": "devex",
+        "question": "Why did run R-1042 fail, and has this happened before?",
+        "route": {
+          "kind": "rca",
+          "reason": "names pipeline run R-1042 — root-cause analysis"
+        },
+        "grounded": true,
+        "refused": false,
+        "refusal": null,
+        "claims": [
+          {
+            "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+            "verified": true,
+            "support": [
+              {
+                "id": "Run:R-1042",
+                "source": "devex_synthetic/runs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Run"
+                    ],
+                    [
+                      "row",
+                      "13"
+                    ]
+                  ],
+                  "render": "table Run, row 13"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+              }
+            ]
+          },
+          {
+            "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+            "verified": true,
+            "support": [
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "text": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "run_R-0987:chunk5",
+                "source": "devex_synthetic/logs/run_R-0987.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "15-18"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 15-18, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+              },
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "text": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              },
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+            "verified": true,
+            "support": [
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              }
+            ]
+          },
+          {
+            "text": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-198",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "3"
+                    ]
+                  ],
+                  "render": "table PR, row 3"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+              },
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              }
+            ]
+          },
+          {
+            "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-198",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "3"
+                    ]
+                  ],
+                  "render": "table PR, row 3"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+              }
+            ]
+          },
+          {
+            "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR-198.diff:hunk1",
+                "source": "devex_synthetic/prs/PR-198.diff",
+                "locator": {
+                  "kind": "diff-hunk",
+                  "parts": [
+                    [
+                      "file",
+                      "src/payments/db_client.py"
+                    ],
+                    [
+                      "hunk",
+                      "1"
+                    ],
+                    [
+                      "lines",
+                      "4-7"
+                    ]
+                  ],
+                  "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+              }
+            ]
+          }
+        ],
+        "all_verified": true
+      }
+    },
+    {
+      "tool": "ground",
+      "arguments": {
+        "domain": "github_actions",
+        "question": "Why did the pages deploy fail?"
+      },
+      "why": "a grounded answer over the real GitHub Actions connector",
+      "result": {
+        "domain": "github_actions",
+        "question": "Why did the pages deploy fail?",
+        "route": {
+          "kind": "lookup",
+          "reason": "no run, PR, or service named — lexical lookup"
+        },
+        "grounded": true,
+        "refused": false,
+        "refusal": null,
+        "claims": [
+          {
+            "text": "\t\"pages_build_version\": \"f705e117ff451936b37556d1a9b7710df75de843\",\n\t\"oidc_token\": \"***\"\n}\n##[error]Creating Pages deployment failed\n##[error]HttpError: Not Found\n    at /home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/node_modules/@octokit/request/dist-node/index.js:124:1\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at createPagesDeployment (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/api-client.js:125:1)\n    at Deployment.create (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/deployment.js:73:1)\n    at main (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/index.js:30:1)\n##[error]Error: Failed to create deployment (status: 404) with build version f705e117ff451936b37556d1a9b7710df75de843. Request ID 4C10:38276B:AEB29DF:2953270D:6A2979D3 Ensure GitHub Pages has been enabled: https://github.com/robert-vetter/tessera/settings/pages\nEvaluate and set environment url\nEvaluated environment url:\nCleaning up orphan processes",
+            "verified": true,
+            "support": [
+              {
+                "id": "27284786811.failed:error1",
+                "source": "github_actions/logs/27284786811.failed.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "47-60"
+                    ],
+                    [
+                      "job",
+                      "deploy"
+                    ],
+                    [
+                      "step",
+                      "UNKNOWN STEP"
+                    ],
+                    [
+                      "section",
+                      "error1"
+                    ]
+                  ],
+                  "render": "lines 47-60, job deploy, step UNKNOWN STEP, section error1"
+                },
+                "ingested_at": "2026-06-16",
+                "text": "\t\"pages_build_version\": \"f705e117ff451936b37556d1a9b7710df75de843\",\n\t\"oidc_token\": \"***\"\n}\n##[error]Creating Pages deployment failed\n##[error]HttpError: Not Found\n    at /home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/node_modules/@octokit/request/dist-node/index.js:124:1\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at createPagesDeployment (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/api-client.js:125:1)\n    at Deployment.create (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/deployment.js:73:1)\n    at main (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/index.js:30:1)\n##[error]Error: Failed to create deployment (status: 404) with build version f705e117ff451936b37556d1a9b7710df75de843. Request ID 4C10:38276B:AEB29DF:2953270D:6A2979D3 Ensure GitHub Pages has been enabled: https://github.com/robert-vetter/tessera/settings/pages\nEvaluate and set environment url\nEvaluated environment url:\nCleaning up orphan processes"
+              }
+            ]
+          },
+          {
+            "text": "\t\"pages_build_version\": \"778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08\",\n\t\"oidc_token\": \"***\"\n}\n##[error]Creating Pages deployment failed\n##[error]HttpError: Not Found\n    at /home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/node_modules/@octokit/request/dist-node/index.js:124:1\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at createPagesDeployment (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/api-client.js:125:1)\n    at Deployment.create (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/deployment.js:73:1)\n    at main (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/index.js:30:1)\n##[error]Error: Failed to create deployment (status: 404) with build version 778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08. Request ID E3C0:2F8CA1:235514C:848B97A:6A297B42 Ensure GitHub Pages has been enabled: https://github.com/robert-vetter/tessera/settings/pages\nEvaluate and set environment url\nEvaluated environment url:\nCleaning up orphan processes",
+            "verified": true,
+            "support": [
+              {
+                "id": "27285174461.failed:error1",
+                "source": "github_actions/logs/27285174461.failed.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "47-60"
+                    ],
+                    [
+                      "job",
+                      "deploy"
+                    ],
+                    [
+                      "step",
+                      "UNKNOWN STEP"
+                    ],
+                    [
+                      "section",
+                      "error1"
+                    ]
+                  ],
+                  "render": "lines 47-60, job deploy, step UNKNOWN STEP, section error1"
+                },
+                "ingested_at": "2026-06-16",
+                "text": "\t\"pages_build_version\": \"778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08\",\n\t\"oidc_token\": \"***\"\n}\n##[error]Creating Pages deployment failed\n##[error]HttpError: Not Found\n    at /home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/node_modules/@octokit/request/dist-node/index.js:124:1\n    at processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at createPagesDeployment (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/api-client.js:125:1)\n    at Deployment.create (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/internal/deployment.js:73:1)\n    at main (/home/runner/work/_actions/actions/deploy-pages/cd2ce8fcbc39b97be8ca5fce6e763baed58fa128/src/index.js:30:1)\n##[error]Error: Failed to create deployment (status: 404) with build version 778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08. Request ID E3C0:2F8CA1:235514C:848B97A:6A297B42 Ensure GitHub Pages has been enabled: https://github.com/robert-vetter/tessera/settings/pages\nEvaluate and set environment url\nEvaluated environment url:\nCleaning up orphan processes"
+              }
+            ]
+          },
+          {
+            "text": "Run 27284786811 of workflow \"Docs\" (push on main): status failed (failing step \"Deploy to GitHub Pages\" in job \"deploy\"), commit f705e117ff451936b37556d1a9b7710df75de843, started 2026-06-10T14:50:34Z — \"docs(writeup): the technical write-up — problem, approach, the record…\".",
+            "verified": true,
+            "support": [
+              {
+                "id": "Run:27284786811",
+                "source": "github_actions/runs/27284786811.json",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Run"
+                    ],
+                    [
+                      "row",
+                      "2"
+                    ]
+                  ],
+                  "render": "table Run, row 2"
+                },
+                "ingested_at": "2026-06-16",
+                "text": "Run 27284786811 of workflow \"Docs\" (push on main): status failed (failing step \"Deploy to GitHub Pages\" in job \"deploy\"), commit f705e117ff451936b37556d1a9b7710df75de843, started 2026-06-10T14:50:34Z — \"docs(writeup): the technical write-up — problem, approach, the record…\"."
+              }
+            ]
+          },
+          {
+            "text": "Run 27285174461 of workflow \"Docs\" (push on main): status failed (failing step \"Deploy to GitHub Pages\" in job \"deploy\"), commit 778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08, started 2026-06-10T14:56:36Z — \"docs: close Phase 4 — platform, polish, and the story; loops closed, …\".",
+            "verified": true,
+            "support": [
+              {
+                "id": "Run:27285174461",
+                "source": "github_actions/runs/27285174461.json",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Run"
+                    ],
+                    [
+                      "row",
+                      "3"
+                    ]
+                  ],
+                  "render": "table Run, row 3"
+                },
+                "ingested_at": "2026-06-16",
+                "text": "Run 27285174461 of workflow \"Docs\" (push on main): status failed (failing step \"Deploy to GitHub Pages\" in job \"deploy\"), commit 778e9ba8decee3c2c9ba0a47a01a6ec7f7abed08, started 2026-06-10T14:56:36Z — \"docs: close Phase 4 — platform, polish, and the story; loops closed, …\"."
+              }
+            ]
+          },
+          {
+            "text": "﻿2026-06-10T14:50:57.3006680Z Current runner version: '2.334.0'\n##[group]Runner Image Provisioner\nHosted Compute Agent\nVersion: 20260520.533\nCommit: 189110e25284a9812c124fd27b339e2fb4f2f9db\nBuild Date: 2026-05-20T17:44:04Z\nWorker ID: {69ce19e3-4515-45a5-aca2-dc59e22cae5b}\nAzure Region: westus3\n##[endgroup]\n##[group]Operating System\nUbuntu\n24.04.4\nLTS\n##[endgroup]\n##[group]Runner Image\nImage: ubuntu-24.04\nVersion: 20260525.161.1\nIncluded Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md\nImage Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161\n##[endgroup]\n##[group]GITHUB_TOKEN Permissions\nMetadata: read\nPages: write\n##[endgroup]\nSecret source: Actions\nPrepare workflow directory\nPrepare all required actions\nGetting action download info\nDownload action repository 'actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128' (SHA:cd2ce8fcbc39b97be8ca5fce6e763baed58fa128)\nComplete job name: deploy\n##[group]Run actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128\nwith:\n  token: ***\n  timeout: 600000\n  error_count: 10\n  reporting_interval: 5000\n  artifact_name: github-pages\n  preview: false\n##[endgroup]\n(node:2094) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nFetching artifact metadata for \"github-pages\" in this workflow run\nFound 1 artifact(s)\nCreating Pages deployment with payload:\n{\n\t\"artifact_id\": 7539326797,",
+            "verified": true,
+            "support": [
+              {
+                "id": "27284786811.failed:chunk1",
+                "source": "github_actions/logs/27284786811.failed.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "1-46"
+                    ],
+                    [
+                      "job",
+                      "deploy"
+                    ],
+                    [
+                      "step",
+                      "UNKNOWN STEP"
+                    ],
+                    [
+                      "section",
+                      "chunk1"
+                    ]
+                  ],
+                  "render": "lines 1-46, job deploy, step UNKNOWN STEP, section chunk1"
+                },
+                "ingested_at": "2026-06-16",
+                "text": "﻿2026-06-10T14:50:57.3006680Z Current runner version: '2.334.0'\n##[group]Runner Image Provisioner\nHosted Compute Agent\nVersion: 20260520.533\nCommit: 189110e25284a9812c124fd27b339e2fb4f2f9db\nBuild Date: 2026-05-20T17:44:04Z\nWorker ID: {69ce19e3-4515-45a5-aca2-dc59e22cae5b}\nAzure Region: westus3\n##[endgroup]\n##[group]Operating System\nUbuntu\n24.04.4\nLTS\n##[endgroup]\n##[group]Runner Image\nImage: ubuntu-24.04\nVersion: 20260525.161.1\nIncluded Software: https://github.com/actions/runner-images/blob/ubuntu24/20260525.161/images/ubuntu/Ubuntu2404-Readme.md\nImage Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260525.161\n##[endgroup]\n##[group]GITHUB_TOKEN Permissions\nMetadata: read\nPages: write\n##[endgroup]\nSecret source: Actions\nPrepare workflow directory\nPrepare all required actions\nGetting action download info\nDownload action repository 'actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128' (SHA:cd2ce8fcbc39b97be8ca5fce6e763baed58fa128)\nComplete job name: deploy\n##[group]Run actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128\nwith:\n  token: ***\n  timeout: 600000\n  error_count: 10\n  reporting_interval: 5000\n  artifact_name: github-pages\n  preview: false\n##[endgroup]\n(node:2094) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.\n(Use `node --trace-deprecation ...` to show where the warning was created)\nFetching artifact metadata for \"github-pages\" in this workflow run\nFound 1 artifact(s)\nCreating Pages deployment with payload:\n{\n\t\"artifact_id\": 7539326797,"
+              }
+            ]
+          }
+        ],
+        "all_verified": true
+      }
+    },
+    {
+      "tool": "ground",
+      "arguments": {
+        "domain": "business",
+        "question": "What is the capital of France?"
+      },
+      "why": "a principled refusal — carried across the protocol, never an answer",
+      "result": {
+        "domain": "business",
+        "question": "What is the capital of France?",
+        "route": {
+          "kind": "lookup",
+          "reason": "no entity named — lexical lookup"
+        },
+        "grounded": false,
+        "refused": true,
+        "refusal": "I don't have enough evidence to answer that.",
+        "claims": [],
+        "all_verified": true
+      }
+    },
+    {
+      "tool": "assertions",
+      "arguments": {
+        "domain": "business",
+        "record_id": "I_AddrOrgNamePostalAddress:A0007"
+      },
+      "why": "the entity-resolution trail behind a cited record",
+      "result": {
+        "record_id": "I_AddrOrgNamePostalAddress:A0007",
+        "assertions": [
+          {
+            "kind": "resolution",
+            "a": "I_Customer:0010000007",
+            "b": "I_AddrOrgNamePostalAddress:A0007",
+            "confidence": 1.0,
+            "reason": "name match: 'muellerlogistikgmbh' ~ 'muellerlogistikgmbh' (similarity 1.000; shared distinctive token 'mueller'; vat_registration 'de196231432' matches)",
+            "score": 1.0
+          },
+          {
+            "kind": "mention",
+            "a": "mueller_logistik_amendment:chunk1",
+            "b": "I_AddrOrgNamePostalAddress:A0007",
+            "confidence": 1.0,
+            "reason": "document text contains 'muellerlogistikgmbh'"
+          },
+          {
+            "kind": "mention",
+            "a": "mueller_logistik_amendment:chunk4",
+            "b": "I_AddrOrgNamePostalAddress:A0007",
+            "confidence": 1.0,
+            "reason": "document text contains 'muellerlogistikgmbh'"
+          },
+          {
+            "kind": "mention",
+            "a": "mueller_logistik_msa:chunk1",
+            "b": "I_AddrOrgNamePostalAddress:A0007",
+            "confidence": 1.0,
+            "reason": "document text contains 'muellerlogistikgmbh'"
+          }
+        ]
+      }
+    }
+  ]
+}

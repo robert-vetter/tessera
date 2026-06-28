@@ -280,7 +280,14 @@ def ground(domain_name: str, question: str) -> GroundedResult:
         GroundedClaim(
             text=claim.text,
             verified=verdict,
-            support=tuple(_evidence(record) for record in claim.support),
+            # Sort support by record id so the serialized boundary output is
+            # deterministic across hash seeds: a claim's co-supporting records are
+            # an unordered set (the verifier is order-agnostic), but a tool result
+            # an agent consumes should be stable, not seed-dependent.
+            support=tuple(
+                _evidence(record)
+                for record in sorted(claim.support, key=lambda rec: rec.id)
+            ),
         )
         for claim, verdict in zip(answer.claims, verdicts, strict=True)
     )
