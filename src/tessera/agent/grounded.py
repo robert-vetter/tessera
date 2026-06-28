@@ -268,22 +268,29 @@ def _evidence(record: EvidenceRecord) -> GroundedEvidence:
     )
 
 
-def ground(domain_name: str, question: str) -> GroundedResult:
-    """Route ``question`` in ``domain_name`` and return a verifier-checked,
-    serializable grounded result. A refusal is carried explicitly — it can never
-    be rendered as an answer across the boundary (ADR 0022)."""
-    dom = domain(domain_name)
-    graph, kb = _engines(domain_name)
-    route, answer = dom.route(question, graph, kb)
-    verdicts = verify_claims(answer, graph, dom.claim_shapes)
+def serialize_answer(
+    answer: Answer,
+    graph: KnowledgeGraph,
+    claim_shapes: tuple[ClaimShape, ...],
+    *,
+    domain: str,
+    question: str,
+    route: Route,
+) -> GroundedResult:
+    """Project an :class:`Answer` into a serializable, verifier-checked
+    :class:`GroundedResult` — the boundary projection (ADR 0022).
+
+    Each claim is live-verified with ``is_supported``; support is sorted by id so
+    the output is deterministic across hash seeds; a refusal is carried explicitly
+    so it can never be rendered as an answer. This is the *only* place an answer
+    crosses into agent-facing form, so the boundary's fidelity (Unit 5,
+    ``tests/test_boundary.py``) is a property of this one function.
+    """
+    verdicts = verify_claims(answer, graph, claim_shapes)
     claims = tuple(
         GroundedClaim(
             text=claim.text,
             verified=verdict,
-            # Sort support by record id so the serialized boundary output is
-            # deterministic across hash seeds: a claim's co-supporting records are
-            # an unordered set (the verifier is order-agnostic), but a tool result
-            # an agent consumes should be stable, not seed-dependent.
             support=tuple(
                 _evidence(record)
                 for record in sorted(claim.support, key=lambda rec: rec.id)
@@ -293,7 +300,7 @@ def ground(domain_name: str, question: str) -> GroundedResult:
     )
     refused = not answer.is_grounded
     return GroundedResult(
-        domain=domain_name,
+        domain=domain,
         question=question,
         route_kind=route.kind,
         route_reason=route.reason,
@@ -301,6 +308,23 @@ def ground(domain_name: str, question: str) -> GroundedResult:
         refused=refused,
         refusal=(answer.refusal or REFUSAL_MESSAGE) if refused else None,
         claims=claims,
+    )
+
+
+def ground(domain_name: str, question: str) -> GroundedResult:
+    """Route ``question`` in ``domain_name`` and return a verifier-checked,
+    serializable grounded result. A refusal is carried explicitly — it can never
+    be rendered as an answer across the boundary (ADR 0022)."""
+    dom = domain(domain_name)
+    graph, kb = _engines(domain_name)
+    route, answer = dom.route(question, graph, kb)
+    return serialize_answer(
+        answer,
+        graph,
+        dom.claim_shapes,
+        domain=domain_name,
+        question=question,
+        route=route,
     )
 
 
