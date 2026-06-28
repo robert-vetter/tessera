@@ -13,6 +13,62 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-10] — 2026-06-28
+
+Add a **registration key** (`VATRegistration`) as the most decisive entity-resolution
+field, closing the one floor multi-field name+address ER (Milestone 9) could not reach:
+two genuinely distinct firms with the **same name AND the same address**. Fully
+**offline and CI-reproducible** — no embedding, no cloud. Faithfulness gated at 1.0
+throughout. The Milestone-9 engine already supported it, so this milestone makes **no
+engine logic change** — the smallest of the three frozen-core deltas.
+
+### Added
+
+- **Registration-key entity resolution (ADR 0020).** The exact legal-entity identity
+  key slots into the existing Milestone-9 gate as the **first** (most decisive)
+  `match_field`: `CUSTOMER_MATCH_FIELDS = ("vat_registration", "postal_code",
+  "city_name")`. Exact normalized equality (the structured key is matched exactly, not
+  by a fuzzy ratio); it decides above the address, so same name + same address +
+  different key → split, and (a free consequence) a same-key pair survives a postal
+  disagreement, retiring Milestone 9's "postal-anchored" cost.
+- **`VATRegistration` on every `I_Customer` row**, assigned per legal entity
+  (duplicates share one VAT; distinct firms differ; a hash collision between distinct
+  seeds is a loud build failure). Existing columns byte-identical; the address master
+  and MANIFEST counts unchanged in this step.
+- **A same-name/SAME-address disambiguation pair** (two distinct "Havel Kontor GmbH"
+  firms at one address, distinct VATs), appended outside the RNG stream. The new gold
+  case (kind=refuse) is the **measured before/after**: name + address ER over-merges and
+  wrongly answers the ambiguous-name question (business gold quality **0.909**); the
+  registration key splits the firms and correctly refuses (**1.000**) — both points in
+  `eval/history.jsonl`, CI-reproducible.
+
+### Changed
+
+- **`build_demo_graph` defaults to the key-first `CUSTOMER_MATCH_FIELDS`;
+  `sources/salt.py`** denormalizes the key onto the customer's address node (a shared
+  address carries none — absence is never a contradiction). The resolved clusters are
+  byte-identical to the Milestone-9 address-only path except the one intended Havel
+  split (pinned, not assumed). Business gold 10 → 11, synthetic 53, every metric 1.0.
+- **`graph.py` bridge reason** generalized from "bridged by address" to "bridged by
+  corroborating field" (`signal.detail` names the actual field) — an honesty fix so a
+  key-bridged merge does not misreport the field. Behaviour-preserving; clusters
+  unchanged.
+- **`test_renewal_question_returns_the_actual_renewal_clause`** relaxed to a robust
+  top-2 invariant: adding 4 short records shifted BM25 `avgdl` and flipped a 0.05%
+  near-tie (a section heading vs its first clause, both surfaced from the MSA with
+  doc-span provenance). The eval floor is untouched; the heading-chunk root cause is
+  filed as retrieval future work.
+
+### Notes
+
+- **Third sanctioned frozen-core delta** (after Milestones 8–9): `graph.py` only (a
+  one-line wording generalization), `resolution.py` empty-diff. The key reuses the M9
+  exact-equality gate; the schema knowledge stays in the source (ADR 0011 pattern).
+- **Pre-merge adversarial review** (5 lenses, 8 agents): 3 findings, 0 majors, all
+  fixed (a real-SALT-safe denormalization guard; finishing the field-general wording).
+- **New floor recorded:** two distinct firms with the same name **and** address **and**
+  key are indistinguishable from the data — only an external registry separates them.
+
 ## [milestone-9] — 2026-06-28
 
 Make entity resolution **multi-field** (name + address), closing the three

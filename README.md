@@ -221,16 +221,22 @@ that drops a legal form isn't linked yet). A character match is **stem-gated** s
 long shared *generic* suffix can't collapse distinct firms (`Granite`/`Pyrite
 Logistik GmbH`): the names must also share a distinctive, non-generic signal, with
 genericness derived from the corpus (`difflib` precision 0.50 → 1.00 on the labelled
-pair-set). On top of the name decision, the **address** is a second deterministic
-signal, a two-way gate: a contradicting postal code **vetoes** an over-merge of two
-*same-named* firms at different locations, and an agreeing one **bridges** a
-double-typo pair — so two distinct "Hanseatic Trading GmbH" firms at different
-addresses stay separate (and the ambiguous-name question correctly refuses instead of
-answering one wrong entity — a measured quality 0.900 → 1.000). All fully offline and
-CI-reproducible. Design and trade-offs:
+pair-set). On top of the name decision, two further deterministic signals are folded in as an
+ordered, two-way gate (most decisive first): a **registration key**
+(`VATRegistration`) and then the **address**. A contradicting field **vetoes** an
+over-merge of two *same-named* firms; an agreeing one **bridges** a double-typo pair.
+So two distinct "Hanseatic Trading GmbH" firms at different addresses stay separate on
+the address, and two distinct "Havel Kontor GmbH" firms at the *same* address stay
+separate on their different VATs — the floor the address alone can't reach (the
+ambiguous-name questions correctly refuse instead of answering one wrong entity — a
+measured quality 0.900 → 1.000 on the address pair, 0.909 → 1.000 on the key pair). The
+key is an *exact* match (a structured identity, not fuzzy), so it also overrides a
+postal disagreement for a genuine same-firm pair. All fully offline and CI-reproducible.
+Design and trade-offs:
 [ADR 0004](docs/adr/0004-graph-and-entity-resolution.md),
 [ADR 0018](docs/adr/0018-stem-gated-deterministic-er.md),
-[ADR 0019](docs/adr/0019-multi-field-entity-resolution.md).
+[ADR 0019](docs/adr/0019-multi-field-entity-resolution.md),
+[ADR 0020](docs/adr/0020-registration-key-entity-resolution.md).
 
 ### Cross-source answers
 
@@ -333,10 +339,14 @@ stem-gating the deterministic pass (`difflib` precision 0.50 → 1.00, fully off
 ADR 0018). **Milestone 9** made ER **multi-field** — the address is a second
 deterministic signal that splits two distinct firms sharing a name, closing the M8
 residuals with a measured before/after (business gold quality 0.900 → 1.000) and the
-demo clusters provably unchanged except the one intended split (ADR 0019). The
+demo clusters provably unchanged except the one intended split (ADR 0019). **Milestone
+10** added the **registration key** (`VATRegistration`) as the most decisive field,
+closing the last floor the address couldn't reach — two distinct firms with the same
+name *and* the same address, split on their different VATs (0.909 → 1.000), with **no
+engine logic change** (it reuses the M9 exact-equality gate; ADR 0020). The
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
-(more connectors, registration/tax-key matching, agentic/MCP mode, true
-million-record scale).
+(more connectors, the registry-only ER floor, a heading-chunk retrieval fragility,
+agentic/MCP mode, true million-record scale).
 
 ## License
 

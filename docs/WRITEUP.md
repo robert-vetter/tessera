@@ -369,6 +369,55 @@ as the one sanctioned delta. The milestone keeps a measured edge in turn: two di
 firms with the same name *and* the same address still over-merge — only a
 registration/tax key would separate them, the recorded next lever.
 
+### Milestone 10: the registration key — the last name+address floor
+
+Milestone 9 left exactly one floor, pinned by a test and recorded in ADR 0019: two
+genuinely distinct firms with the **same** name **and** the **same** address. The
+address *agrees* — it is the same — so it corroborates a merge and the firms
+over-merge. Only an exact identity key separates them. The maintainer scoped it: add a
+real `VATRegistration` field to the customer master, populated **per legal entity on
+every customer**, and make the exact key the decisive identity signal.
+
+The striking part is how little it took. The Milestone-9 engine already compared
+ordered `match_fields` by exact normalized equality, first-present-decides, and the
+two-way gate already vetoed on disagreement and bridged on agreement for *whatever*
+field led the tuple. A registration key **is** an exact-equality field, so it slots in
+as the **first** entry: `("vat_registration", "postal_code", "city_name")`. The key
+decides above the (fuzzy) address — same name + same address + different key → split
+(the floor); and, as a free consequence, a genuine same-firm pair with the same key but
+*different* postals now correctly merges, retiring Milestone 9's "postal-anchored, not
+postal-perfect" cost. **`resolution.py` is empty-diff; `graph.py`'s only behavioural
+change is one honest wording generalization** — the bridge reason said "bridged by
+address", which under a key-led tuple would misreport the field, so it now names the
+actual corroborating field (`signal.detail` carries it). The leak-guard holds; this is
+the smallest of the three frozen-core deltas.
+
+One implementation point falls out of the connected-components model: the key is
+**denormalized onto the address node** too (a shared/serviced-office address carries
+none — absence is never a contradiction). Resolution candidates are *all* name-bearing
+nodes, so for two same-address firms to split into two components, every cross-firm pair
+— including address↔address — must veto on the key.
+
+The close is **CI-reproducible** and proven not to move anything else. VAT-on-every-
+customer changes the *deciding field* (postal → key) but not the *outcome*: a test pins
+that the resolved clusters are byte-identical between the key-first default and the
+Milestone-9 address-only path on the existing data — a mis-assigned per-entity VAT would
+split a genuine merge and fail it. The corpus gains two distinct firms both named "Havel
+Kontor GmbH" at one address, and the ambiguous-name gold question flips from a
+wrongly-*answered* miss (name + address over-merges → answers, **business gold quality
+0.909**) to a correct ambiguity *refusal* (the key splits → **1.000**), both points in
+`eval/history.jsonl`, faithfulness 1.0 throughout. The **adversarial multi-agent review**
+(0 majors this time) hardened it: a real-SALT-safe denormalization guard and finishing
+the "address" → field-general wording so the "always general" claim is self-consistent.
+
+The new floor is the honest one a registry, not a heuristic, would resolve: same name
+**and** same address **and** same key — two firms indistinguishable from the signals in
+the data. A by-product worth recording: adding four short records shifted BM25 `avgdl`
+by a hair and flipped a 0.05% near-tie in an unrelated retrieval test (a section heading
+vs its first clause, both surfaced from the right document with provenance); the test now
+pins the robust invariant and the heading-chunk root cause is filed as retrieval future
+work. The eval's hard floor was untouched at 1.0.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -442,21 +491,23 @@ Named with the same prominence as the results:
   validation) and the batteries now *do* sample free-form phrasing, but
   intent-only words (`rank`, `lead`, `best`) stay the named ADR 0006 ceiling;
   its measured-miss trigger has not fired (a correct refusal is the fallback).
-- **ER is now multi-field; one address-blind floor remains.** Milestone 7 added
-  embedding-assisted recall (ADR 0016); Milestone 8 cured the generic-suffix
-  over-merge by stem-gating the deterministic `difflib` pass (ADR 0018); Milestone 9
-  added the **address** as a second deterministic signal (ADR 0019), a two-way gate
-  that vetoes an over-merge of two same-named firms at different addresses and bridges
-  a double-typo pair at the same address — closing all three M8 residuals, fully
-  offline and CI-reproducible, with the demo clusters provably unchanged except the
-  one intended split (business gold quality 0.900 → 1.000 on the new disambiguation
-  pair). What multi-field ER still cannot do is recorded and pinned: split two distinct
-  firms with the **same name *and* the same address** — name and postal both agree, so
-  only a **registration/tax key** (the named next lever) separates them. The address
-  comparison is exact normalized equality, so it is postal-anchored, not
-  postal-perfect: a genuine same-firm pair whose records carried *different* postals
-  would be wrongly split (absent from the synthetic data, where postal is the
-  canonical value).
+- **ER is now multi-field down to an exact key; one registry-only floor remains.**
+  Milestone 7 added embedding-assisted recall (ADR 0016); Milestone 8 cured the
+  generic-suffix over-merge by stem-gating the deterministic `difflib` pass (ADR 0018);
+  Milestone 9 added the **address** as a second deterministic signal (ADR 0019), a
+  two-way gate closing all three M8 residuals; Milestone 10 added the **registration
+  key** (`VATRegistration`, ADR 0020) as the *first*, most decisive `match_field`,
+  closing the one floor the address could not reach — two distinct firms with the same
+  name *and* the same address, split now on their different VATs (business gold quality
+  0.909 → 1.000 on the new same-address pair, offline and CI-reproducible). The key
+  needed no engine logic change (it reuses the M9 exact-equality gate) and incidentally
+  retired M9's postal-anchored cost (a same-key pair survives a postal disagreement).
+  What remains is the registry-only floor, recorded and pinned: two distinct firms with
+  the same name **and** the same address **and** the same key are indistinguishable from
+  the signals in the data — only an external registry or human adjudication separates
+  them. The exact-equality match is still postal/key-anchored: a genuine same-firm pair
+  whose records carried *different* keys would be wrongly split (absent from the
+  synthetic data, where the key is the canonical per-entity value).
 - **Semantic embeddings ran on SAP for retrieval *and* ER, but stay link-only and
   cloud-measured.** Milestones 6–7 closed the synonymy miss, the `checkout-svc` ER
   miss, and the long-log dilution on HANA Cloud in-database embeddings — but
@@ -477,14 +528,15 @@ Named with the same prominence as the results:
 
 More real connectors (the first — GitHub Actions — now exists and proves the
 synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
-next) · **registration/tax-key matching** — Milestone 9 made ER multi-field (name +
-address, ADR 0019), closing the M8 residuals; the one floor it leaves is two distinct
-firms with the same name *and* the same address, which an exact registration/tax key
-would separate (a new synthetic column, an exact-match third field into the same
-assertion layer) · LLM-judged faithfulness alongside the deterministic floor · an
-agentic / MCP-exposed mode (grounded actions, not just answers — the 2026-shaped
-extension of the same trust substrate) · persistence, multi-tenancy, access
-governance.
+next) · ER is now multi-field down to an exact key (name + address, ADR 0019; the
+**registration key** `VATRegistration`, ADR 0020), leaving only the registry-only
+floor — two distinct firms identical in name, address *and* key, which only an
+external registry or human adjudication separates · the **heading-chunk retrieval
+fragility** surfaced in Milestone 10 (a Markdown section heading competes with its
+content in BM25) is filed as retrieval future work · LLM-judged faithfulness alongside
+the deterministic floor · an agentic / MCP-exposed mode (grounded actions, not just
+answers — the 2026-shaped extension of the same trust substrate) · persistence,
+multi-tenancy, access governance.
 
 ## What was learned
 
@@ -517,6 +569,15 @@ governance.
    that breaks the very veto the address is there to provide. A short structured
    identity key wants *exact* equality, not fuzzy similarity; reusing the name
    comparator was a category error the review caught before it shipped (ADR 0019).
+8. **A well-shaped abstraction makes the next feature almost free — and the cost is
+   honesty about the seams.** The registration key (Milestone 10) needed *no* new
+   engine logic: the M9 gate already compared ordered exact-equality fields, so the key
+   was "just another field, placed first." The only engine edit was a one-line wording
+   fix so a key-bridged merge stops reporting "bridged by address" — because a provenance
+   string that names the wrong field is a small lie, and this project's whole pitch is
+   that it doesn't tell them. Adding the demo data also flipped a 0.05% BM25 near-tie in
+   an unrelated test; the honest response was to record the fragility, pin the robust
+   invariant, and file the root cause — not to quietly retune until the number looked right.
 
 ## Reproduce everything
 
