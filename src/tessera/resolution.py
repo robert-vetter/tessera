@@ -13,6 +13,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections import Counter
+from collections.abc import Sequence
 from difflib import SequenceMatcher
 
 # The similarity at/above which two names are asserted to refer to the same
@@ -88,3 +90,77 @@ def similarity(a: str, b: str) -> float:
     if not norm_a or not norm_b:
         return 0.0
     return SequenceMatcher(None, norm_a, norm_b).ratio()
+
+
+# --- distinctive-stem tokenization -------------------------------------------
+#
+# A name's *distinctive stem* is the name with its **generic** tokens removed —
+# legal forms, universal organizational descriptors, and tokens that are simply
+# corpus-frequent. These primitives are shared by two regimes:
+#
+#   - the deterministic difflib pass (``KnowledgeGraph.resolve_entities``), which
+#     gates a merge on a shared distinctive token so a long shared *generic*
+#     suffix can no longer collapse distinct firms (spec 0070, ADR 0018), and
+#   - the embedding-assisted regime (:mod:`tessera.er_semantic`), which embeds the
+#     distinctive stem so abbreviation/synonym variants can still merge (ADR 0016).
+#
+# They live here (not in ``er_semantic``) precisely because the verifier-reachable
+# engine imports them: this module is stdlib-only and embedding-free, so importing
+# it never pulls a vector/provider module into the faithfulness verifier's closure
+# (the standing leak-guard, ``tests/test_semantic.py``).
+
+# Universal organizational descriptors — generic regardless of corpus frequency,
+# because they describe *kind*, not *identity* (unlike a per-entity alias, ADR
+# 0010). Kept small and explicit; legal forms are folded in from
+# :data:`LEGAL_SUFFIXES`.
+ORG_DESCRIPTORS = frozenset(
+    {"service", "services", "svc", "svcs", "system", "systems", "platform", "app"}
+)
+
+# A token shared across at least this many names is treated as generic (a
+# corpus-frequency stoplist, so "Logistik" across four firms becomes generic
+# without anyone naming it). Tunable; small by design so single-occurrence
+# distinctive stems are never stripped.
+DEFAULT_MIN_GENERIC_DF = 3
+
+_TOKEN_SPLIT = re.compile(r"[\s\-_/.,&]+")
+
+
+def tokenize(name: str) -> list[str]:
+    """Split a name into normalized tokens (lowercased, umlaut/diacritic-folded).
+
+    Each token is run through :func:`normalize` so ``"Müller"`` and ``"Mueller"``
+    tokenize identically, and empty tokens are dropped. Splitting happens on
+    whitespace and the common name separators before normalization collapses each
+    token to ``[a-z0-9]``.
+    """
+    return [tok for raw in _TOKEN_SPLIT.split(name) if (tok := normalize(raw))]
+
+
+def generic_tokens(
+    names: Sequence[str],
+    *,
+    min_df: int = DEFAULT_MIN_GENERIC_DF,
+    descriptors: frozenset[str] = ORG_DESCRIPTORS,
+) -> frozenset[str]:
+    """The generic-token set for a name corpus: descriptors ∪ legal forms ∪
+    tokens whose document frequency across ``names`` is ``>= min_df``.
+
+    Document frequency counts each name once per distinct token (so a token
+    repeated within one name is not double-counted). The result is what
+    :func:`distinctive_stem` strips away.
+    """
+    document_frequency: Counter[str] = Counter()
+    for name in names:
+        document_frequency.update(set(tokenize(name)))
+    frequent = {tok for tok, df in document_frequency.items() if df >= min_df}
+    return frozenset(descriptors) | frozenset(LEGAL_SUFFIXES) | frozenset(frequent)
+
+
+def distinctive_stem(name: str, generic: frozenset[str]) -> str:
+    """The name reduced to its non-generic tokens, space-joined in order.
+
+    ``""`` when every token is generic — such a name carries no distinctive
+    signal and is never proposed for a merge.
+    """
+    return " ".join(tok for tok in tokenize(name) if tok not in generic)
