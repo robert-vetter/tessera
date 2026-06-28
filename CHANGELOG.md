@@ -13,6 +13,59 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-11] — 2026-06-28
+
+Expose Tessera to AI agents over the **Model Context Protocol** as **read-only
+grounded tools**, and prove the trust contract survives the protocol boundary — the
+project's thesis ("a trust layer for enterprise AI agents") made callable. Fully
+**deterministic, offline, and CI-reproducible** — the MCP SDK is an opt-in extra; the
+default graph and CI stay pure-stdlib. Faithfulness gated at 1.0 throughout. The one
+sanctioned frozen-core delta is the heading-chunk retrieval fix folded in as the
+opening unit.
+
+### Added
+
+- **The grounded-tool layer (ADR 0022).** A vertical-neutral `tessera/agent/` package:
+  `ground(domain, question)` routes through the deterministic engine over all three
+  domains (business, devex, the real github_actions connector) and returns a
+  JSON-serializable `GroundedResult` — the routing decision, claims each with a
+  per-claim verifier verdict and full provenance inline, and a refusal carried
+  explicitly so it can never become an answer across the boundary. A second tool,
+  `assertions(domain, record_id)`, surfaces the reversible entity-resolution trail.
+- **The MCP server `tessera-mcp`.** A thin transport (no grounding logic) registering
+  the read-only tools over the SDK's stdio transport. The SDK is the **opt-in `agent`
+  extra** (`uv sync --extra agent`), the hdbcli/`cloud` pattern; the default import
+  graph and CI never touch it (a subprocess pin; CI's `uv sync --frozen` is pure-stdlib).
+- **A real MCP client↔server session**, captured to `data/mcp_session/` by
+  `scripts/record_mcp_session.py` (the no-spend "ran on" artifact): a grounded answer
+  per domain, a refusal carried as a refusal, the ER trail — every claim verified.
+- **The boundary-trust measurement (`tests/test_boundary.py`).** Over every gold case
+  in all three batteries: the boundary projection is lossless (same claims, support,
+  verdicts as the engine `Answer`) and **faithfulness is 1.0 across the boundary**.
+
+### Changed
+
+- **A Markdown heading now leads its section (ADR 0021).** `ingestion.chunk_text`
+  merges a pure ATX-heading block into the content it introduces, so a heading no
+  longer competes with its own clause in BM25 — retiring the Milestone-10 near-tie
+  fragility and restoring the renewal retrieval test to a strict top-1 assertion. The
+  one sanctioned frozen-core delta this milestone (devex/github chunk ids unchanged —
+  their log corpora have no ATX headings; gold ids re-pointed deliberately).
+- **`ChatSession` shares the grounded-tool registry + verify loop** (one source of
+  truth for the domains and the verifier), with its behaviour pinned byte-identical.
+
+### Measured / recorded
+
+- **Faithfulness 1.0 across the boundary** (the headline, gated in CI); the existing
+  battery numbers are unchanged (the agent layer is a consumer, not a new answer path).
+- **Two honest router-vs-engine divergences pinned and explained** (neither a
+  faithfulness breach): the offline synonymy case the agent path inherits as a refusal
+  (only embeddings bridge it; M11 is offline by choice); and the bare term `"Logistik"`
+  the production router answers where the eval's `compose` refuses as ambiguous — a
+  pre-existing router gap (the chat surface shares it), recorded as the next lever.
+- **ADR 0005 (LLM-judge) / 0006 (semantic routing) re-examined and recorded NOT
+  forced** at the boundary.
+
 ## [milestone-10] — 2026-06-28
 
 Add a **registration key** (`VATRegistration`) as the most decisive entity-resolution
