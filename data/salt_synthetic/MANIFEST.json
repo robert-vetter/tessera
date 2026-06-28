@@ -6,8 +6,8 @@
   "seed": 20260605,
   "snapshot_date": "2026-06-05",
   "row_counts": {
-    "I_Customer.csv": 41,
-    "I_AddrOrgNamePostalAddress.csv": 41,
+    "I_Customer.csv": 43,
+    "I_AddrOrgNamePostalAddress.csv": 43,
     "I_SalesDocument.csv": 84,
     "I_SalesDocumentItem.csv": 171
   }

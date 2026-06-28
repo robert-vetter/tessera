@@ -40,3 +40,5 @@ Customer,CustomerName,AddressID,CustomerAccountGroup,Country
 0010001038,Iberia Log. S.L.,A1038,KUNA,ES
 0010001039,Globex Technologies Incorporated,A1039,CPD,US
 0010000008,Atlas Trading GmbH,A0008,KUNA,DE
+0010000009,Hanseatic Trading GmbH,A0009,KUNA,DE
+0010000010,Hanseatic Trading GmbH,A0010,KUNA,DE

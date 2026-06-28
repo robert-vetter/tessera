@@ -365,6 +365,39 @@ def main() -> None:
         lines=[("Packaging line upgrade", "1", "18000.00")],
     )
 
+    # --- Disambiguation pair: two DISTINCT firms with an IDENTICAL name. ----------
+    # Milestone 9 (spec 0075): name-only ER over-merges these into one entity (they
+    # share their distinctive identity token), so the ambiguous-name question resolves
+    # to a single wrong entity and answers it; multi-field ER (name + address) splits
+    # them on their DIFFERENT addresses, so the question correctly refuses as
+    # ambiguous. Fixed (no RNG) and appended last, so existing rows stay byte-identical.
+    # They carry NO sales orders — the demonstration is the customer-master ambiguity,
+    # and orders would generate a same-name synthetic compare case.
+    for cust_id, addr_id, street, house, postal, city in (
+        ("0010000009", "A0009", "Hafenstrasse", "7", "20457", "Hamburg"),
+        ("0010000010", "A0010", "Maximilianstrasse", "35", "80539", "Munich"),
+    ):
+        customers.append(
+            {
+                "Customer": cust_id,
+                "CustomerName": "Hanseatic Trading GmbH",
+                "AddressID": addr_id,
+                "CustomerAccountGroup": "KUNA",
+                "Country": "DE",
+            }
+        )
+        addresses.append(
+            {
+                "AddressID": addr_id,
+                "OrganizationName": "Hanseatic Trading GmbH",
+                "StreetName": street,
+                "HouseNumber": house,
+                "PostalCode": postal,
+                "CityName": city,
+                "Country": "DE",
+            }
+        )
+
     _write_csv(
         "I_Customer.csv",
         customers,

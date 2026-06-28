@@ -20,7 +20,8 @@ from tessera.eval.registry import GOLD_ROOT, batteries, business_battery
 
 def test_business_gold_set_is_loaded() -> None:
     cases = load_gold_set(GOLD_ROOT / "business")
-    assert len(cases) == 9  # 7 + two free-form phrasing cases (spec 0048)
+    # 9 → 10 (spec 0075): the same-name/different-address disambiguation refusal.
+    assert len(cases) == 10
     assert {c.kind for c in cases} == {"answer", "refuse"}
     # compose, retrieve, and the routed multi-step path (the phrasing cases)
     assert {c.engine for c in cases} == {"compose", "retrieve", "route"}
@@ -32,16 +33,19 @@ def _business_result() -> BatteryResult:
     return result
 
 
-def test_business_numbers_reproduce_phase_2_exactly() -> None:
-    """The battery refactor moved the scoring; it must not have moved the
-    scores (spec 0032): gold (now 9, with the spec-0048 phrasing cases) and
-    synthetic 52, all three metrics 1.0."""
+def test_business_numbers_hold_with_multifield_er() -> None:
+    """The business numbers under the default multi-field ER (spec 0075): gold 10
+    (the spec-0075 disambiguation refusal added) and synthetic 53, **all three
+    metrics 1.0**. The metrics held through every refactor since Phase 2 (spec 0032)
+    and through multi-field ER — the same-name pair refuses correctly under the
+    address gate, so quality stays 1.0 (it is 0.900 under name-only ER, the recorded
+    miss; see test_m9_multifield_close)."""
     result = _business_result()
-    assert result.gold_case_count == 9  # 7 + two free-form phrasing cases (0048)
+    assert result.gold_case_count == 10
     assert result.faithfulness == 1.0
     assert result.coverage == 1.0
     assert result.quality == 1.0
-    assert result.synthetic_case_count == 52
+    assert result.synthetic_case_count == 53
     assert result.synthetic_faithfulness == 1.0
     assert result.synthetic_coverage == 1.0
     assert result.synthetic_quality == 1.0
