@@ -14,8 +14,10 @@ from __future__ import annotations
 import re
 import unicodedata
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from difflib import SequenceMatcher
+from typing import Literal
 
 # The similarity at/above which two names are asserted to refer to the same
 # entity. Named, documented, and tunable on purpose (ADR 0004): the Unit 6
@@ -333,3 +335,75 @@ def confirm_name_match(
     if edits <= max_stem_edits:
         return f"distinctive stems {stem_a!r} ~ {stem_b!r} ({edits} edit(s) apart)"
     return None
+
+
+# --- multi-field corroboration (name + address, spec 0073 / ADR 0019) ---------
+#
+# Name-only resolution hits a floor (ADR 0018 residuals): two distinct firms with
+# the SAME name (different address) over-merge, and a genuine pair whose name is
+# *both*-typo'd is vetoed. A second deterministic signal — the address already in
+# the graph as ``has_address`` edges — resolves both, folded into the name decision
+# by :meth:`KnowledgeGraph.resolve_entities` as a TWO-WAY gate:
+#
+#   - address DISAGREEMENT vetoes a name-merge (precision: split distinct firms),
+#   - address AGREEMENT bridges a name-vetoed near-match (recall: same firm).
+#
+# It lives here, with the other distinctive-stem primitives, because it is pure
+# stdlib string work: importing it never pulls a vector/provider module toward the
+# faithfulness verifier (the standing leak-guard, ``tests/test_semantic.py``).
+
+# The normalized :func:`similarity` at/above which two field values (a postal code,
+# a city name) count as the same. **Exact normalized equality by default** (1.0):
+# postal codes are short structured identity keys, and the difflib character ratio
+# would call genuinely different ones "near-identical" — ``"D-20095"`` vs ``"20095"``
+# and ``"20095"`` vs ``"200950"`` both score 0.909, a substring/prefix collision that
+# would falsely AGREE and break the veto arm. Equality after :func:`normalize` is the
+# right tolerance: it folds umlauts/diacritics (so a city's ``München``/``Muenchen``
+# variants still agree) while a different postal never coincidentally matches. A
+# *genuinely* fuzzy field (a street, with abbreviation variants) would pass a
+# threshold ``< 1.0``; none is wired here (postal + city carry the signal). Tunable
+# and named on purpose. Spec 0073 / ADR 0019.
+DEFAULT_FIELD_MATCH_THRESHOLD = 1.0
+
+
+@dataclass(frozen=True)
+class FieldSignal:
+    """The corroborating-field verdict for a candidate pair (multi-field ER).
+
+    ``verdict`` is the address signal that :meth:`KnowledgeGraph.resolve_entities`
+    folds into the name decision; ``detail`` names the deciding field for the
+    assertion reason (``""`` when neutral).
+    """
+
+    verdict: Literal["agree", "contradict", "neutral"]
+    detail: str
+
+
+def compare_match_fields(
+    left: Mapping[str, str | None],
+    right: Mapping[str, str | None],
+    match_fields: Sequence[str],
+    *,
+    threshold: float = DEFAULT_FIELD_MATCH_THRESHOLD,
+) -> FieldSignal:
+    """Compare two nodes' corroborating identity fields (spec 0073 / ADR 0019).
+
+    ``match_fields`` are **ordered by decisiveness**: the first field present
+    (non-empty) on *both* nodes decides, so a clean key (postal code) is never
+    overridden by a noisy secondary field (city). Agreement = normalized
+    :func:`similarity` ``>= threshold`` — **exact normalized equality by default**
+    (``threshold = 1.0``), so a different postal code never coincidentally agrees via
+    a substring/prefix ratio (the review-caught ``"D-20095"`` ~ ``"20095"`` = 0.909
+    collision). ``"neutral"`` when no field is present on both — **absence is never
+    read as a contradiction**, so a node lacking an address falls back to the
+    name-only decision (the none-path).
+    """
+    for field in match_fields:
+        a, b = left.get(field), right.get(field)
+        if a and b:
+            if similarity(a, b) >= threshold:
+                return FieldSignal("agree", f"{field} {normalize(a)!r} matches")
+            return FieldSignal(
+                "contradict", f"{field} {normalize(a)!r} != {normalize(b)!r}"
+            )
+    return FieldSignal("neutral", "")

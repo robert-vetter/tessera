@@ -21,12 +21,15 @@ a *distinctive* signal (a non-generic token, or a near-identical distinctive ste
 so the cohort stays four firms — measured here so the cure is a number, not a
 footnote.
 
-It also pins the **residual the cure cannot reach**: two genuinely distinct firms
-whose names are character-identical (they share the distinctive identity; only an
-address or registration number tells them apart) still over-merge under name-only
-resolution. That is name-only ER's floor, and the recorded next lever is
-multi-field ER (name + address, ADR 0004 future work) — kept as a measured edge,
-not papered over. Deterministic (seeded, process-independent) so it reproduces.
+It also pins the **Milestone-9 cure of the residual the stem gate could not reach**:
+two genuinely distinct firms whose names are character-identical (only an address
+tells them apart) over-merge under *name-only* resolution, but a second deterministic
+signal — the address, passed as ``match_fields`` (spec 0073 / ADR 0019) — splits
+them. Each specimen keeps the name-only over-merge as the documented floor in the
+same test, so the cure is visible against the limitation. The new floor (kept as a
+measured edge in the Milestone-5 tradition) is two distinct firms with the *same*
+name **and** the same address — only a registration/tax key would separate them, the
+recorded next lever. Deterministic (seeded, process-independent) so it reproduces.
 """
 
 from __future__ import annotations
@@ -242,54 +245,79 @@ def test_generic_suffix_firms_no_longer_over_merge() -> None:
     assert similarity("Cobalt Logistik GmbH", "Basalt Logistik GmbH") >= 0.85
 
 
-def test_character_identical_distinct_firms_still_over_merge() -> None:
-    """The residual the stem gate cannot reach (spec 0070 / ADR 0018), kept as a
-    measured edge. Two genuinely distinct firms — different cities, different
-    registrations — carry the *same* name. They share their distinctive identity
-    token, so name-only resolution correctly cannot tell them apart and merges them.
-    This is name-only ER's floor: only a non-name signal (address / registration
-    number) separates them, which is exactly multi-field ER (ADR 0004 future work) —
-    the recorded next lever. Pinned so the limitation stays a number, not a
-    footnote, in the Milestone-5 keep-a-measured-edge tradition."""
-    graph = KnowledgeGraph()
-    # Same name, two distinct legal entities at different addresses.
-    for cid, city in [("Customer:HH", "Hamburg"), ("Customer:M", "Munich")]:
-        graph.add_node(
+def test_character_identical_firms_split_by_address() -> None:
+    """Residual 1 cured by multi-field ER (spec 0073 / ADR 0019). Two genuinely
+    distinct firms carry the *same* name; name-only resolution shares their
+    distinctive token and merges them (the floor the stem gate could not reach), but
+    the address — passed as ``match_fields`` — contradicts and splits them. The new
+    floor is same name AND same address, which only a registration/tax key would
+    separate (the recorded next lever; kept as a measured edge below)."""
+    cities = {"Customer:HH": ("Hamburg", "20095"), "Customer:M": ("Munich", "80331")}
+
+    def _build() -> KnowledgeGraph:
+        graph = KnowledgeGraph()
+        for cid, (city, postal) in cities.items():
+            graph.add_node(
+                Node(
+                    record=_record(cid, "Customer", 0, "Hanseatic Trading GmbH"),
+                    kind="Customer",
+                    name="Hanseatic Trading GmbH",
+                    attributes=(("postal_code", postal), ("city_name", city)),
+                )
+            )
+            addr_id = f"Address:{cid}"
+            graph.add_node(
+                Node(
+                    record=_record(
+                        addr_id, "Address", 0, f"Hanseatic Trading GmbH, {city}"
+                    ),
+                    kind="Address",
+                    name=None,
+                )
+            )
+            graph.add_edge(Edge(src=cid, dst=addr_id, relation="has_address"))
+        return graph
+
+    # Name-only over-merges — the recorded floor the stem gate could not reach.
+    name_only = _build()
+    name_only.resolve_entities()
+    assert name_only.entity_of("Customer:HH") == name_only.entity_of("Customer:M")
+
+    # Multi-field splits them: the postal codes contradict.
+    multi = _build()
+    multi.resolve_entities(match_fields=("postal_code", "city_name"))
+    assert multi.entity_of("Customer:HH") != multi.entity_of("Customer:M")
+
+    # The new floor: same name AND same address still over-merges — only a
+    # registration/tax key would separate them (multi-field ER's remaining lever).
+    same_addr = KnowledgeGraph()
+    for cid in ("Customer:HH", "Customer:M"):
+        same_addr.add_node(
             Node(
                 record=_record(cid, "Customer", 0, "Hanseatic Trading GmbH"),
                 kind="Customer",
                 name="Hanseatic Trading GmbH",
+                attributes=(("postal_code", "20095"), ("city_name", "Hamburg")),
             )
         )
-        addr_id = f"Address:{cid}"
-        graph.add_node(
-            Node(
-                record=_record(
-                    addr_id, "Address", 0, f"Hanseatic Trading GmbH, {city}"
-                ),
-                kind="Address",
-                name=None,
-            )
-        )
-        graph.add_edge(Edge(src=cid, dst=addr_id, relation="has_address"))
-    graph.resolve_entities()
-    # Over-merge: the two distinct firms collapse into one entity on name alone.
-    assert graph.entity_of("Customer:HH") == graph.entity_of("Customer:M")
-    # The distinguishing signal exists in the graph (distinct addresses) but
-    # name-only resolution does not consult it — multi-field ER is the lever.
-    addresses = {e.dst for e in graph.edges if e.relation == "has_address"}
-    assert addresses == {"Address:Customer:HH", "Address:Customer:M"}
+    same_addr.resolve_entities(match_fields=("postal_code", "city_name"))
+    assert same_addr.entity_of("Customer:HH") == same_addr.entity_of("Customer:M")
 
 
-def test_two_firm_generic_suffix_is_a_recorded_residual() -> None:
-    """The second recorded residual (spec 0070 / ADR 0018): the gate recognizes a
-    suffix as generic only once it spans ``min_df`` (=3) distinct firms. A
-    *two*-firm generic-suffix collision is below that floor — frequency alone cannot
-    tell it from a two-firm typo pair — so it still over-merges. Multi-field ER is
-    the lever, same as the character-identical case. Pinned so the floor stays a
-    number."""
+def test_two_firm_generic_suffix_split_by_address() -> None:
+    """Residual 2 (spec 0070 / ADR 0018) cured by multi-field ER (spec 0073 / ADR
+    0019). A suffix is recognized as generic only once it spans ``min_df`` (=3)
+    distinct firms, so TWO firms sharing it are below that floor and over-merge on
+    name alone (frequency cannot tell them from a two-firm typo pair). Two routes now
+    split them: a third distinct firm crosses the genericness floor (the stem gate,
+    name-only), OR — for just two firms — a contradicting address (multi-field)."""
 
-    def _resolved(names: tuple[str, ...]) -> KnowledgeGraph:
+    def _resolved(
+        names: tuple[str, ...],
+        *,
+        attrs: list[tuple[tuple[str, str], ...]] | None = None,
+        match_fields: tuple[str, ...] = (),
+    ) -> KnowledgeGraph:
         graph = KnowledgeGraph()
         for k, name in enumerate(names):
             graph.add_node(
@@ -297,20 +325,30 @@ def test_two_firm_generic_suffix_is_a_recorded_residual() -> None:
                     record=_record(f"Customer:{k}", "Customer", k, name),
                     kind="Customer",
                     name=name,
+                    attributes=attrs[k] if attrs else (),
                 )
             )
-        graph.resolve_entities()
+        graph.resolve_entities(match_fields=match_fields)
         return graph
 
-    # Only two firms share "Logistik GmbH": below the min_df=3 generic floor, so it
-    # still over-merges.
+    # Two firms, no address: below the min_df=3 generic floor → name-only over-merges.
     two = _resolved(("Granite Logistik GmbH", "Pyrite Logistik GmbH"))
     assert two.entity_of("Customer:0") == two.entity_of("Customer:1")
-    # A third distinct firm with the same suffix crosses the floor → cured.
+    # A third distinct firm with the same suffix crosses the floor → stem gate splits.
     three = _resolved(
         ("Granite Logistik GmbH", "Pyrite Logistik GmbH", "Cobalt Logistik GmbH")
     )
     assert len({frozenset(three.entity_of(f"Customer:{k}")) for k in range(3)}) == 3
+    # Multi-field splits even the two-firm case: the addresses contradict.
+    split = _resolved(
+        ("Granite Logistik GmbH", "Pyrite Logistik GmbH"),
+        attrs=[
+            (("postal_code", "20095"), ("city_name", "hamburg")),
+            (("postal_code", "80331"), ("city_name", "munich")),
+        ],
+        match_fields=("postal_code", "city_name"),
+    )
+    assert split.entity_of("Customer:0") != split.entity_of("Customer:1")
 
 
 def test_scale_build_is_fast_enough() -> None:
