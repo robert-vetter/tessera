@@ -32,3 +32,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0015](0015-embeddings-on-sap.md) — Embeddings on SAP: GenAI Hub + HANA vector, lexical fallback (Milestone 6)
 - [0016](0016-embedding-assisted-entity-resolution.md) — Embedding-assisted entity resolution: stem-gated, additive (Milestone 7)
 - [0017](0017-stable-log-chunk-ids.md) — Finer log chunking with stable, role-tagged chunk ids (Milestone 7)
+- [0018](0018-stem-gated-deterministic-er.md) — Stem-gated deterministic ER: cure the generic-suffix over-merge (Milestone 8)

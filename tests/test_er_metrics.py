@@ -10,17 +10,24 @@ stays the only hard one).
 
 The measured table (asserted below):
 
-    matcher           precision   recall
-    difflib (0.85)        0.50      0.50    misses checkout-svc/notif-svc; over-merges
-    stem-embedding        1.00      1.00    bridges abbreviation + synonym stems
-    union  (Unit 4)       0.67      1.00    recall closed; difflib over-merge remains
+    matcher              precision   recall
+    difflib (gated)         1.00      0.50    misses checkout/notif; NO over-merge
+    stem-embedding          1.00      1.00    bridges abbreviation + synonym stems
+    union                   1.00      1.00    recall AND precision closed
 
-The honest residual: the union's precision gap is ENTIRELY difflib's pre-existing
-generic-suffix over-merge (Granite/Pyrite 0.865, Cobalt/Basalt 0.889). An
-*additive* embedding regime cannot remove a difflib false positive — the
-stem-embedding regime already shows precision 1.0, so the fix is to apply the same
-stem-gating to the difflib pass (a deterministic engine change that would alter
-resolve_entities/test_scale — deferred) or multi-field ER (out of scope).
+Milestone 8 (spec 0070 / ADR 0018) **cured** the generic-suffix over-merge that
+Milestone 7 recorded as difflib's residual: the deterministic ``difflib`` pass is
+now *stem-gated* — a character match is confirmed only when the names share a
+distinctive (non-generic) signal, so Granite/Pyrite (0.865) and Cobalt/Basalt
+(0.889) no longer merge. Difflib precision moved 0.50 → 1.00 and the union 0.67 →
+1.00, with recall unchanged (the abbreviation/synonym misses are still the
+embedding's job). The matcher here applies the *same* gate the engine's
+``resolve_entities`` runs, over this labelled corpus.
+
+The residual that remains is no longer difflib's over-merge but name-only ER's
+floor — two distinct firms with character-identical names (see
+``tests/test_scale.py``), for which multi-field ER (name + address, ADR 0004) is
+the recorded next lever.
 
 The stub embedder is a keyword-axis toy: it proves a model that places synonym
 stems close achieves the measured recall WITHOUT adding false merges. The real
@@ -35,7 +42,12 @@ import pytest
 
 from tessera.er_semantic import propose_semantic_resolutions
 from tessera.platform.vectors import InMemoryVectorStore
-from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD, similarity
+from tessera.resolution import (
+    DEFAULT_RESOLUTION_THRESHOLD,
+    confirm_name_match,
+    corpus_generic_tokens,
+    similarity,
+)
 
 Matcher = Callable[[str, str], bool]
 
@@ -51,8 +63,8 @@ SHOULD_MERGE = [  # truly the same entity
     ("payments-service", "Payments Service"),  # difflib 1.000 — baseline HIT (case)
 ]
 SHOULD_NOT_MERGE = [  # truly distinct entities
-    ("Granite Logistik GmbH", "Pyrite Logistik GmbH"),  # difflib 0.865 — OVER-MERGE
-    ("Cobalt Logistik GmbH", "Basalt Logistik GmbH"),  # difflib 0.889 — OVER-MERGE
+    ("Granite Logistik GmbH", "Pyrite Logistik GmbH"),  # 0.865 — was over-merge, GATED
+    ("Cobalt Logistik GmbH", "Basalt Logistik GmbH"),  # 0.889 — was over-merge, GATED
     ("Müller Logistik GmbH", "Nordwind Logistik GmbH"),  # difflib 0.667 — apart
     ("checkout-service", "payments-service"),  # difflib 0.600 — apart
 ]
@@ -110,8 +122,19 @@ def _precision_recall(
     return precision, recall
 
 
+# The gate's corpus stoplist over this labelled set — the same derivation
+# ``KnowledgeGraph.resolve_entities`` runs (spec 0070). "logistik" spans the
+# distinct Logistik firms here, so it is generic and the cohort splits.
+_CORPUS_GENERIC = corpus_generic_tokens(_all_names())
+
+
 def _difflib_matcher(a: str, b: str) -> bool:
-    return similarity(a, b) >= DEFAULT_RESOLUTION_THRESHOLD
+    """The deterministic pass as the engine now runs it: a character match at/above
+    the threshold, *gated* on a shared distinctive signal (spec 0070 / ADR 0018)."""
+    return (
+        similarity(a, b) >= DEFAULT_RESOLUTION_THRESHOLD
+        and confirm_name_match(a, b, _CORPUS_GENERIC) is not None
+    )
 
 
 def _embedding_merges() -> set[frozenset[str]]:
@@ -137,12 +160,14 @@ def _union_matcher() -> Matcher:
 # --- the measured numbers, pinned --------------------------------------------
 
 
-def test_difflib_baseline_has_a_recall_gap_and_a_precision_gap() -> None:
+def test_gated_difflib_has_a_recall_gap_but_no_precision_gap() -> None:
     precision, recall = _precision_recall(_difflib_matcher)
-    # 2/4 positives caught (search-servce, Payments Service); 2 false merges
-    # (Granite/Pyrite, Cobalt/Basalt) among predicted merges.
-    assert precision == pytest.approx(0.50)
+    # 2/4 positives caught (search-servce, Payments Service); the abbreviation and
+    # synonym misses (checkout, notif) remain — that is the embedding's job.
     assert recall == pytest.approx(0.50)
+    # The stem gate removed both generic-suffix over-merges (Granite/Pyrite,
+    # Cobalt/Basalt), so precision is now perfect — the Milestone-8 cure.
+    assert precision == pytest.approx(1.00)
 
 
 def test_stem_embedding_regime_is_precise_and_higher_recall() -> None:
@@ -153,13 +178,13 @@ def test_stem_embedding_regime_is_precise_and_higher_recall() -> None:
     assert recall == pytest.approx(1.00)
 
 
-def test_union_closes_recall_but_inherits_difflib_overmerge() -> None:
+def test_union_closes_recall_and_precision() -> None:
     precision, recall = _precision_recall(_union_matcher())
-    # Recall fully closed (the milestone's headline ER win)...
+    # Recall fully closed by the embedding (the headline ER win)...
     assert recall == pytest.approx(1.00)
-    # ...but precision stays dragged: the embedding adds no FP, yet an additive
-    # regime cannot REMOVE difflib's two generic-suffix over-merges (the residual).
-    assert precision == pytest.approx(2 / 3)
+    # ...and precision is now also perfect: the stem gate cured difflib's
+    # over-merges, and the embedding adds none, so the union has no false merge.
+    assert precision == pytest.approx(1.00)
 
 
 def test_embedding_adds_exactly_the_two_recall_misses() -> None:
@@ -171,16 +196,22 @@ def test_embedding_adds_exactly_the_two_recall_misses() -> None:
     assert not _difflib_matcher("notifications-service", "notif-svc")
 
 
-def test_the_union_precision_gap_is_entirely_difflib() -> None:
-    """The residual, asserted: every false merge in the union is a difflib
-    over-merge; the embedding regime contributes none."""
-    embedding = _embedding_matcher()
-    for a, b in SHOULD_NOT_MERGE:
-        assert not embedding(a, b), (a, b)  # embedding never over-merges
+def test_the_generic_suffix_over_merge_is_cured() -> None:
+    """The former residual, now closed (spec 0070 / ADR 0018): the stem gate makes
+    the deterministic pass produce ZERO false merges over the labelled set — the
+    generic-suffix collisions Milestone 7 could not remove additively are gone."""
     difflib_false_merges = {
         frozenset({a, b}) for a, b in SHOULD_NOT_MERGE if _difflib_matcher(a, b)
     }
-    assert difflib_false_merges == {
-        frozenset({"Granite Logistik GmbH", "Pyrite Logistik GmbH"}),
-        frozenset({"Cobalt Logistik GmbH", "Basalt Logistik GmbH"}),
-    }
+    assert difflib_false_merges == set()
+    # The embedding regime still over-merges nothing either — the union stays clean.
+    embedding = _embedding_matcher()
+    assert not any(embedding(a, b) for a, b in SHOULD_NOT_MERGE)
+    # The cure is a gate, not a similarity miss: the bare ratio WOULD have merged
+    # the generic-suffix cohort (both pairs clear 0.85), the gate vetoes them.
+    for a, b in [
+        ("Granite Logistik GmbH", "Pyrite Logistik GmbH"),
+        ("Cobalt Logistik GmbH", "Basalt Logistik GmbH"),
+    ]:
+        assert similarity(a, b) >= DEFAULT_RESOLUTION_THRESHOLD
+        assert not _difflib_matcher(a, b)
