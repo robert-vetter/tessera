@@ -272,6 +272,53 @@ regime is *additive*, so it cannot remove `difflib`'s existing generic-suffix
 over-merge — closing that needs the same stem-gating applied to the `difflib` pass
 (a deterministic change) or multi-field ER, the named next lever.
 
+### Milestone 8: curing the over-merge — stem-gating the deterministic pass
+
+Milestone 7's embedding regime closed ER *recall* but, being additive, could not
+remove `difflib`'s existing generic-suffix over-merge — recorded as the residual,
+with two named levers: stem-gate the `difflib` pass itself, or multi-field ER. The
+maintainer chose the first (the surgical, fully **offline, CI-reproducible** one —
+no cloud, no online run, the inverse of M6/M7).
+
+The cure gates the deterministic pass: a character match clears 0.85 *and* must
+share a **distinctive (non-generic) signal**, so a long shared generic suffix can
+no longer carry a merge. The hard part is telling a generic suffix from a genuine
+shared name. Genericness is **corpus-derived**, not a static list: a token is
+generic when ≥ 3 of the names containing it stay dissimilar *once that token (and
+the already-known generics) is removed* — `Granite`/`Pyrite`/`Cobalt Logistik GmbH`
+expose distinct heads with `logistik` gone, so `logistik` is generic; `Bayerische`,
+repeated across one firm's four records, stays distinctive because the records are
+still similar without it (the naive document-frequency trap, sidestepped). The
+derivation iterates to a fixpoint so a *two-word* suffix (`Trade Logistik GmbH`) is
+fully recognised. `difflib` precision moves **0.50 → 1.00** and the labelled-set
+union **0.67 → 1.00** (`tests/test_er_metrics.py`); the scale specimen flips from
+asserting the over-merge to asserting four distinct firms.
+
+The honest engineering story is in the method. A first, simpler gate — compare the
+bare distinctive stems — was *measured against the real demo graph* and found to
+veto genuine typo merges (`Maple eLaf`/`Maple Leaf`), because stripping the shared
+context amplifies a one-token typo. An **adversarial multi-agent review** then
+caught a subtler version still: a single typo in a *short* head under a generic
+suffix (`Stein`/`Stien`) was wrongly vetoed, and a two-word suffix defeated the
+single-pass genericness. The fixes — an edit-distance fallback (a ≤ 2-edit typo
+still confirms; `granite`~`pyrite` at 4 edits does not), the fixpoint, and dropping
+the single-letter tokens a punctuated `G.m.b.H` produces — are each pinned by a
+regression test. The result is verified the strongest way available: the business
+and devex **resolved cluster signatures are byte-identical** before and after
+(hashed against the pre-gate tree), and all three eval batteries reproduce their
+M7 numbers, faithfulness gated at 1.0.
+
+This is the **first intentional change to the frozen core** since the verticals
+(ADR 0008): `graph.py` and `resolution.py` are no longer empty-diff. That is the
+right call — a *general* ER precision improvement belongs in the vertical-neutral
+engine, not a vertical (the opposite of M7's embedding regime, kept vertical-side
+for leak-guard reasons). The stem helpers had already moved to the embedding-free
+`resolution.py`, so the leak-guard is untouched and faithfulness stays structural.
+And the milestone keeps its measured edges (ADR 0018): name-only ER still can't
+split two distinct firms with character-identical names, a two-firm suffix collision
+below the genericness floor, or a double-typo pair with no cleaner co-referent —
+each pinned by a test, all pointing at multi-field ER as the next lever.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -330,9 +377,9 @@ Named with the same prominence as the results:
   now joined by a **real** GitHub Actions connector — but still hundreds of
   records, not millions. Scale behaviour is no longer fully untested: the engine
   is faithful and ER-precise over 180 entities (`tests/test_scale.py`), and the
-  transitive over-merge risk is now a *measured* fact at volume — but BM25
-  latency and graph performance at millions of records remain genuinely
-  out of reach with a synthetic corpus.
+  transitive over-merge that volume once reproduced is now *cured* by the stem gate
+  (ADR 0018) — but BM25 latency and graph performance at millions of records remain
+  genuinely out of reach with a synthetic corpus.
 - **Faithfulness is structural, not semantic.** The verifier re-derives
   quantities, containment, and cross-source fragments; it cannot judge a
   subtly misleading-but-verbatim juxtaposition — now demonstrated by a committed
@@ -345,15 +392,17 @@ Named with the same prominence as the results:
   validation) and the batteries now *do* sample free-form phrasing, but
   intent-only words (`rank`, `lead`, `best`) stay the named ADR 0006 ceiling;
   its measured-miss trigger has not fired (a correct refusal is the fallback).
-- **ER recall now uses embeddings; the over-merge residual stands.** Milestone 7
-  added an embedding-assisted resolution regime (stem-gated, additive, ADR 0016)
-  that closed the undeclared `checkout-svc` recall miss online (devex gold
-  0.950 → 1.000) without over-merging distinct services — measured both ways on a
-  labeled pair-set (`tests/test_er_metrics.py`). But the regime is *additive*, so
-  it cannot remove `difflib`'s **existing** generic-suffix over-merge (distinct
-  firms sharing `… Logistik GmbH` still cross 0.85, `tests/test_scale.py`):
-  closing that needs the stem-gating applied to the `difflib` pass itself, or
-  multi-field matching (name + address + keys) — the named, recorded next lever.
+- **ER over-merge cured deterministically; name-only ER's floor remains.**
+  Milestone 7 added embedding-assisted recall (ADR 0016); Milestone 8 cured the
+  generic-suffix over-merge by stem-gating the deterministic `difflib` pass itself
+  (ADR 0018) — `difflib` precision 0.50 → 1.00, the labelled-set union 0.67 → 1.00,
+  fully offline and CI-reproducible, with the business/devex cluster signatures
+  byte-identical before and after. What name-only ER still cannot do is recorded and
+  pinned by tests: split two **distinct firms with character-identical names**, split
+  a two-firm suffix collision below the genericness floor, or rescue a double-typo
+  pair with no cleaner co-referent (caught by transitivity on the demo data). All
+  three point at **multi-field matching** (name + address + keys) — the recorded next
+  lever, and the stronger precision tool.
 - **Semantic embeddings ran on SAP for retrieval *and* ER, but stay link-only and
   cloud-measured.** Milestones 6–7 closed the synonymy miss, the `checkout-svc` ER
   miss, and the long-log dilution on HANA Cloud in-database embeddings — but
@@ -374,11 +423,11 @@ Named with the same prominence as the results:
 
 More real connectors (the first — GitHub Actions — now exists and proves the
 synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
-next) · **curing the generic-suffix over-merge** (Milestone 7 added embedding ER
-for *recall* on SAP HANA, ADR 0016, and de-diluted long logs, ADR 0017; the
-additive regime cannot remove `difflib`'s existing over-merge — stem-gating the
-`difflib` pass, or multi-field ER on name + address + keys, is the recorded next
-step) · LLM-judged faithfulness alongside the deterministic floor · an agentic /
+next) · **multi-field entity resolution** (name + address + keys) — Milestone 8
+cured the generic-suffix over-merge by stem-gating the `difflib` pass (ADR 0018),
+and the residuals it leaves (character-identical distinct firms, two-firm suffix
+collisions, double-typo pairs) are precisely what a second matching signal would
+resolve · LLM-judged faithfulness alongside the deterministic floor · an agentic /
 MCP-exposed mode (grounded actions, not just answers — the 2026-shaped extension
 of the same trust substrate) · persistence, multi-tenancy, access governance.
 
@@ -401,6 +450,12 @@ of the same trust substrate) · persistence, multi-tenancy, access governance.
 5. **The right place for an LLM is on top of, not inside, the trust path** —
    at least until a measured miss says otherwise. Every trigger that could
    bring one in is written down with its firing condition.
+6. **A precision fix is a recall risk until proven otherwise.** Tightening the
+   ER gate to kill the over-merge twice silently vetoed *correct* merges — first
+   a typo pair the demo graph contained, then a short-head case an adversarial
+   review surfaced. Hashing the resolved cluster signature before/after, and
+   pinning each rescued case as a test, turned "I think it's safe" into a checkable
+   fact (ADR 0018).
 
 ## Reproduce everything
 

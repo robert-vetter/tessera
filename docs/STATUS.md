@@ -937,3 +937,95 @@ agentic / MCP-exposed grounded mode; full HANA graph persistence; BTP serving.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #70–#77 merged. Tagged
   `milestone-7`.
+
+---
+
+## 2026-06-28 — Milestone 8 COMPLETE (cure the generic-suffix over-merge: stem-gated deterministic ER)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-28): **(1) lever scope** — stem-gate
+the deterministic `difflib` pass only (not multi-field ER); **(2) honesty posture** —
+keep a new measured edge rather than claim the over-merge universally solved. Four
+units, each spec → branch → implement → gate → PR → CI-green → squash-merge. Fully
+**offline / CI-reproducible — no cloud, no online run** (the inverse of M6–7).
+
+**The problem this milestone answers.** Milestone 7's embedding ER regime was
+*additive*, so it closed `checkout-svc` recall but could not remove the deterministic
+pass's pre-existing **generic-suffix over-merge** (distinct firms sharing
+`… Logistik GmbH` collapse because the shared suffix dominates the `difflib` ratio;
+measured in `tests/test_scale.py`, difflib precision 0.50 / union 0.67 in
+`tests/test_er_metrics.py`). The recorded next lever was to stem-gate the `difflib`
+pass itself — a deterministic engine change. M8 takes it.
+
+**Done this session (4 units, PRs #79–#81 + this close)**
+- **Phase plan** (spec 0068, #79) + the two recorded scope decisions.
+- **Relocate the stem helpers** (spec 0069, #80): `tokenize`/`generic_tokens`/
+  `distinctive_stem`/`ORG_DESCRIPTORS`/`DEFAULT_MIN_GENERIC_DF` moved from
+  `er_semantic.py` (leak-guard-banned) to the embedding-free `resolution.py`, so the
+  engine's deterministic pass can share them without pulling an embedding import
+  toward the verifier. `er_semantic` re-exports; behaviour byte-identical.
+- **Stem-gate `resolve_entities` + ADR 0018** (spec 0070, #81): a `difflib` match
+  ≥ 0.85 is confirmed only on a shared **distinctive (non-generic) signal** — a
+  non-generic token, a near-identical distinctive stem, or a ≤ 2 edit distance.
+  Genericness is **corpus-derived** (a token is generic iff ≥ 3 of the names
+  containing it stay dissimilar once it AND the known generics are removed — iterated
+  to a **fixpoint** so multi-token suffixes are caught), avoiding the
+  document-frequency trap that would mis-strip `Bayerische` (one firm's duplicate
+  records). Single-character tokens (`G.m.b.H` → `g m b h`) are dropped so a
+  punctuated legal form never pollutes a stem.
+- **Close** (spec 0071, this entry): WRITEUP M8 section + updated limitations/
+  future-work + a sixth "what was learned"; README ER section + Status prose +
+  ADR 0018 link; CHANGELOG `[milestone-8]`; ADR nav/index; frozen-core check; tag
+  `milestone-8`; memory; kickoff.
+
+**The honest engineering story (recorded in ADR 0018 + the WRITEUP).** The first,
+simpler gate (compare bare distinctive stems) was **measured against the real demo
+graph** and found to veto genuine typo merges (`Maple eLaf`/`Maple Leaf`) — stripping
+shared context amplifies a one-token typo. An **adversarial multi-agent review**
+(5 lenses, worktree) then surfaced three confirmed majors: a short-head-typo recall
+regression (`Stein`/`Stien`), a multi-token-suffix hole (`Trade Logistik GmbH`), and
+doc over-claims. All three were fixed (edit-distance fallback, genericness fixpoint,
+single-char filter, honest wording) and each is now pinned by a regression test.
+
+**Current eval numbers (unchanged from M7 — the cure is precision-only, offline):**
+- **business — gold 9: 1.000 / 1.000 / 1.000; synthetic 52: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online
+  HANA, M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online,
+  M7), quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- **ER precision (reported, not gated, `tests/test_er_metrics.py`): `difflib`
+  0.50 → 1.000, union 0.67 → 1.000.** Business + devex **resolved cluster signatures
+  byte-identical** before/after the gate (hashed vs pre-gate `main`); deterministic
+  across `PYTHONHASHSEED` 0/1/42/2026. 299 tests.
+
+**Milestone check:** the generic-suffix over-merge is cured in the core deterministic
+pass, **provably in CI** (no online run); difflib/union precision moved to 1.0; no
+resolved cluster changed (measured); faithfulness gated at 1.0; the leak-guard holds
+(the cure is embedding-free, stem helpers in `resolution.py`); and three residuals
+are kept as measured edges pointing at multi-field ER. **Met.** Tagged `milestone-8`.
+
+**Open questions / risks**
+- **The frozen core changed for the first time** since Phase 3 (ADR 0008): `graph.py`
+  + `resolution.py`, the one sanctioned M8 delta (a general ER precision improvement
+  belongs in core). Everything else in the frozen list stays empty-diff
+  (`milestone-7..HEAD` verified). Future milestones should keep treating a core
+  change as ADR-worthy.
+- **Recorded residuals (multi-field ER is the lever):** character-identical distinct
+  firms; two-firm (`< min_df`) suffix collisions; a double-typo pair with no cleaner
+  co-referent (rescued by transitivity on the demo data, not in general). Each pinned
+  by a test.
+- ADR 0005 (LLM-judge) and ADR 0006 (semantic routing) triggers remain live and
+  unacted; no measured case forces either.
+- The M6/M7 online HANA numbers remain timestamped, not CI-reproducible; CI's public
+  numbers stay the offline misses (devex 0.950, github_actions 0.833). M8 added no
+  online number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates:
+**multi-field ER** (name + address + keys — the recorded next lever, would resolve
+all three M8 residuals and is fully offline); a second real connector (Jira /
+PR-and-issue export); agentic / MCP-exposed grounded mode; full HANA graph
+persistence; BTP serving.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #79–#81 merged. Tagged
+  `milestone-8`.

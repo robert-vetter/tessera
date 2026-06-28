@@ -13,6 +13,59 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-8] — 2026-06-28
+
+Cure Milestone 7's recorded ER residual: the generic-suffix **over-merge** in the
+deterministic resolution pass. Fully **offline and CI-reproducible** — no embedding,
+no cloud, no online run (the inverse of Milestones 6–7). Faithfulness gated at 1.0
+throughout; the first intentional change to the ADR 0008 frozen core, kept honest by
+a byte-identical resolved-cluster-signature check and an adversarial review.
+
+### Added
+
+- **Stem-gated deterministic entity resolution (ADR 0018).** `resolve_entities`
+  now confirms a `difflib` character match (≥ 0.85) only when the two names share a
+  **distinctive (non-generic) signal** — a non-generic token, a near-identical
+  distinctive stem, or a ≤ 2 character edit distance — so a long shared *generic*
+  suffix (`… Logistik GmbH`) no longer collapses distinct firms.
+  `resolution.confirm_name_match` + `resolution.corpus_generic_tokens` carry the
+  gate; genericness is **corpus-derived** (a token is generic iff ≥ 3 of the names
+  containing it stay dissimilar once it and the known generics are removed — iterated
+  to a fixpoint so multi-token suffixes are recognised), avoiding the
+  document-frequency trap that would mis-strip a token repeated across one firm's
+  records (`Bayerische`).
+- **Regression specimens** (`tests/test_resolution.py`, `tests/test_scale.py`):
+  the over-merge cure, the multi-token-suffix cure, the short-head-typo rescue, the
+  punctuated-legal-form filter, corpus-genericness permutation invariance, and the
+  three recorded residuals (character-identical distinct firms, two-firm suffix
+  collisions, the double-typo recall risk).
+
+### Changed
+
+- **`difflib` ER precision 0.50 → 1.00, labelled-set union 0.67 → 1.00**
+  (`tests/test_er_metrics.py`); the `tests/test_scale.py` over-merge specimen flips
+  from asserting the over-merge to asserting four distinct firms. All three eval
+  batteries reproduce their Milestone-7 numbers exactly (business gold 1.0/1.0/1.0;
+  devex gold 1.0/0.950/0.889; github_actions gold 1.0/0.833/0.800), and the
+  business/devex resolved cluster signatures are byte-identical before and after.
+- **The distinctive-stem helpers moved** from `tessera/er_semantic.py` (banned by
+  the leak-guard) to the embedding-free `tessera/resolution.py`, so the engine's
+  deterministic pass can share them without pulling an embedding import toward the
+  faithfulness verifier (spec 0069). `er_semantic.py` re-exports them; behaviour
+  byte-identical.
+
+### Notes
+
+- **First intentional frozen-core change** since Phase 3 (ADR 0008): `graph.py` and
+  `resolution.py`. Justified — a *general* ER precision improvement belongs in the
+  vertical-neutral engine, not a vertical (the opposite of ADR 0016's vertical-side
+  embedding regime). Everything else in the frozen list stays empty-diff.
+- **Recorded residuals → multi-field ER.** Name-only ER still cannot split two
+  distinct firms with character-identical names, a two-firm suffix collision below
+  the genericness floor, or a double-typo pair with no cleaner co-referent. Each is
+  pinned by a test; multi-field matching (name + address + keys, ADR 0004 future
+  work) is the named next lever.
+
 ## [milestone-7] — 2026-06-27
 
 Carry the working SAP HANA embeddings **beyond retrieval** — into entity

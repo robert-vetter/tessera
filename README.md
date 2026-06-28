@@ -217,8 +217,13 @@ records *why* (the matched names + a similarity score) and a confidence, and
 withdrawing it leaves the raw records untouched — merges are never destructive.
 Matching is deterministic name-similarity (umlaut/case fold + edit-distance), with
 a tunable threshold; it is honest about precision/recall and about known misses
-(a reference that drops a legal form isn't linked yet). Design and trade-offs:
-[ADR 0004](docs/adr/0004-graph-and-entity-resolution.md).
+(a reference that drops a legal form isn't linked yet). A character match is
+**stem-gated** so a long shared *generic* suffix can't collapse distinct firms
+(`Granite`/`Pyrite Logistik GmbH`): the names must also share a distinctive,
+non-generic signal, with genericness derived from the corpus — `difflib` precision
+0.50 → 1.00 on the labelled pair-set, fully offline. Design and trade-offs:
+[ADR 0004](docs/adr/0004-graph-and-entity-resolution.md),
+[ADR 0018](docs/adr/0018-stem-gated-deterministic-er.md).
 
 ### Cross-source answers
 
@@ -306,18 +311,21 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus a post-roadmap hardening milestone**
+**Phases 0–4 complete, plus four post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
 had reached 1.000, **milestone 5** made the eval able to fail again — the first
 **real** connector (GitHub Actions) surfaced a miss no one planted (coverage
 0.000 → 1.000, closed deterministically), multi-hop answers and free-form
-phrasing landed, scale and the ER over-merge risk were measured, and three
-standing triggers (LLM-judge, embeddings, semantic routing) are demonstrated as
-named limits the determinism line deliberately leaves un-crossed. The
-[write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet
-done (more connectors, embeddings, agentic/MCP mode, true million-record scale).
+phrasing landed, and scale and the ER over-merge risk were measured. **Milestones
+6–7** then acted on the embeddings trigger **on SAP HANA Cloud** — closing an
+error-class synonymy retrieval miss, then carrying embeddings into ER recall and
+log granularity. **Milestone 8** cured the generic-suffix ER over-merge by
+stem-gating the deterministic pass (`difflib` precision 0.50 → 1.00, fully offline,
+ADR 0018). The [write-up](docs/WRITEUP.md) tells the story — including what is
+honestly not yet done (more connectors, multi-field ER, agentic/MCP mode, true
+million-record scale).
 
 ## License
 
