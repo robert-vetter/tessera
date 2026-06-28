@@ -1,0 +1,8 @@
+{
+  "id": "11_same_name_same_address_refusal",
+  "question": "Summarise Havel Kontor GmbH.",
+  "engine": "compose",
+  "kind": "refuse",
+  "expected_support": [],
+  "expected_facts": []
+}
