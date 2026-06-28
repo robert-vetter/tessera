@@ -34,3 +34,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0017](0017-stable-log-chunk-ids.md) — Finer log chunking with stable, role-tagged chunk ids (Milestone 7)
 - [0018](0018-stem-gated-deterministic-er.md) — Stem-gated deterministic ER: cure the generic-suffix over-merge (Milestone 8)
 - [0019](0019-multi-field-entity-resolution.md) — Multi-field entity resolution: a two-way address gate (Milestone 9)
+- [0020](0020-registration-key-entity-resolution.md) — Registration-key entity resolution: the exact decisive field (Milestone 10)
