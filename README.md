@@ -78,9 +78,13 @@ conversational surface (`uv run tessera-chat`) whose optional LLM narration is
 strictly bounded: it rephrases verifier-checked claims and can never add facts
 ([ADR 0013](docs/adr/0013-narration-boundary.md)). The portable local mode —
 no keys, no network, zero runtime dependencies — is the default and is what CI
-verifies. Grounded **agentic workflows and MCP exposure** are named future
-work, in line with SAP's 2026 agentic direction — designed toward, not yet
-built. Details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
+verifies. Tessera is also **exposed to AI agents over MCP** (`uv run tessera-mcp`,
+the opt-in `agent` extra) as **read-only grounded tools** — claims, provenance, and
+principled refusals an agent can call, with the trust contract *measured* to survive
+the protocol boundary ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)); grounded
+*actions* (effectful or propose-and-approve tools) are the named next step, in line
+with SAP's 2026 agentic direction. Details in
+[`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
 
@@ -148,7 +152,7 @@ vertical as a separate battery
 
 ```bash
 uv run tessera-eval
-# [business]       gold (10):     faithfulness 1.000 (floor), coverage 1.000, quality 1.000
+# [business]       gold (11):     faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [business]       synthetic (53): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
 # [devex]          gold (9):      faithfulness 1.000 (floor), coverage 0.950, quality 0.889
 # [devex]          synthetic (24): faithfulness 1.000 (floor), coverage 1.000, quality 1.000
@@ -279,6 +283,29 @@ occurrence of a failure gets no recurrence claim (there is nothing prior); a
 PR that names no ticket gets a summary without one; cross-source assertions
 ("this same signature appeared before") are emitted in a grammar the
 faithfulness verifier recomputes against every cited record.
+
+### The agent surface (MCP)
+
+Tessera's thesis is a trust layer *for AI agents* — so it is callable by one. The
+`tessera-mcp` server exposes the engine over the Model Context Protocol as
+**read-only grounded tools** ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)):
+
+```bash
+uv sync --extra agent          # opt-in SDK; the default graph + CI stay pure-stdlib
+uv run tessera-mcp             # the MCP server over stdio
+# tools: list_domains · ground(domain, question) · assertions(domain, record_id)
+```
+
+`ground` routes a question through the same deterministic engine and returns
+JSON-native claims — each with **full provenance inline** and a **per-claim verifier
+verdict** (the eval's own `is_supported`, run at the boundary) — or a refusal carried
+explicitly, so an agent can never mistake a refusal for an answer. The trust contract
+is **measured to survive the protocol**: over every gold case, the boundary projection
+is lossless and faithfulness stays 1.0 (`tests/test_boundary.py`). A captured real
+client↔server session is committed at
+[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Grounded *actions*
+(effectful or propose-and-approve tools) are the named next step; today the surface is
+read-only by design.
 
 ### Data
 

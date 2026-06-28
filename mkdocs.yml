@@ -72,6 +72,8 @@ nav:
       - 0018 Stem-gated deterministic ER: adr/0018-stem-gated-deterministic-er.md
       - 0019 Multi-field entity resolution: adr/0019-multi-field-entity-resolution.md
       - 0020 Registration-key entity resolution: adr/0020-registration-key-entity-resolution.md
+      - 0021 A heading leads its section: adr/0021-heading-leads-its-section.md
+      - 0022 The agentic / MCP boundary: adr/0022-agentic-mcp-boundary.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
