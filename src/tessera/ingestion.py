@@ -17,12 +17,20 @@ the graph through the same door — neither privileged.
 from __future__ import annotations
 
 import csv
+import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from tessera.grounding import EvidenceRecord
+
+# A *pure* ATX Markdown heading: one to six '#', then at least one space/tab,
+# then content. The mandatory whitespace is the safety boundary (ADR 0021): it
+# never matches GitHub-style runner-log markers (``##[error]`` — '[' is not
+# whitespace), so the shared chunker leaves log corpora untouched, and a bare
+# '#'/'###' with no content is not a heading.
+_ATX_HEADING = re.compile(r"^#{1,6}[ \t]+\S")
 
 
 @runtime_checkable
@@ -41,6 +49,17 @@ class TextChunk:
     text: str
 
 
+def _is_heading_block(chunk: TextChunk) -> bool:
+    """True iff a chunk is a single line that is a pure ATX Markdown heading.
+
+    A lone heading should *lead* the section it introduces, not stand alone as a
+    short, term-dense record that competes with its own content in retrieval
+    (ADR 0021). Single-line is required: a heading already glued to content with
+    no blank line between them is one block and needs no merge.
+    """
+    return "\n" not in chunk.text and _ATX_HEADING.match(chunk.text) is not None
+
+
 def chunk_text(text: str) -> list[TextChunk]:
     """Split text into paragraph chunks separated by blank lines.
 
@@ -48,20 +67,48 @@ def chunk_text(text: str) -> list[TextChunk]:
     document into citable spans while preserving the line range each span came
     from (so a claim can point at the exact lines behind it). Deterministic — the
     same text always yields the same chunks.
+
+    A lone Markdown heading is merged into the block that follows it, so the
+    heading leads its section's first content chunk instead of becoming a
+    competing heading-only record (ADR 0021). Consecutive headings chain onto the
+    next content block; a trailing heading with no following content stays its own
+    chunk.
     """
-    chunks: list[TextChunk] = []
+    lines = text.splitlines()
+    blocks: list[TextChunk] = []
     buffer: list[str] = []
     start = 0
-    for lineno, line in enumerate(text.splitlines(), start=1):
+    for lineno, line in enumerate(lines, start=1):
         if line.strip():
             if not buffer:
                 start = lineno
             buffer.append(line)
         elif buffer:
-            chunks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
+            blocks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
             buffer = []
     if buffer:
-        chunks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
+        blocks.append(TextChunk(start, start + len(buffer) - 1, "\n".join(buffer)))
+
+    # Second pass: a heading block leads the section it introduces. Fold leading
+    # heading blocks onto the next content block, reconstructing the merged text
+    # from the *verbatim source span* (not a re-joined approximation) so a chunk's
+    # text always covers exactly its reported line range — the provenance
+    # invariant that the cited lines back the cited text, even across the blank
+    # separator line(s) between a heading and its content.
+    chunks: list[TextChunk] = []
+    pending: list[TextChunk] = []
+    for block in blocks:
+        if _is_heading_block(block):
+            pending.append(block)
+            continue
+        if pending:
+            start_line = pending[0].start_line
+            merged_text = "\n".join(lines[start_line - 1 : block.end_line])
+            chunks.append(TextChunk(start_line, block.end_line, merged_text))
+            pending = []
+        else:
+            chunks.append(block)
+    chunks.extend(pending)  # trailing heading(s) with no following content
     return chunks
 
 

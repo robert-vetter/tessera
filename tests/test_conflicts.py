@@ -75,7 +75,7 @@ def test_compose_surfaces_mueller_conflict(graph: KnowledgeGraph) -> None:
     assert "disagree on the renewal date" in rendered
     assert "1 August" in rendered and "1 February" in rendered
     cited = {rec.id for claim in answer.claims for rec in claim.support}
-    assert {"mueller_logistik_msa:chunk6", "mueller_logistik_amendment:chunk4"} <= cited
+    assert {"mueller_logistik_msa:chunk3", "mueller_logistik_amendment:chunk2"} <= cited
 
 
 def test_conflict_claim_passes_faithfulness(graph: KnowledgeGraph) -> None:
