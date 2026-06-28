@@ -16,6 +16,7 @@ row for provenance.
 from __future__ import annotations
 
 import json
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,6 +31,15 @@ DATA_DIR = Path(__file__).resolve().parents[3] / "data" / "salt_synthetic"
 # The knowledge of *which* attributes are an address lives here, in the source; the
 # engine stays general and compares whatever fields it is handed.
 ADDRESS_MATCH_FIELDS = ("postal_code", "city_name")
+
+# The full corroborating signal for the business vertical (Milestone 10, spec 0078 /
+# ADR 0020). The VAT registration number is an **exact legal-entity identity key**, so
+# it leads the ordered tuple — a registration-key match/mismatch decides above the
+# (fuzzy, postal-anchored) address, closing the one residual address-only ER cannot
+# reach: two distinct firms with the SAME name AND the SAME address. ``match_fields``
+# being ordered by decisiveness (``resolution.compare_match_fields``), the address is
+# consulted only when a customer carries no key.
+CUSTOMER_MATCH_FIELDS = ("vat_registration",) + ADDRESS_MATCH_FIELDS
 
 
 def _money(value: str, currency: str) -> str:
@@ -155,9 +165,20 @@ class SaltSyntheticSource:
           aggregate without parsing rendered text;
         - each name-bearing node's **address signature** (``postal_code`` +
           ``city_name``) for multi-field ER (spec 0074 / ADR 0019) — on the address
-          node (its own row) and, denormalized via ``AddressID``, on the customer node,
-          so :meth:`~tessera.graph.KnowledgeGraph.resolve_entities` can corroborate a
-          name match with the address (``ADDRESS_MATCH_FIELDS``).
+          node (its own row) and, denormalized via ``AddressID``, on the customer node;
+        - each name-bearing node's **registration key** (``vat_registration``) for
+          registration-key ER (spec 0078 / ADR 0020) — the exact legal-entity identity
+          key. It lives on the customer master (``I_Customer.VATRegistration``) and is
+          **denormalized onto the customer's linked address node** (via ``AddressID``),
+          so the SAME key is on BOTH nodes a same-name/same-address pair would otherwise
+          bridge through — required for the two firms to split into two connected
+          components. A *shared* (serviced-office) address — one referenced by more than
+          one customer — carries no single firm's key and is left without one (absence
+          falls back to name + postal; it is never a contradiction).
+
+        Together (``CUSTOMER_MATCH_FIELDS``) these let
+        :meth:`~tessera.graph.KnowledgeGraph.resolve_entities` corroborate a name match
+        with the key first, then the address.
         """
         attrs: dict[str, tuple[tuple[str, str], ...]] = {}
         for row in read_csv_rows(self.data_dir / "I_SalesDocument.csv"):
@@ -167,16 +188,35 @@ class SaltSyntheticSource:
             )
         address_signature: dict[str, tuple[tuple[str, str], ...]] = {}
         for row in read_csv_rows(self.data_dir / "I_AddrOrgNamePostalAddress.csv"):
-            signature = (
+            address_signature[row["AddressID"]] = (
                 ("postal_code", row["PostalCode"]),
                 ("city_name", row["CityName"]),
             )
-            address_signature[row["AddressID"]] = signature
-            attrs[f"I_AddrOrgNamePostalAddress:{row['AddressID']}"] = signature
-        for row in read_csv_rows(self.data_dir / "I_Customer.csv"):
-            customer_signature = address_signature.get(row["AddressID"], ())
-            if customer_signature:
-                attrs[f"I_Customer:{row['Customer']}"] = customer_signature
+        customer_rows = list(read_csv_rows(self.data_dir / "I_Customer.csv"))
+        # Denormalize each customer's key onto its address node — but ONLY when the
+        # address belongs to a single customer. A shared (serviced-office) address
+        # carries no single firm's key, so it is left without one: absence is never a
+        # contradiction (it falls back to name + postal), where denormalizing one of
+        # several firms' keys onto it would be wrong. On this 1:1 corpus every address
+        # has one customer, so this is a no-op; it keeps the source correct for a real
+        # SALT extract where addresses can be shared.
+        address_refs = Counter(r["AddressID"] for r in customer_rows)
+        vat_by_address = {
+            r["AddressID"]: r.get("VATRegistration", "")
+            for r in customer_rows
+            if address_refs[r["AddressID"]] == 1
+        }
+        for address_id, signature in address_signature.items():
+            vat = vat_by_address.get(address_id)
+            attrs[f"I_AddrOrgNamePostalAddress:{address_id}"] = signature + (
+                (("vat_registration", vat),) if vat else ()
+            )
+        for row in customer_rows:
+            signature = address_signature.get(row["AddressID"], ())
+            vat = row.get("VATRegistration", "")
+            combined = signature + ((("vat_registration", vat),) if vat else ())
+            if combined:
+                attrs[f"I_Customer:{row['Customer']}"] = combined
         return attrs
 
     def structural_edges(self) -> list[tuple[str, str, str]]:

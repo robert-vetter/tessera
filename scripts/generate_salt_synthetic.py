@@ -18,6 +18,19 @@ Two properties matter and are tested downstream:
   the customer master, the address master, and as duplicate customers. This is
   so Unit 4's entity resolution faces a real problem, not a planted-easy one.
 
+Each customer master row also carries a ``VATRegistration`` column (Milestone 10,
+spec 0078) — the exact legal-entity identity key that separates two genuinely
+distinct firms even when their name **and** address coincide (the residual that
+name + address ER, Milestone 9, cannot reach). It is assigned **per canonical
+entity** (every duplicate record of one firm shares it; distinct firms differ), so
+multi-field ER decides on it without splitting a genuine merge. The value is a
+country-prefixed exact key (``<CC><9 digits>``); for the German demonstration firms
+this is the real EU VAT shape (``DE`` + 9 digits). Non-EU firms would in reality
+carry a national tax id rather than an EU VAT — the synthetic generator populates a
+uniform country-prefixed key for every customer (so the column is realistically
+non-empty), and the entity-resolution mechanism relies only on **exact equality**,
+so the synthetic format is a faithful-enough stand-in.
+
 Run with:  ``uv run python scripts/generate_salt_synthetic.py``
 Pure stdlib — no third-party dependency.
 """
@@ -198,6 +211,22 @@ def main() -> None:
     sales_docs: list[dict[str, str]] = []
     items: list[dict[str, str]] = []
 
+    # VATRegistration assignment (Milestone 10, spec 0078). A customer's VAT is
+    # derived from a *firm-identity seed*: the canonical entity name for the
+    # duplicate-bearing entities (so every duplicate shares one VAT and multi-field
+    # ER never splits a genuine merge), and the unique customer id for the
+    # hand-appended firms that share a name but are genuinely distinct (so they get
+    # DISTINCT VATs and ER can tell them apart). ``_seen`` makes a hash collision
+    # between two distinct seeds a loud build failure, not a silent over-merge.
+    _seen: dict[str, str] = {}
+
+    def _assign_vat(seed: str, country: str) -> str:
+        vat = f"{country}{_stable_hash(seed) % 1_000_000_000:09d}"
+        prior = _seen.setdefault(vat, seed)
+        if prior != seed:
+            raise ValueError(f"VAT collision: {vat} from {seed!r} and {prior!r}")
+        return vat
+
     # --- Spotlight entity: fixed values the demo question is authored against. ---
     # Kept deterministic and out of the random stream so its ids/figures are stable
     # references for knowledge.py. Customer master and address master disagree on
@@ -209,6 +238,7 @@ def main() -> None:
             "AddressID": "A0007",
             "CustomerAccountGroup": "KUNA",
             "Country": "DE",
+            "VATRegistration": _assign_vat("Müller Logistik GmbH", "DE"),
         }
     )
     addresses.append(
@@ -282,6 +312,9 @@ def main() -> None:
                     "AddressID": addr_id,
                     "CustomerAccountGroup": rng.choice(("KUNA", "KUNL", "CPD")),
                     "Country": country,
+                    # Seed on the canonical name so every duplicate of this firm
+                    # shares one VAT (a genuine merge is never split by the key).
+                    "VATRegistration": _assign_vat(canonical, country),
                 }
             )
             addresses.append(
@@ -333,6 +366,7 @@ def main() -> None:
             "AddressID": "A0008",
             "CustomerAccountGroup": "KUNA",
             "Country": "DE",
+            "VATRegistration": _assign_vat("Atlas Trading GmbH", "DE"),
         }
     )
     addresses.append(
@@ -384,6 +418,10 @@ def main() -> None:
                 "AddressID": addr_id,
                 "CustomerAccountGroup": "KUNA",
                 "Country": "DE",
+                # Two DISTINCT firms sharing a name → seed on the unique customer id
+                # so they get DISTINCT VATs (Milestone 9 split them on address; the
+                # key splits them too, the stronger signal).
+                "VATRegistration": _assign_vat(cust_id, "DE"),
             }
         )
         addresses.append(
@@ -401,7 +439,14 @@ def main() -> None:
     _write_csv(
         "I_Customer.csv",
         customers,
-        ["Customer", "CustomerName", "AddressID", "CustomerAccountGroup", "Country"],
+        [
+            "Customer",
+            "CustomerName",
+            "AddressID",
+            "CustomerAccountGroup",
+            "Country",
+            "VATRegistration",
+        ],
     )
     _write_csv(
         "I_AddrOrgNamePostalAddress.csv",

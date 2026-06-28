@@ -107,14 +107,16 @@ def _merge_reason(
 
     Given the name-pass result — ``gate_reason`` is the Milestone-8 stem gate's
     verdict (a string when it confirms a shared distinctive signal, ``None`` when it
-    vetoes) — and the corroborating-field ``signal`` (address AGREE / CONTRADICT /
-    NEUTRAL), return the assertion ``reason`` to record, or ``None`` to veto the merge:
+    vetoes) — and the corroborating-field ``signal`` (the registration key or the
+    address: AGREE / CONTRADICT / NEUTRAL), return the assertion ``reason`` to record,
+    or ``None`` to veto the merge (the table's "field" is whichever leads
+    ``match_fields``):
 
-    | name (stem gate) | address | outcome |
+    | name (stem gate) | field | outcome |
     |---|---|---|
-    | confirmed | contradict | **veto** — same name, different address → distinct |
+    | confirmed | contradict | **veto** — same name, different field → distinct firms |
     | confirmed | agree / neutral | merge (reason notes any agreement) |
-    | vetoed | agree | **merge** — address bridges a name-vetoed near-match |
+    | vetoed | agree | **merge** — the field bridges a name-vetoed near-match |
     | vetoed | contradict / neutral | veto (as Milestone 8) |
 
     With ``signal`` NEUTRAL (the none-path, ``match_fields=()``) the returned reason
@@ -122,14 +124,20 @@ def _merge_reason(
     """
     base = f"{normalize(name_a)!r} ~ {normalize(name_b)!r} (similarity {score:.3f}"
     if gate_reason is not None:
-        # Name confirms — a contradicting address vetoes the over-merge.
+        # Name confirms — a contradicting corroborating field vetoes the over-merge.
         if signal.verdict == "contradict":
             return None
-        address = f"; {signal.detail}" if signal.verdict == "agree" else ""
-        return f"name match: {base}; {gate_reason}{address})"
-    # Name vetoed by the stem gate — an agreeing address bridges the near-match.
+        agreement = f"; {signal.detail}" if signal.verdict == "agree" else ""
+        return f"name match: {base}; {gate_reason}{agreement})"
+    # Name vetoed by the stem gate — an agreeing corroborating field bridges the
+    # near-match. ``signal.detail`` names *which* field agreed (the registration key or
+    # the address), so the reason stays honest whatever leads ``match_fields`` (spec
+    # 0078 / ADR 0020 — the gate was always general; only this wording named "address").
     if signal.verdict == "agree":
-        return f"name match stem-vetoed, bridged by address: {base}; {signal.detail})"
+        return (
+            f"name match stem-vetoed, bridged by corroborating field: "
+            f"{base}; {signal.detail})"
+        )
     return None
 
 
@@ -214,17 +222,19 @@ class KnowledgeGraph:
         comes only from a shared generic suffix ("… Logistik GmbH") no longer
         over-merge (spec 0070, ADR 0018).
 
-        **Multi-field gate (spec 0073, ADR 0019).** When ``match_fields`` is given —
-        an *ordered* tuple of corroborating attribute keys (e.g.
-        ``("postal_code", "city_name")``) the source attaches to nodes — a second
-        deterministic signal (the address) is folded into the name decision as a
-        TWO-WAY gate (:func:`_merge_reason`): a contradicting address **vetoes** an
-        over-merge of two same-named-but-distinct firms (residuals 1 & 2 of ADR
-        0018), and an agreeing address **bridges** a name-vetoed near-match — a pair
-        whose distinctive tokens are *both* typo'd (residual 3). The corroboration
-        arm is reached only for pairs already at/above the name ``threshold``, so a
-        low-name-similarity pair sharing an address (two firms in one building) can
-        never false-merge.
+        **Multi-field gate (spec 0073, ADR 0019; spec 0078, ADR 0020).** When
+        ``match_fields`` is given — an *ordered* tuple of corroborating attribute keys
+        (e.g. the registration key then the address,
+        ``("vat_registration", "postal_code", "city_name")``) the source attaches to
+        nodes — a second deterministic signal (the first field present on both decides)
+        is folded into the name decision as a TWO-WAY gate (:func:`_merge_reason`): a
+        contradicting corroborating field **vetoes** an over-merge of two
+        same-named-but-distinct firms (residuals 1 & 2 of ADR 0018; the
+        same-name/same-address case via the key, ADR 0020), and an agreeing field
+        **bridges** a name-vetoed near-match — a pair whose distinctive tokens are
+        *both* typo'd (residual 3). The corroboration arm is reached only for pairs
+        already at/above the name ``threshold``, so a low-name-similarity pair sharing a
+        field (two firms in one building) can never false-merge.
 
         Default ``match_fields=()`` is **byte-identical** to Milestone 8 (the devex /
         github_actions none-path): no corroborating field is compared and the name
@@ -257,7 +267,7 @@ class KnowledgeGraph:
                 )
                 if reason is None:
                     continue  # vetoed: generic-suffix over-merge, a contradicting
-                    # address, or a double-typo with no bridging address
+                    # corroborating field, or a double-typo with no bridging field
                 self.add_resolution(
                     Resolution(
                         node_a=left.id,
