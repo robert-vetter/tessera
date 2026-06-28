@@ -4,8 +4,8 @@
   "engine": "compose",
   "kind": "answer",
   "expected_support": [
-    "mueller_logistik_msa:chunk6",
-    "mueller_logistik_amendment:chunk4"
+    "mueller_logistik_msa:chunk3",
+    "mueller_logistik_amendment:chunk2"
   ],
   "expected_facts": [
     "disagree on the renewal date",

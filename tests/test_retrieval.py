@@ -76,26 +76,26 @@ def test_orders_question_returns_salt_rows() -> None:
 
 
 def test_renewal_question_returns_the_actual_renewal_clause() -> None:
-    """Cross-source into a document: the renewal section of the agreement is surfaced
-    with doc-span provenance — the auto-renewal clause among the very top results, not
-    lost among boilerplate.
+    """Cross-source into a document: the renewal section of the agreement is the
+    *top* result, with doc-span provenance, carrying the actual auto-renewal clause.
 
-    Near-tie note (spec 0079): the section *heading* ("## 2. Term and renewal") and its
-    first *clause* (carrying "auto-renews") score within ~0.05% on BM25, so their order
-    flips with tiny corpus-size changes (adding the Milestone-10 disambiguation firms
-    shifts ``avgdl`` by a hair). The robust, meaningful invariant is that the
-    auto-renews clause is surfaced in the top results from the MSA with doc-span
-    provenance — not that it pips its own section heading by 0.0067. (Root cause — a
-    heading-only chunk competing with its content — is retrieval future work, not ER.)
+    History (spec 0082, ADR 0021): this assertion was once relaxed to a top-2
+    invariant because the section *heading* ("## 2. Term and renewal") was a
+    standalone chunk that scored within ~0.05% of its own clause on BM25, so their
+    order flipped with tiny corpus-size changes (the Milestone-10 disambiguation
+    firms shifted ``avgdl`` by a hair). Milestone 11 fixed the root cause at the
+    chunking layer — a heading now leads its section's content chunk instead of
+    competing with it — so the renewal section is a stable rank-1 again, and the
+    strict assertion is restored.
     """
     result = answer(
         "What are the renewal and termination terms of the service agreement?",
         DEMO_KB,
     )
     assert result.is_grounded
-    top2 = [c.support[0] for c in result.claims[:2]]
-    # The top results are the renewal section of the MSA, with doc-span provenance.
-    assert all(s.origin.source.endswith("mueller_logistik_msa.md") for s in top2)
-    assert all(s.origin.locator.kind == "doc-span" for s in top2)
-    # The actual auto-renewal clause is among them (not lost below boilerplate).
-    assert any("auto-renews" in s.text for s in top2)
+    top = result.claims[0].support[0]
+    # The top result is the renewal section of the MSA, with doc-span provenance,
+    # and it carries the auto-renewal clause itself (no heading-only chunk competes).
+    assert top.origin.source.endswith("mueller_logistik_msa.md")
+    assert top.origin.locator.kind == "doc-span"
+    assert "auto-renews" in top.text
