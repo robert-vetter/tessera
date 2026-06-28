@@ -139,10 +139,12 @@ def test_address_bridges_a_stem_vetoed_double_typo() -> None:
     b = _node("c2", "Nordic Timbre AS", postal_code="0150", city_name="Oslo")
     # Name-only leaves them split (the double-typo veto)...
     assert _resolved([a, b]).entity_of("c1") != _resolved([a, b]).entity_of("c2")
-    # ...the agreeing address bridges them.
+    # ...the agreeing address bridges them (here address is the only field present, so
+    # the corroborating field is the postal code — the wording is field-general).
     graph = _resolved([a, b], match_fields=_FIELDS)
     assert graph.entity_of("c1") == graph.entity_of("c2")
-    assert any("bridged by address" in r.reason for r in graph.resolutions)
+    assert any("bridged by corroborating field" in r.reason for r in graph.resolutions)
+    assert any("postal_code" in r.reason for r in graph.resolutions)
 
 
 def test_corroboration_is_bounded_to_name_similar_pairs() -> None:
@@ -214,4 +216,95 @@ def test_stem_vetoed_with_contradicting_address_stays_split() -> None:
     a = _node("c1", "Noridc Timber A/S", postal_code="0150", city_name="Oslo")
     b = _node("c2", "Nordic Timbre AS", postal_code="8000", city_name="Aarhus")
     graph = _resolved([a, b], match_fields=_FIELDS)
+    assert graph.entity_of("c1") != graph.entity_of("c2")
+
+
+# --- the registration key as the decisive field (Milestone 10, spec 0078) -----
+#
+# The key needs no new engine mechanism: it slots in as the FIRST entry of the ordered
+# match_fields, so the existing exact-equality compare_match_fields decides on it
+# before the (fuzzy, postal-anchored) address. These pin that decisiveness on abstract
+# nodes; the real-graph wiring and the measured eval close build on it.
+
+_KEYED = ("vat_registration", "postal_code", "city_name")
+
+
+def test_registration_key_decides_above_the_address() -> None:
+    """The key leads the ordered match_fields, so it decides before the address — the
+    mechanism that closes the same-name/same-address residual (a different key splits
+    despite an agreeing address) and, symmetrically, lets a genuine same-firm pair
+    survive a postal disagreement (the same key merges despite a different address —
+    the Milestone-9 'postal-anchored, not postal-perfect' cost retired)."""
+    # Same name + SAME address but DIFFERENT key → key contradicts (decided first) →
+    # split, even though the address agrees (the residual closure on abstract nodes).
+    a = _node(
+        "c1",
+        "Spree Handel GmbH",
+        vat_registration="DE100000001",
+        postal_code="10117",
+        city_name="Berlin",
+    )
+    b = _node(
+        "c2",
+        "Spree Handel GmbH",
+        vat_registration="DE100000002",
+        postal_code="10117",
+        city_name="Berlin",
+    )
+    split = _resolved([a, b], match_fields=_KEYED)
+    assert split.entity_of("c1") != split.entity_of("c2")
+    # Same name + DIFFERENT address but SAME key → key agrees (decided first) → merge,
+    # overriding the postal disagreement.
+    c = _node(
+        "c3",
+        "Spree Handel GmbH",
+        vat_registration="DE100000003",
+        postal_code="10117",
+        city_name="Berlin",
+    )
+    d = _node(
+        "c4",
+        "Spree Handel GmbH",
+        vat_registration="DE100000003",
+        postal_code="80331",
+        city_name="Munich",
+    )
+    merged = _resolved([c, d], match_fields=_KEYED)
+    assert merged.entity_of("c3") == merged.entity_of("c4")
+    assert any("vat_registration" in r.reason for r in merged.resolutions)
+
+
+def test_same_key_merges_same_name_same_address() -> None:
+    """The positive control: two records of the genuinely same firm (same name, same
+    address, same key) still merge — the key is a TWO-WAY decisive signal, not just a
+    splitter. (This same mechanical outcome is the honest new floor when the two firms
+    are genuinely distinct yet share everything — separable only by an external
+    registry; the real-data version is pinned in test_scale.)"""
+    a = _node(
+        "c1",
+        "Spree Handel GmbH",
+        vat_registration="DE100000009",
+        postal_code="10117",
+        city_name="Berlin",
+    )
+    b = _node(
+        "c2",
+        "Spree Handel GmbH",
+        vat_registration="DE100000009",
+        postal_code="10117",
+        city_name="Berlin",
+    )
+    graph = _resolved([a, b], match_fields=_KEYED)
+    assert graph.entity_of("c1") == graph.entity_of("c2")
+    assert any("vat_registration" in r.reason for r in graph.resolutions)
+
+
+def test_key_absent_falls_back_to_the_address_decision() -> None:
+    """Absence is never a contradiction (the none-path discipline): a node lacking a
+    key falls through to the address fields, so the key is purely additive — a corpus
+    without keys behaves exactly as Milestone 9."""
+    # No vat on either node → the first PRESENT field on both is postal → contradict.
+    a = _node("c1", "Spree Handel GmbH", postal_code="10117", city_name="Berlin")
+    b = _node("c2", "Spree Handel GmbH", postal_code="80331", city_name="Munich")
+    graph = _resolved([a, b], match_fields=_KEYED)
     assert graph.entity_of("c1") != graph.entity_of("c2")

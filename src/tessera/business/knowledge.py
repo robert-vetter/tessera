@@ -16,7 +16,7 @@ from tessera.graph import Edge, KnowledgeGraph, Node
 from tessera.grounding import KnowledgeBase
 from tessera.resolution import DEFAULT_RESOLUTION_THRESHOLD
 from tessera.sources.documents import DocumentSource
-from tessera.sources.salt import ADDRESS_MATCH_FIELDS, SaltSyntheticSource
+from tessera.sources.salt import CUSTOMER_MATCH_FIELDS, SaltSyntheticSource
 
 # A question that retrieves structured evidence (the spotlight customer's sales
 # rows). Try also: "When does Müller Logistik's service agreement renew?" — which
@@ -32,17 +32,20 @@ def build_demo_kb() -> KnowledgeBase:
 
 def build_demo_graph(
     threshold: float = DEFAULT_RESOLUTION_THRESHOLD,
-    match_fields: Sequence[str] = ADDRESS_MATCH_FIELDS,
+    match_fields: Sequence[str] = CUSTOMER_MATCH_FIELDS,
 ) -> KnowledgeGraph:
     """Assemble the knowledge graph: nodes from both sources, SALT structural
     edges, then the additive (non-destructive) resolution and document-mention
     layers. Answering over the graph is Unit 5 — not done here.
 
-    Entity resolution is **multi-field** (spec 0074 / ADR 0019): name similarity is
-    corroborated by the address (``match_fields`` — postal code + city), so two
-    distinct firms with an identical name but different addresses no longer over-merge.
-    Pass ``match_fields=()`` for the name-only baseline (used by the cluster-equivalence
-    pin to prove multi-field changes nothing on the existing data)."""
+    Entity resolution is **multi-field** (spec 0074 / ADR 0019, spec 0078 / ADR 0020):
+    name similarity is corroborated by the registration key first, then the address
+    (``match_fields`` — ``vat_registration`` → ``postal_code`` → ``city_name``), so two
+    distinct firms with an identical name no longer over-merge — split by a different
+    address, or, when even the address coincides, by a different VAT registration key.
+    Pass ``match_fields=ADDRESS_MATCH_FIELDS`` for the Milestone-9 (address-only)
+    baseline, or ``match_fields=()`` for the name-only baseline (both used by the
+    cluster-equivalence pins and the measured before/after)."""
     salt = SaltSyntheticSource()
     org_names = salt.org_names()
     node_attrs = salt.node_attributes()
