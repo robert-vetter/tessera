@@ -9,6 +9,13 @@ itself has no MCP / embedding / LLM dependency, so it stays pure-stdlib and CI-t
 
 from __future__ import annotations
 
+from tessera.agent.actions import (
+    ActionField,
+    ActionProposal,
+    available_action_names,
+    available_actions,
+    draft_action,
+)
 from tessera.agent.grounded import (
     GroundedAssertion,
     GroundedClaim,
@@ -24,14 +31,19 @@ from tessera.agent.grounded import (
 )
 
 __all__ = [
+    "ActionField",
+    "ActionProposal",
     "GroundedAssertion",
     "GroundedClaim",
     "GroundedDomain",
     "GroundedEvidence",
     "GroundedResult",
     "assertions",
+    "available_action_names",
+    "available_actions",
     "available_domains",
     "domain",
+    "draft_action",
     "ground",
     "serialize_answer",
     "verify_claims",
