@@ -72,6 +72,26 @@ def test_non_ambiguous_single_term_still_grounds_via_lookup(
     assert answer.is_grounded
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What services does Logistik provide?",
+        "Who are our Iberia contacts?",
+        "Tell me about Kontor's operations.",
+    ],
+)
+def test_content_question_with_ambiguous_token_still_routes_to_lookup(
+    question: str, graph: KnowledgeGraph, kb: KnowledgeBase
+) -> None:
+    """A *content* question that merely CONTAINS an ambiguous entity token must not
+    be over-refused as a bare ambiguous reference: the matched run covers little of
+    the question, so it stays on the lookup path (regression pins for the cases the
+    spec-0088 pre-merge adversarial review surfaced — grounding a real lookup is the
+    correct behaviour, not a false ambiguity refusal)."""
+    decision = classify(question, graph)
+    assert decision.kind == "lookup", decision.reason
+
+
 def test_routed_multi_answer_is_grounded(
     graph: KnowledgeGraph, kb: KnowledgeBase
 ) -> None:

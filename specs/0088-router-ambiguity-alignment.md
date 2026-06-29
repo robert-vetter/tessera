@@ -108,3 +108,28 @@ gold disposition for `business/05` with no new divergence introduced.
 - **No ADR.** This aligns two existing deterministic components; it introduces no new
   hard-to-reverse decision (ADR 0006's deterministic-routing posture is unchanged — the
   router stays rule-based; it simply consults the existing resolver). Recorded here.
+
+## Addendum — pre-merge adversarial review finding (over-refusal), fixed
+
+The 4-lens pre-merge review caught a **real major** (independently verified, high
+confidence): the first cut called `resolve_entity` on the **whole question string**, so a
+*content* question that merely **contained** an ambiguous entity token over-refused —
+e.g. *"Tell me about Kontor's operations."*, *"Who are our Iberia contacts?"*, *"What
+services does Logistik provide?"* all routed to a false ambiguity refusal even though
+lexical lookup grounds them (5 claims each). `resolve_entity`'s match is an absolute
+longest-common-run ≥ 6 with **no ratio**, so a long question containing the token as a
+substring still ties. That is a recall regression — and a *false* ambiguity refusal where
+a grounded answer exists violates groundedness, so it was **fixed before merge**, not
+deferred.
+
+**The fix:** a **question-coverage guard** (`_question_coverage`, `AMBIGUOUS_QUESTION_RATIO
+= 0.6`). The ambiguity branch fires only when the tied name run covers ≥ 0.6 of the
+*normalized question* — high only when the question *is* the entity token (`"Logistik"` →
+1.0) and low for content questions (`"What services does Logistik provide?"` → 0.26).
+This mirrors `find_named_entities`'s name-coverage ratio, applied to the question side.
+`resolve_entity` stays untouched (the guard lives entirely in the router). The three
+content questions the review surfaced are pinned as regression tests
+(`test_content_question_with_ambiguous_token_still_routes_to_lookup`). Numbers stayed
+byte-identical; 353 tests pass. **Lesson:** a refusal-introducing change is a recall risk
+until the over-refusal surface is probed with realistic phrasings, not just the happy
+bare-token case.
