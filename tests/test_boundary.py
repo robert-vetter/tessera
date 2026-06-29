@@ -92,21 +92,21 @@ def test_faithfulness_is_one_across_the_boundary() -> None:
     assert verified == total  # faithfulness == 1.0 across the boundary
 
 
-# The two pinned router-vs-engine divergences (spec 0085). The agent calls the
-# production router (ground), not the eval's per-case engine dispatch; these two
-# gold cases route differently. Neither is a faithfulness breach (all_verified
-# holds); both are explained. A THIRD divergence — or either of these changing —
-# fails test_router_path_disposition_matches_gold_except_pinned below.
+# The pinned router-vs-engine divergence (spec 0085). The agent calls the
+# production router (ground), not the eval's per-case engine dispatch; this gold
+# case routes differently. It is not a faithfulness breach (all_verified holds) and
+# is explained. A NEW divergence — or this one changing — fails
+# test_router_path_disposition_matches_gold_except_pinned below.
+#
+# Milestone 12 Unit 2 (spec 0088) CLOSED the second former divergence: the bare
+# ambiguous term "Logistik" (business/05) now routes to the compose path and refuses
+# as ambiguous (the router defers to compose's resolver), so its disposition matches
+# the gold kind and it is no longer pinned.
 _EXPECTED_ROUTER_DIVERGENCES = {
     # Offline synonymy miss: zero lexical overlap with the 404 lines; only
     # embeddings bridge it (M6/M7, online). The agent layer is offline/lexical
     # (ADR 0022), so it refuses — exactly as offline CI does (coverage 0.833).
     ("github_actions", "05_pages_synonymy_lookup"): "refused",
-    # Bare ambiguous term "Logistik": the eval uses compose (refuses as ambiguous);
-    # the router routes a bare term to lexical lookup and grounds (both firms, every
-    # claim faithfully cited). Pre-existing router-vs-engine gap; next lever =
-    # align the router's ambiguity handling with compose.
-    ("business", "05_ambiguous_refusal"): "grounded",
 }
 
 
@@ -137,9 +137,12 @@ def test_router_path_disposition_matches_gold_except_pinned() -> None:
 def test_adr_0005_0006_triggers_not_forced_by_the_boundary() -> None:
     """ADR 0005 (LLM-judge) / 0006 (semantic routing) re-examined at the boundary:
     the structural verifier passed across it with no case it missed (0005 unforced),
-    and the only router-path gap (business/05) is a deterministic alignment lever,
-    not a case that needs semantic routing (0006 unforced). This is a documentation
-    pin — if a future measured case forces a trigger, this intent is revisited."""
+    and the one-time router-path gap (business/05) was a *deterministic* alignment
+    lever — closed in Milestone 12 Unit 2 (spec 0088) by deferring to compose's
+    resolver, not by semantic routing (0006 unforced). The remaining pinned
+    divergence (github_actions/05) is an offline-embeddings miss (ADR 0010/0015),
+    not a semantic-routing case. This is a documentation pin — if a future measured
+    case forces a trigger, this intent is revisited."""
     # The structural verifier produced faithful verdicts across the boundary for
     # every gold case (asserted above); no semantic judge was needed.
     business_answer = ground("business", "What is Müller Logistik's total order value?")

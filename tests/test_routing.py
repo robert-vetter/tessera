@@ -42,6 +42,36 @@ def test_no_entity_routes_lookup(graph: KnowledgeGraph) -> None:
     assert decision.kind == "lookup"
 
 
+def test_bare_ambiguous_term_routes_to_compose_and_refuses(
+    graph: KnowledgeGraph, kb: KnowledgeBase
+) -> None:
+    """A bare token shared by ≥2 distinct entities (e.g. "Logistik") names no
+    single entity, but resolving it ties across firms. The router defers to
+    compose's resolver and refuses as ambiguous rather than lexically grounding it
+    (spec 0088 — the closed Milestone-11 business/05 divergence)."""
+    decision = classify("Logistik", graph)
+    assert decision.kind == "entity"
+    assert "ambiguous" in decision.reason
+    # Both tied firms are named in the reason, once each (no duplicate label).
+    assert "Mueller Logistik Gmbh" in decision.reason
+    assert "Nordwind Logistik GmbH" in decision.reason
+
+    _, answer = route("Logistik", graph, kb)
+    assert not answer.is_grounded
+    assert "Ambiguous" in (answer.refusal or "")
+
+
+def test_non_ambiguous_single_term_still_grounds_via_lookup(
+    graph: KnowledgeGraph, kb: KnowledgeBase
+) -> None:
+    """The alignment does not over-refuse: a term that does not tie across entities
+    still routes to lexical lookup and grounds when the corpus supports it (here a
+    distinctive content word from the agreements)."""
+    decision, answer = route("renewal", graph, kb)
+    assert decision.kind == "lookup"
+    assert answer.is_grounded
+
+
 def test_routed_multi_answer_is_grounded(
     graph: KnowledgeGraph, kb: KnowledgeBase
 ) -> None:

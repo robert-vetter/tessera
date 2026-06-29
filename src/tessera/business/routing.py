@@ -10,7 +10,7 @@ question falls through to a path that refuses honestly rather than guessing.
 
 from __future__ import annotations
 
-from tessera.business.composition import compose
+from tessera.business.composition import compose, resolve_entity
 from tessera.business.reasoning import find_named_entities, mentions_superlative, reason
 from tessera.graph import KnowledgeGraph
 from tessera.grounding import Answer, KnowledgeBase
@@ -24,6 +24,13 @@ def classify(question: str, graph: KnowledgeGraph) -> Route:
     - Two or more named entities, or a superlative phrasing → multi-step
       reasoning (compare / ranking).
     - Exactly one named entity → one-entity cross-source composition.
+    - A bare term that names no single entity but resolves *ambiguously* (ties
+      across ≥2 distinct entities under ``compose``'s own resolver) → the compose
+      path, which refuses as ambiguous rather than guessing. This defers to
+      ``resolve_entity`` so the router and ``compose`` agree on ambiguity by
+      construction (spec 0088), closing the Milestone-11 `business/05` divergence:
+      grounding a bare shared token (e.g. "Logistik", which ties Müller Logistik
+      and Nordwind Logistik) as if unambiguous is the weaker behaviour.
     - Otherwise → lexical lookup over all evidence (which refuses when nothing
       relevant exists).
     """
@@ -40,6 +47,19 @@ def classify(question: str, graph: KnowledgeGraph) -> Route:
         return Route(
             kind="entity",
             reason=f"names one entity ({entities[0].name}) — cross-source composition",
+        )
+    ambiguous = resolve_entity(question, graph)
+    if ambiguous.status == "ambiguous":
+        # dict.fromkeys dedupes while preserving order: two distinct clusters can
+        # share a display name (the split same-name firms), so the candidate list
+        # may repeat a label — name each once in the reason.
+        candidates = " and ".join(dict.fromkeys(ambiguous.candidates))
+        return Route(
+            kind="entity",
+            reason=(
+                f"ambiguous entity reference ({candidates}) — refuse to guess, "
+                "as cross-source composition does"
+            ),
         )
     return Route(kind="lookup", reason="no entity named — lexical lookup")
 
