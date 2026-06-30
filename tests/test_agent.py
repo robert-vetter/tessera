@@ -156,6 +156,7 @@ def test_agent_layer_pulls_no_embedding_llm_or_mcp_module() -> None:
     code = (
         "import sys; from tessera.agent.grounded import ground;"
         "from tessera.agent.actions import draft_action;"
+        "from tessera.agent.payloads import preview_payload;"
         "ground('business','Compare Müller Logistik and Nordwind Logistik totals.');"
         "ground('devex','Why did run R-1042 fail, and has this happened before?');"
         "ground('github_actions','Why did the pages deploy fail?');"
@@ -163,6 +164,9 @@ def test_agent_layer_pulls_no_embedding_llm_or_mcp_module() -> None:
         "draft_action('incident','devex','Why did run R-1042 fail?');"
         "draft_action('pr_summary','devex','What does PR-201 change?');"
         "draft_action('incident','devex','What does PR-201 change?');"
+        "preview_payload('incident','devex','Why did run R-1042 fail?');"
+        "preview_payload('pr_summary','devex','What does PR-201 change?');"
+        "preview_payload('incident','devex','Why did run R-1001 fail?');"
         "banned={"
         "'tessera.semantic',"
         "'tessera.platform.vectors',"

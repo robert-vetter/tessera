@@ -29,6 +29,13 @@ from tessera.agent.grounded import (
     serialize_answer,
     verify_claims,
 )
+from tessera.agent.payloads import (
+    PayloadSlot,
+    RenderedPayload,
+    available_payload_targets,
+    preview_payload,
+    render_payload,
+)
 
 __all__ = [
     "ActionField",
@@ -38,13 +45,18 @@ __all__ = [
     "GroundedDomain",
     "GroundedEvidence",
     "GroundedResult",
+    "PayloadSlot",
+    "RenderedPayload",
     "assertions",
     "available_action_names",
     "available_actions",
     "available_domains",
+    "available_payload_targets",
     "domain",
     "draft_action",
     "ground",
+    "preview_payload",
+    "render_payload",
     "serialize_answer",
     "verify_claims",
 ]
