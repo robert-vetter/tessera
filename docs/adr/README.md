@@ -37,3 +37,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0020](0020-registration-key-entity-resolution.md) — Registration-key entity resolution: the exact decisive field (Milestone 10)
 - [0021](0021-heading-leads-its-section.md) — A Markdown heading leads its section, not a chunk of its own (Milestone 11)
 - [0022](0022-agentic-mcp-boundary.md) — The agentic boundary: read-only, verifier-checked grounded tools over MCP (Milestone 11)
+- [0023](0023-grounded-action-boundary.md) — The grounded-action boundary: propose-and-approve, field-verified actions (Milestone 12)

@@ -1340,3 +1340,114 @@ ADR 0005/0006 triggers remain live and unacted.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #92–#96 merged. Tagged
   `milestone-11`.
+
+---
+
+## 2026-06-30 — Milestone 12 COMPLETE (grounded actions over MCP)
+
+**Mode note:** ran **autonomously** from one kickoff. The thrust and posture were the
+three project-shaping decisions asked & answered 2026-06-29 and recorded in spec 0087
+(grounded actions over MCP; deterministic/offline/no-spend; propose-and-approve only —
+nothing executed). This session **resumed** an in-flight milestone: Units 1–2 (plan,
+router alignment) were already merged and Unit 3 sat in open PR #100 awaiting its
+mandated review. Six units total, each spec → branch → implement → gate → PR → CI-green
+→ squash-merge. Fully **offline / CI-reproducible** (the M8–M11 posture); the MCP SDK
+stays the opt-in `agent` extra.
+
+**The problem this milestone answers.** Through eleven milestones the trust substrate —
+grounded claims, claim-level provenance, a verifier gated at faithfulness 1.0 — only ever
+produced **answers**. Milestone 11 made an agent *consume* them but stopped there (ADR
+0022 recorded actions as the named next step). An agent that must *act* composed the
+action itself, ungrounded, outside Tessera's guarantee. M12 extends the *same* substrate
+to the **action draft**: a structured proposal whose every field traces to a
+verifier-passing claim, or it is not proposed.
+
+**Done this session (6 units, PRs #98–#103)**
+- **Phase plan** (spec 0087, #98) + the three recorded scope decisions.
+- **Router-ambiguity alignment** (spec 0088, #99): the business router defers a bare
+  ambiguous term (`"Logistik"`, ties across two entities under `compose`'s resolver) to
+  the refusing compose path, closing the M11 router-vs-engine divergence; the
+  `business/05` pin removed from `tests/test_boundary.py`; no battery number moved.
+- **The grounded-action layer** (spec 0089, ADR 0023, #100): `tessera/agent/actions.py`
+  (additive, *not* frozen core) — `draft_action(kind, domain, question)` builds an
+  `ActionProposal` strictly from a verifier-checked `GroundedResult`; each `ActionField`
+  is a verbatim claim or evidence fragment with a **recomputed `verified`** verdict
+  (source claim passed `is_supported` **and** the value is faithful), so `all_grounded`
+  is earned (a provably-failable test). Declared catalog: `incident` (devex +
+  github_actions RCA), `pr_summary` (devex change). Refused/incompatible/wrong-domain
+  groundings carried with no fields. `requires_approval=True`/`executed=False`.
+  **Carried its mandated pre-merge adversarial multi-agent review** (six lenses, 23
+  agents, every finding independently reproduced): 16 confirmed findings, **2 fixed
+  before merge** — (1) `_field` compared the value against a *concatenation* of all cited
+  records (a seam-spanning token one weaker than the engine's per-record `is_supported`)
+  → fixed to per-record containment, removed `_evidence_text`, behaviour-preserving; (2)
+  a docstring/spec **overclaim** ("or it is not proposed at all" — the code surfaces an
+  unverified field, doesn't withhold the proposal) → reworded. Plus regression pins
+  (the seam, the full `_role` set, a github_actions refusal path, the partial-grounded
+  state, the empty-fields `all_grounded` guard, determinism over all three shapes).
+- **MCP action tools** (spec 0090, #101): thin `list_actions`/`draft_action` on
+  `tessera-mcp` (no drafting logic; delegate verbatim to the layer); five tools now
+  advertised; the no-`mcp`-in-base-graph pin holds; the committed `data/mcp_session/`
+  client↔server session now also drafts an incident, a PR summary, and a **carried
+  refusal**.
+- **Trust across the action boundary** (spec 0091, #102): `tests/test_actions_boundary.py`,
+  a CI-gated property over cases **derived from the data** (every failed run + every PR,
+  14 today): each drafted action is field-grounded and a **lossless** projection of its
+  grounding (value, support ids, *independently-recomputed* verdict per field), and
+  **faithfulness is 1.0 across the action boundary**; a refusal is carried, never drafted.
+  ADR 0005/0006 re-examined and recorded **still not forced**.
+- **Close** (spec 0092, this entry, #103): the ADR 0008 **empty-diff frozen-core audit**
+  (`milestone-11..HEAD` over the engine + verifier — **empty**); WRITEUP M12 section +
+  updated limitations/future-work + a 10th "what was learned"; README (the action tools,
+  the corrected scope: actions are *proposed* and field-verified, execution stays out);
+  CHANGELOG `[milestone-12]`; ADR 0023 nav + index; tag `milestone-12`; memory; kickoff.
+
+**Current eval numbers (unchanged — the action layer is a consumer, not a new path)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- **New, recorded and gated in CI: faithfulness is 1.0 *across the action boundary*** over
+  every data-derived action (`tests/test_actions_boundary.py`), the projection lossless.
+  Deterministic across `PYTHONHASHSEED` 0/1/42/2026; **378 tests pass** with the `agent`
+  extra (in CI 3 SDK contract tests skip → 375 pass, 378 collected).
+
+**Milestone check (spec 0087 success criterion):** an enterprise AI agent can ask Tessera
+over MCP to draft an action and receive a grounded, cited, verifier-checked **proposal**
+(or a carried refusal) for the DevEx and real github_actions domains, offline and in CI;
+every drafted field is field-grounded and the projection lossless (measured); a refusal
+never becomes a drafted action; the default clone-and-run + CI stay pure-stdlib; the
+router divergence is closed and no battery number moved; **zero frozen-core delta**.
+**Met.** Tagged `milestone-12`.
+
+**Open questions / risks**
+- **Frozen core untouched** (ADR 0008): the empty-diff audit `milestone-11..HEAD` over the
+  engine + verifier is **empty**. The only existing-code production change is the
+  vertical-side `business/routing.py` (Unit 2, reviewed); everything else is the additive
+  `tessera/agent/` package, tests, specs, and the ADR.
+- **The honest edge: propose-and-approve, nothing executed.** Tessera guarantees the
+  *draft* is grounded; it executes nothing, calls no external system, renders no payload.
+  Effectful execution (and a dry-run payload preview) is the named next step, deliberately
+  out of scope (credentialed/irreversible — outside the honest scope of a trust layer,
+  ADR 0023).
+- **The structural-verifier limit (ADR 0005) carries through:** a field `verified=True`
+  means it is mechanically supported by its citation, not that the action is wise. The
+  approver still judges. ADR 0005 (LLM-judge) and 0006 (semantic routing) re-examined at
+  the action boundary and recorded **not forced**; no measured case forces either. The
+  M6/M7 online HANA numbers remain timestamped, not CI-reproducible; M12 added no online
+  number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates:
+**effectful execution behind approval** (the named M12 follow-through — a credentialed,
+reversible-where-possible actuator with the proposal as the gated precondition; the first
+time Tessera would *do* something, so the biggest posture decision) / a **dry-run
+executable-payload preview** (a smaller step toward execution — render the exact external
+API payload without sending it) / a **second real connector** (Jira / PR-and-issue export,
+a third drop-in proof) / **full HANA graph persistence** / **BTP serving** (container → AI
+Core / Kyma). The ER lever is spent (registry-only residual); ADR 0005/0006 triggers
+remain live and unacted.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #98–#103 merged. Tagged
+  `milestone-12`.
