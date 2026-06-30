@@ -1451,3 +1451,122 @@ remain live and unacted.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #98–#103 merged. Tagged
   `milestone-12`.
+
+---
+
+## 2026-06-30 — Milestone 13 COMPLETE (the dry-run executable-payload preview)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-06-30): **(1) thrust** — the dry-run
+executable-payload preview (over effectful execution / a second connector / HANA
+persistence / BTP serving); **(2) target** — GitHub (incident → create-issue,
+pr_summary → PR comment); **(3) posture** — deterministic / offline / CI-reproducible /
+no-spend (the M8–M12 posture). Five units, each spec → branch → implement → gate → PR →
+CI-green → squash-merge. Fully **offline / CI-reproducible** — the MCP SDK stays the
+opt-in `agent` extra.
+
+**The problem this milestone answers.** Through twelve milestones the trust substrate
+produced grounded **answers** (M11) and grounded **action drafts** (M12) — but stopped
+short of the wire: M12's `ActionProposal` records the edge in its own docstring, it
+"renders no executable payload." An agent that had to *act* still composed the wire
+request itself, ungrounded. ADR 0023 named the two deferred scopes — effectful execution
+and a dry-run payload preview — and declined both for M12. M13 takes the smaller,
+in-character one: render the **exact GitHub request** a grounded action would send, every
+value traced to a verifier-passing field, and **send nothing**. The same measured
+boundary pattern a third time (read → action draft → executable payload).
+
+**Done this session (5 units, PRs #104–#107 + this close)**
+- **Phase plan** (spec 0093, #104) + the three recorded scope decisions + the finer
+  decisions (both catalog kinds rendered; rendered iff `all_grounded`; grounded values
+  vs. declared scaffolding named honestly) + the design for ADR 0024.
+- **The GitHub payload renderer + ADR 0024** (spec 0094, #105): `tessera/agent/payloads.py`
+  (additive, *not* frozen core) — `render_payload(proposal)` / `preview_payload(action,
+  domain, question)` turn a verifier-checked `ActionProposal` into a `RenderedPayload`
+  (method, path, JSON body, traceable slots). Every content value is one verified field
+  (issue title, body sections, the `{pr}` resource id); everything else is declared
+  scaffolding (section labels, fences, fixed issue `labels`, unbound `{owner}`/`{repo}`),
+  never asserted grounded. Rendered iff `all_grounded` (refused / partial /
+  route-incompatible / wrong-domain / undeclared-role / no-title → **withheld**, no
+  request); `sent=False` / `requires_approval=True`. The wire request is
+  byte-reconstructable from the verified fields. Leak-guard extended.
+  **Carried its mandated pre-merge adversarial multi-agent review** (6 lenses, 12 agents,
+  every finding independently reproduced): **0 majors, 4 minors + 2 nits, all fixed
+  before merge** — (1) the `{pr}` segment took `support[0]` with no PR-record guard
+  (`removeprefix('PR:')` a silent no-op for a non-PR id) → select the first `PR:`-prefixed
+  record, require a clean single segment, else withhold; (2) the `pr_summary` subject was
+  read positionally (`fields[0]` is the lifted title, correct only by accident) → select
+  by role; (3) the subtractive anti-smuggle residue check had blind spots (path uncovered,
+  blanket fence-strip, first-occurrence removal, unmapped-label asymmetry) → replaced with
+  **independent positive reconstruction equality** over method+path+body+labels; (4) the
+  fixed `labels` overclaimed "every value traces to a verified field" → reworded
+  docstring/ADR/spec to "...or is declared scaffolding," vocabulary closed (an undeclared
+  field role is withheld, not given an invented heading). Each pinned by a regression test.
+- **MCP `preview_payload` tool** (spec 0095, #106): a thin sixth tool on `tessera-mcp`
+  delegating verbatim to the renderer (a test pins handler output == the layer's
+  `to_dict()`); the no-`mcp`-in-base pin holds; the committed `data/mcp_session/` session
+  now also previews a rendered create-issue, a rendered PR comment (path bound to the
+  traced `PR-201`), and a withheld payload — `sent=false` throughout.
+- **Trust across the payload boundary** (spec 0096, #107): `tests/test_payloads_boundary.py`,
+  a CI-gated property over data-derived cases (every failed run + every PR, 14 today): each
+  rendered payload is field-grounded + a **lossless** projection of its grounding (value,
+  support ids, *independently-recomputed* verdict per slot) + byte-reconstructable; and
+  **faithfulness is 1.0 across the payload boundary**; a withheld payload carries no
+  request. ADR 0005/0006 re-examined and recorded **still not forced**.
+- **Close** (spec 0097, this entry): the ADR 0008 **empty-diff frozen-core audit**
+  (`milestone-12..HEAD` over the engine + verifier **and** the vertical answer layers —
+  **empty**); WRITEUP M13 section + updated limitations/future-work + an 11th "what was
+  learned"; README (the preview tool, the corrected scope: payloads are *rendered* not
+  *sent*); CHANGELOG `[milestone-13]`; ADR 0024 nav + index (added in Unit 2); tag
+  `milestone-13`; memory; kickoff.
+
+**Current eval numbers (unchanged — the payload layer is a consumer, not a new path)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- **New, recorded and gated in CI: faithfulness is 1.0 *across the payload boundary*** over
+  every data-derived payload (`tests/test_payloads_boundary.py`), the projection lossless
+  and the wire request byte-reconstructable. Deterministic across `PYTHONHASHSEED`
+  0/1/42/2026; **404 tests pass** with the `agent` extra (in CI the SDK contract tests
+  skip).
+
+**Milestone check (spec 0093 success criterion):** an enterprise AI agent can ask Tessera
+over MCP to preview the exact GitHub request a grounded action would send and receive a
+byte-exact payload whose every value is field-grounded (or a carried withheld result),
+offline and in CI; every payload value traces to a verifier-passing field and the request
+is byte-reconstructable (measured); a payload is never rendered over ungrounded ground;
+nothing is sent; the default clone-and-run + CI stay pure-stdlib; **zero frozen-core
+delta**. **Met.** Tagged `milestone-13`.
+
+**Open questions / risks**
+- **Frozen core untouched** (ADR 0008): the empty-diff audit `milestone-12..HEAD` over the
+  engine + verifier **and** the business/devex answer layers is **empty**. The whole
+  milestone is the additive `tessera/agent/payloads.py` + the thin MCP tool + tests +
+  specs + the ADR + docs.
+- **The honest edge: render ≠ send, nothing executed.** Tessera guarantees the *request*
+  is grounded; it renders it but sends nothing, opens no socket, holds no credential
+  (`{owner}`/`{repo}` stay unbound). Effectful execution behind approval is the named next
+  step, deliberately out of scope (credentialed/irreversible; done honestly it would
+  *consume* this renderer — a simulated default actuator + opt-in real path + receipt).
+- **Synthetic-data note:** real GitHub PR comments address the numeric PR number; the
+  synthetic DevEx ids are `PR-NNN`, used verbatim as the grounded resource id in the
+  dry-run path. The shape and grounding are real; the resource id reflects our data.
+- **The structural-verifier limit (ADR 0005) carries through:** a slot `verified=True`
+  means its value is mechanically supported by its citation, not that sending the request
+  is wise. ADR 0005 (LLM-judge) and 0006 (semantic routing) re-examined at the payload
+  boundary and recorded **not forced**; no measured case forces either. The M6/M7 online
+  HANA numbers remain timestamped, not CI-reproducible; M13 added no online number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates: **effectful
+execution behind approval** (the named M13 follow-through — the first time Tessera would
+*do* something; the biggest posture decision; done honestly it consumes this renderer with
+a simulated default + opt-in real actuator + execution receipt) / a **second payload
+target** (Jira create-issue, proving the field-grounding contract generalizes across target
+schemas) / a **second real connector** (Jira / PR-and-issue export) / **full HANA graph
+persistence** / **BTP serving** (container → AI Core / Kyma). The ER lever is spent
+(registry-only residual); ADR 0005/0006 triggers remain live and unacted.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #104–#107 merged. Tagged
+  `milestone-13`.
