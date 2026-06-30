@@ -1,9 +1,12 @@
 """The MCP server — Tessera's grounded tools over the Model Context Protocol.
 
-A *thin transport* (ADR 0022): it serializes the read-only grounded-tool layer
-(:mod:`tessera.agent.grounded`) over MCP so an enterprise AI agent — Claude, or any
-MCP client — can call Tessera as its evidence oracle. It contains **no grounding
-logic**: every answer, verdict, and refusal comes from the Unit-3 layer.
+A *thin transport*: it serializes the grounded-tool layer
+(:mod:`tessera.agent.grounded`, ADR 0022) and the grounded-action layer
+(:mod:`tessera.agent.actions`, ADR 0023) over MCP so an enterprise AI agent — Claude,
+or any MCP client — can call Tessera as its evidence oracle *and* ask it to draft
+grounded, propose-and-approve actions. It contains **no grounding or drafting logic**:
+every answer, verdict, refusal, and drafted field comes from those layers, and nothing
+is executed — ``draft_action`` returns a proposal a human or agent approves.
 
 The MCP SDK is the opt-in ``agent`` extra (``uv sync --extra agent``), imported
 **lazily** only inside :func:`build_server` / :func:`main`. Importing this module —
@@ -19,6 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tessera.agent.actions import available_actions, draft_action
 from tessera.agent.grounded import assertions, available_domains, domain, ground
 
 if TYPE_CHECKING:
@@ -31,7 +35,11 @@ SERVER_INSTRUCTIONS = (
     "returned is live-verified against its cited evidence (a structural faithfulness "
     "check); a refusal is explicit and must never be treated as an answer. Call "
     "list_domains to see what you can ask about, ground to get a verified answer with "
-    "provenance, and assertions to inspect why two records were linked."
+    "provenance, and assertions to inspect why two records were linked. To act on an "
+    "answer, call list_actions to see the draftable actions and draft_action to get a "
+    "grounded, cited PROPOSAL whose every field is verifier-checked — propose-and-"
+    "approve only: Tessera drafts, a human or agent approves and acts; nothing is "
+    "executed."
 )
 
 
@@ -61,6 +69,18 @@ def tool_assertions(domain_name: str, record_id: str) -> dict[str, object]:
     }
 
 
+def tool_list_actions() -> dict[str, object]:
+    """The actions an agent can draft, each with the domains and route it draws from."""
+    return {"actions": available_actions()}
+
+
+def tool_draft_action(action: str, domain: str, question: str) -> dict[str, object]:
+    """Draft a grounded, field-verified, propose-and-approve action — or carry a
+    refusal — for ``question`` in ``domain``. Holds no logic: it delegates verbatim
+    to the Unit-3 grounded-action layer."""
+    return draft_action(action, domain, question).to_dict()
+
+
 # --- the MCP wiring (lazily imports the SDK) ----------------------------------
 
 _GROUND_DESC = (
@@ -82,14 +102,31 @@ _LIST_DOMAINS_DESC = (
     "List the Tessera domains you can ground a question in, each with a description "
     "of what it covers. Call this first to choose a domain for ground()."
 )
+_LIST_ACTIONS_DESC = (
+    "List the actions you can draft from a grounded answer, each with the domains and "
+    "the route (e.g. an RCA, a change-summary) it draws from. Call this to choose an "
+    "action for draft_action()."
+)
+_DRAFT_ACTION_DESC = (
+    "Draft a grounded, cited action PROPOSAL from an answer — never an executed "
+    "action. Tessera grounds the question, then maps the verified claims into "
+    "role-labeled fields, each carrying its provenance and a 'verified' verdict (the "
+    "same structural faithfulness check the eval gates on); 'all_grounded' is true "
+    "only when every field is verifier-passing. If the grounding refused or routed "
+    "incompatibly (e.g. asking for an incident from a PR question), 'refused' is true "
+    "with a reason and 'fields' is empty — a refusal is never drafted into an action. "
+    "'requires_approval' is always true and 'executed' always false: propose-and-"
+    "approve, a human or agent approves and acts outside Tessera. Args: action (one of "
+    "list_actions), domain, question."
+)
 
 
 def build_server() -> FastMCP:
-    """Build the MCP server exposing Tessera's read-only grounded tools.
+    """Build the MCP server exposing Tessera's grounded tools and action drafters.
 
     Lazily imports the MCP SDK (the opt-in ``agent`` extra), so the default import
     graph stays SDK-free. Registers the MCP-free handlers above as MCP tools; the
-    server holds no grounding logic.
+    server holds no grounding or drafting logic.
     """
     from mcp.server.fastmcp import FastMCP
 
@@ -106,6 +143,14 @@ def build_server() -> FastMCP:
     @server.tool(name="assertions", description=_ASSERTIONS_DESC)
     def _assertions(domain: str, record_id: str) -> dict[str, object]:
         return tool_assertions(domain, record_id)
+
+    @server.tool(name="list_actions", description=_LIST_ACTIONS_DESC)
+    def _list_actions() -> dict[str, object]:
+        return tool_list_actions()
+
+    @server.tool(name="draft_action", description=_DRAFT_ACTION_DESC)
+    def _draft_action(action: str, domain: str, question: str) -> dict[str, object]:
+        return tool_draft_action(action, domain, question)
 
     return server
 

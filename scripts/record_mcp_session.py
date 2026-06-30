@@ -1,9 +1,10 @@
 """Record a real MCP client <-> server session against ``tessera-mcp``.
 
-The "ran on" honesty for Milestone 11 (spec 0084): this spawns the Tessera MCP
-server as a subprocess and drives it with a *real* MCP client over stdio — listing
-tools, grounding a question in each domain, taking a principled refusal, and
-inspecting an entity-resolution trail — then writes the exchange to
+The "ran on" honesty for Milestones 11 and 12 (specs 0084, 0090): this spawns the
+Tessera MCP server as a subprocess and drives it with a *real* MCP client over stdio —
+listing tools, grounding a question in each domain, taking a principled refusal,
+inspecting an entity-resolution trail, and **drafting propose-and-approve actions** (an
+incident, a PR summary, and a carried refusal) — then writes the exchange to
 ``data/mcp_session/`` as a committed artifact (the no-spend analogue of the
 Milestone-5 GitHub-Actions snapshot).
 
@@ -58,10 +59,66 @@ CALLS: list[tuple[str, dict[str, str], str]] = [
     ),
 ]
 
+# The grounded-ACTION calls (Milestone 12, spec 0090): (arguments, why). Each drafts a
+# propose-and-approve proposal from a verified grounding — or carries a refusal.
+ACTION_CALLS: list[tuple[dict[str, str], str]] = [
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "Why did run R-1042 fail, and has this happened before?",
+        },
+        "an incident drafted from a DevEx RCA — every field grounded and verified",
+    ),
+    (
+        {
+            "action": "pr_summary",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a PR summary drafted from a change analysis",
+    ),
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a carried refusal — an incident asked from a PR question (incompatible route)",
+    ),
+]
+
 
 def _truncate(text: str, limit: int = 160) -> str:
     text = text.replace("\n", " ").strip()
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _render_action_catalog(result: dict[str, Any]) -> list[str]:
+    return [
+        f"  • {a['name']} (from {a['from_route']}; "
+        f"domains {', '.join(a['domains'])}): {_truncate(a['description'], 110)}"
+        for a in result["actions"]
+    ]
+
+
+def _render_action(result: dict[str, Any]) -> list[str]:
+    lines = [
+        f"  kind: {result['kind']}  route: {result['route']['kind']} — "
+        f"{result['route']['reason']}",
+        f"  grounded: {result['grounded']}  all_grounded: {result['all_grounded']}  "
+        f"requires_approval: {result['requires_approval']}  "
+        f"executed: {result['executed']}",
+    ]
+    if result["refused"]:
+        lines.append(f"  refusal: {result['refusal']}")
+        return lines
+    for field in result["fields"]:
+        lines.append(
+            f"  field [verified={field['verified']}] {field['name']}: "
+            f"{_truncate(field['value'], 100)}"
+        )
+    return lines
 
 
 def _render_result(result: dict[str, Any]) -> list[str]:
@@ -127,6 +184,26 @@ async def _run() -> dict[str, Any]:
                 "result": res.structuredContent,
             }
         )
+        # The grounded-action tools (Milestone 12): discover the catalog, then draft.
+        listed_actions = await session.call_tool("list_actions", {})
+        exchange.append(
+            {
+                "tool": "list_actions",
+                "arguments": {},
+                "why": "the declared action catalog an agent can draft from",
+                "result": listed_actions.structuredContent,
+            }
+        )
+        for args, why in ACTION_CALLS:
+            res = await session.call_tool("draft_action", args)
+            exchange.append(
+                {
+                    "tool": "draft_action",
+                    "arguments": args,
+                    "why": why,
+                    "result": res.structuredContent,
+                }
+            )
         captured["exchange"] = exchange
     return captured
 
@@ -141,7 +218,8 @@ def _write_transcript(captured: dict[str, Any]) -> None:
         "# Tessera MCP session — a real client ↔ server exchange",
         "",
         "Captured by `uv run --extra agent python scripts/record_mcp_session.py`: a",
-        "real MCP client driving the `tessera-mcp` server over stdio (spec 0084). Not",
+        "real MCP client driving the `tessera-mcp` server over stdio (specs 0084,",
+        "0090). Not",
         "run in CI (no MCP SDK); the structured tool results are deterministic.",
         "",
         f"**Server:** `{captured['server']['name']}` "
@@ -167,6 +245,10 @@ def _write_transcript(captured: dict[str, Any]) -> None:
                     f"  • {a['kind']} {a['a']} ↔ {a['b']} "
                     f"(confidence {a['confidence']}): {_truncate(a['reason'], 120)}"
                 )
+        elif step["tool"] == "list_actions":
+            md.extend(_render_action_catalog(step["result"]))
+        elif step["tool"] == "draft_action":
+            md.extend(_render_action(step["result"]))
         else:
             md.extend(_render_result(step["result"]))
     md.append("")

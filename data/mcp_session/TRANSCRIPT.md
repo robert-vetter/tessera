@@ -1,7 +1,8 @@
 # Tessera MCP session — a real client ↔ server exchange
 
 Captured by `uv run --extra agent python scripts/record_mcp_session.py`: a
-real MCP client driving the `tessera-mcp` server over stdio (spec 0084). Not
+real MCP client driving the `tessera-mcp` server over stdio (specs 0084,
+0090). Not
 run in CI (no MCP SDK); the structured tool results are deterministic.
 
 **Server:** `tessera` v`1.28.1`
@@ -11,6 +12,8 @@ run in CI (no MCP SDK); the structured tool results are deterministic.
 - **`list_domains`** — List the Tessera domains you can ground a question in, each with a description of what it covers. Call this first to choose a domain for ground().
 - **`ground`** — Answer a question over a Tessera domain and return grounded, cited claims — or a principled refusal. Each claim carries its full provenance inline (the cited record id, source, locator, and text) and…
 - **`assertions`** — Inspect the entity-resolution provenance touching a cited record: the additive, reversible resolution/mention assertions (with their reason and confidence) that say why two records were linked as the…
+- **`list_actions`** — List the actions you can draft from a grounded answer, each with the domains and the route (e.g. an RCA, a change-summary) it draws from. Call this to choose an action for draft_action().
+- **`draft_action`** — Draft a grounded, cited action PROPOSAL from an answer — never an executed action. Tessera grounds the question, then maps the verified claims into role-labeled fields, each carrying its provenance a…
 
 ## The exchange
 
@@ -106,3 +109,44 @@ _the entity-resolution trail behind a cited record_
   • mention mueller_logistik_amendment:chunk1 ↔ I_AddrOrgNamePostalAddress:A0007 (confidence 1.0): document text contains 'muellerlogistikgmbh'
   • mention mueller_logistik_amendment:chunk4 ↔ I_AddrOrgNamePostalAddress:A0007 (confidence 1.0): document text contains 'muellerlogistikgmbh'
   • mention mueller_logistik_msa:chunk1 ↔ I_AddrOrgNamePostalAddress:A0007 (confidence 1.0): document text contains 'muellerlogistikgmbh'
+
+### → `list_actions` {}
+_the declared action catalog an agent can draft from_
+
+  • incident (from rca; domains devex, github_actions): Draft an incident report from a failed pipeline run's root-cause analysis: the failing run, the error log lin…
+  • pr_summary (from summary; domains devex): Draft a pull-request summary from a change analysis: the PR metadata, the diff hunks themselves, and the moti…
+
+### → `draft_action` {"action": "incident", "domain": "devex", "question": "Why did run R-1042 fail, and has this happened before?"}
+_an incident drafted from a DevEx RCA — every field grounded and verified_
+
+  kind: incident  route: rca — names pipeline run R-1042 — root-cause analysis
+  grounded: True  all_grounded: True  requires_approval: True  executed: False
+  field [verified=True] title: TimeoutError: connection to payments-db timed out after 30s
+  field [verified=True] failing_run: Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, br…
+  field [verified=True] log: --- job: integration-tests --- 14:09 INFO  starting payments-service integration suite 14:09 ERROR …
+  field [verified=True] prior_occurrence: Recurring failure: "TimeoutError: connection to payments-db timed out after 30s" appears in 'devex_…
+  field [verified=True] documented_incident: Documented incident: "TimeoutError: connection to payments-db timed out after 30s" appears in 'deve…
+  field [verified=True] referenced_ticket: Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: "Payments CI failing: database connect…
+  field [verified=True] resolving_change: Resolved by: "DEVEX-187" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.
+  field [verified=True] referenced_pull_request: PR PR-198: "Raise payments-db pool timeout" by dana.petrov, branch fix/db-pool-timeout, merged comm…
+  field [verified=True] code_change: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -18,7 +18,7 @@ class Payments…
+
+### → `draft_action` {"action": "pr_summary", "domain": "devex", "question": "What does PR-201 change?"}
+_a PR summary drafted from a change analysis_
+
+  kind: pr_summary  route: summary — names pull request PR-201 — change summary
+  grounded: True  all_grounded: True  requires_approval: True  executed: False
+  field [verified=True] title: Add retry with backoff to payments-db client
+  field [verified=True] pull_request: PR PR-201: "Add retry with backoff to payments-db client" by dana.petrov, branch feat/db-retry, mer…
+  field [verified=True] code_change: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -18,7 +18,13 @@ class Payment…
+  field [verified=True] code_change: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -44,4 +50,5 @@ class Payments…
+  field [verified=True] code_change: diff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.py @@ -30,3 +30,10 @@…
+  field [verified=True] motivating_ticket: Motivating ticket: "DEVEX-204" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.cs…
+  field [verified=True] referenced_ticket: Ticket DEVEX-204 (task, in progress) for component SVC-PAY: "Harden payments-db client against slow…
+
+### → `draft_action` {"action": "incident", "domain": "devex", "question": "What does PR-201 change?"}
+_a carried refusal — an incident asked from a PR question (incompatible route)_
+
+  kind: incident  route: summary — names pull request PR-201 — change summary
+  grounded: False  all_grounded: False  requires_approval: True  executed: False
+  refusal: cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').
