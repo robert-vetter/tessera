@@ -13,6 +13,53 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-13] — 2026-06-30
+
+Carry the trust contract one boundary further — from the **action draft** (M12) to the
+**executable payload**. An enterprise agent can ask Tessera over MCP to **render the
+exact GitHub request** a grounded action would send (a create-issue for an `incident`, a
+PR comment for a `pr_summary`) — with every value traced to a verifier-passing field —
+and Tessera **sends nothing**. Fully **deterministic, offline, CI-reproducible** (the
+M8–M12 posture); faithfulness gated at 1.0 throughout, now also **across the payload
+boundary**. **Zero frozen-core delta** — the renderer is additive.
+
+### Added
+
+- **The dry-run payload renderer (ADR 0024).** `tessera/agent/payloads.py`:
+  `render_payload(proposal)` / `preview_payload(action, domain, question)` turn a
+  verifier-checked `ActionProposal` into a `RenderedPayload` — the exact GitHub wire
+  request (method, path, JSON body). Every content value is one verified `ActionField`
+  (the issue title, each body section, the `{pr}` resource id); everything else is
+  declared scaffolding (section labels, code fences, the fixed issue labels, the unbound
+  `{owner}`/`{repo}`), never asserted grounded.
+- **MCP `preview_payload` tool (spec 0095).** A thin sixth tool on `tessera-mcp`
+  serializing the renderer verbatim; the committed `data/mcp_session/` session now also
+  previews a rendered create-issue, a rendered PR comment, and a withheld payload.
+- **Trust across the payload boundary (spec 0096).** `tests/test_payloads_boundary.py`,
+  a CI-gated property over data-derived cases: every rendered payload is field-grounded,
+  lossless, and byte-reconstructable from the verified fields; **faithfulness is 1.0
+  across the payload boundary**; a withheld payload carries no request.
+
+### Trust properties
+
+- **Rendered iff `all_grounded`.** A refused / partially-verified / route-incompatible /
+  wrong-domain / undeclared-role proposal is **withheld** — no request is ever rendered
+  over ungrounded ground (the payload analogue of "a refusal never becomes an answer").
+- **render ≠ send.** `sent=False`, `requires_approval=True`; no transport, socket, or
+  credential. A human or agent binds `{owner}`/`{repo}` and sends, outside Tessera —
+  the honest edge. Effectful execution remains the named next step (ADR 0024).
+- **Added-nothing, provably failable.** The wire request is byte-reconstructable from
+  the verified fields plus the declared scaffolding; the anti-smuggle check is an
+  independent reconstruction (a token smuggled into body, labels, or path fails it).
+
+### Process
+
+- The renderer carried its **mandated pre-merge adversarial multi-agent review** (6
+  lenses × 12 agents, every finding reproduced): 0 majors, 4 minors + 2 nits, all fixed
+  and pinned before merge — chiefly the `{pr}` resource hardening (select the PR record,
+  require a clean segment, else withhold), selecting the subject by role, and replacing
+  the subtractive anti-smuggle heuristic with independent reconstruction equality.
+
 ## [milestone-12] — 2026-06-30
 
 Extend the trust substrate from **answers to actions**: an enterprise agent can ask

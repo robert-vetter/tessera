@@ -520,6 +520,66 @@ overclaim, both pinned. The frozen core (`grounding`/`graph`/`resolution`/`inges
 verifier) is **empty-diff** `milestone-11..HEAD`; the only existing-code change is the
 vertical-side router fix.
 
+### Milestone 13: the dry-run payload preview — the trust contract reaches the wire
+
+Milestone 12 produced a verifier-checked action *draft* but stopped one step short of the
+wire: an `ActionProposal` records the edge in its own docstring — it "renders no executable
+payload." An agent that had to actually act still composed the wire request itself,
+ungrounded. Milestone 13 takes the *smaller, in-character* of ADR 0023's two deferred
+scopes (the maintainer's posture unchanged: deterministic, offline, CI-reproducible, no
+spend): it renders the **exact GitHub request** a grounded action would send — and sends
+nothing. The same measured boundary pattern a third time: read (M11) → action draft (M12)
+→ **executable payload** (M13).
+
+A `RenderedPayload` (`tessera/agent/payloads.py`, additive — not frozen core) is built
+*strictly* from a verifier-checked `ActionProposal` (the M12 boundary): the renderer never
+reads raw text, never grounds or drafts a second way, never invents content. A declared,
+one-system GitHub catalog maps each action kind to an endpoint — `incident` →
+`POST /repos/{owner}/{repo}/issues`, `pr_summary` →
+`POST /repos/{owner}/{repo}/issues/{pr}/comments`. Three properties make it a trust
+*extension*, not a write surface (ADR 0024):
+
+- **Every content value is one verified field; the rest is declared scaffolding.** The
+  issue `title` is the proposal's verified title field; each body section is one verified
+  `ActionField` under a fixed label; the `{pr}` segment is the subject's own cited
+  pull-request record id. Everything else — the section headings, code fences, the fixed
+  issue `labels`, the unbound `{owner}`/`{repo}` — is template scaffolding, never asserted
+  grounded. The whole request is **byte-reconstructable** from the verified fields plus that
+  scaffolding, so a token smuggled anywhere (body, labels, or path) fails an independent
+  rebuild — the provably-failable "added-nothing" check.
+- **Rendered iff `all_grounded`; otherwise withheld.** A refused, partially-verified,
+  route-incompatible, wrong-domain, or undeclared-role proposal — or an `incident` with no
+  grounded title — yields a withheld result with no request. The payload-level analogue of
+  "a refusal never becomes an answer."
+- **Render ≠ send; nothing executed.** The result declares `sent=False` /
+  `requires_approval=True`; Tessera builds no transport, opens no socket, holds no
+  credential. A human or agent binds the target and sends, *outside* Tessera — the honest
+  edge, named here and in the limitations.
+
+The MCP server gains one thin tool, `preview_payload`, that only serializes this layer; the
+committed client ↔ server session now also previews a rendered create-issue, a rendered PR
+comment, and a withheld payload (`data/mcp_session/`). The headline is *measured*
+(`tests/test_payloads_boundary.py`, a CI-gated property over cases **derived from the
+data** — every failed run, every PR): each rendered payload is field-grounded, a **lossless**
+projection of its grounding, and byte-reconstructable from the verified fields, and
+**faithfulness is 1.0 across the payload boundary**. Faithfulness stays the single hard
+floor; the payload property is pinned, not a new gated metric. ADR 0005/0006 were
+re-examined at this boundary and recorded *still not forced*.
+
+The trust-bearing renderer carried its **mandated pre-merge adversarial multi-agent
+review** (six lenses, twelve agents, every finding independently reproduced) before merge:
+0 majors, but four minors and two nits worth fixing — chiefly that the `{pr}` segment was
+taken from `support[0]` with no guard it was a PR record (and the subject was read by
+position, correct only by accident), and that the first anti-smuggle check was a subtractive
+heuristic with blind spots (the path was uncovered; backticks were stripped unconditionally).
+All were fixed and pinned: the resource is now the subject's first `PR:`-prefixed record
+(a clean segment, or the payload is withheld), the subject is selected by role, the label
+vocabulary is closed (an undeclared role is withheld, not given an invented heading), and
+the added-nothing check became an *independent positive reconstruction* over method, path,
+body, and labels. The frozen core (`grounding`/`graph`/`resolution`/`ingestion`/the
+verifier) and the vertical answer layers are **empty-diff** `milestone-12..HEAD`; the whole
+milestone is additive.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -625,16 +685,20 @@ Named with the same prominence as the results:
 - **Conversation is stateless.** Each question is answered from evidence
   alone; follow-ups ("and what about its renewal terms?") need the entity
   repeated.
-- **The agent boundary proposes; it does not execute.** Milestones 11–12 expose Tessera
-  to an AI agent over MCP: read-only grounded *answers* (ADR 0022) and now grounded
-  *action drafts* — propose-and-approve `incident`/`pr_summary` proposals whose every
-  field is verifier-checked, with a refusal carried rather than drafted over (ADR 0023).
-  Both boundaries preserve faithfulness exactly (measured: `tests/test_boundary.py`,
-  `tests/test_actions_boundary.py`). But Tessera still **executes nothing** — it drafts a
-  proposal a human or agent approves and acts on *outside* Tessera; effectful execution and
-  dry-run payload previews are deliberately out of scope (the honest edge of a trust layer,
-  ADR 0023). The agent calls the production **router**, which Milestone 12 aligned with
-  `compose` on the one bare-ambiguous-term divergence (`"Logistik"`) Milestone 11 recorded.
+- **The agent boundary proposes and renders; it does not execute or send.** Milestones
+  11–13 expose Tessera to an AI agent over MCP: read-only grounded *answers* (ADR 0022),
+  grounded *action drafts* — propose-and-approve `incident`/`pr_summary` proposals whose
+  every field is verifier-checked, with a refusal carried rather than drafted over (ADR
+  0023) — and a *dry-run payload preview*: the exact GitHub request a drafted action would
+  send, every value traced to a verified field, rendered only when fully grounded (ADR
+  0024). All three boundaries preserve faithfulness exactly (measured:
+  `tests/test_boundary.py`, `tests/test_actions_boundary.py`,
+  `tests/test_payloads_boundary.py`). But Tessera still **executes nothing and sends
+  nothing** — it renders a request whose `{owner}`/`{repo}` stay unbound, which a human or
+  agent approves and sends *outside* Tessera; effectful execution is deliberately out of
+  scope (the honest edge of a trust layer, ADR 0024). The agent calls the production
+  **router**, which Milestone 12 aligned with `compose` on the one bare-ambiguous-term
+  divergence (`"Logistik"`) Milestone 11 recorded.
 
 ## Deliberately deferred (future work, not gaps missed)
 
@@ -644,13 +708,16 @@ next) · ER is now multi-field down to an exact key (name + address, ADR 0019; t
 **registration key** `VATRegistration`, ADR 0020), leaving only the registry-only
 floor — two distinct firms identical in name, address *and* key, which only an
 external registry or human adjudication separates · an **agentic / MCP-exposed mode now
-exists** for read-only grounded answers (Milestone 11, ADR 0022) *and* for
-propose-and-approve, field-verified **action drafts** (Milestone 12, ADR 0023) — the
-remaining extension is **effectful execution behind approval** (and a dry-run
-executable-payload preview), deliberately out of scope today because executing is
-credentialed and irreversible, outside the honest scope of a trust layer · LLM-judged
-faithfulness alongside the deterministic floor · persistence, multi-tenancy, access
-governance.
+exists** for read-only grounded answers (Milestone 11, ADR 0022), propose-and-approve,
+field-verified **action drafts** (Milestone 12, ADR 0023), *and* a **dry-run
+executable-payload preview** that renders the exact GitHub request but sends nothing
+(Milestone 13, ADR 0024) — the one remaining extension is **effectful execution behind
+approval**, deliberately out of scope today because executing is credentialed and
+irreversible, outside the honest scope of a trust layer (done honestly it would *consume*
+this renderer — a simulated default actuator plus an opt-in real path and an execution
+receipt) · a second real connector (Jira / PR-and-issue export) and a second payload
+target · LLM-judged faithfulness alongside the deterministic floor · persistence,
+multi-tenancy, access governance.
 
 ## What was learned
 
@@ -710,6 +777,18 @@ governance.
     catching the field check comparing a value against *concatenated* evidence — a
     seam-spanning token weaker than the engine's own per-record verifier. A capability
     defined by its guarantees is safer than one defined by its features (ADR 0023).
+11. **The strongest claim a trust layer can make about action is "here is exactly what
+    would leave the system, and all of it is grounded" — without it leaving.** Milestone
+    13 rendered the exact GitHub request but sent nothing, which kept the whole milestone
+    deterministic and CI-reproducible while still advancing the frontier toward acting.
+    The work was the *negative space*: a payload is rendered only when fully grounded, the
+    body must byte-reconstruct from the verified fields (so nothing can be smuggled in),
+    and the target binding stays unbound because where to file is a deployment choice, not
+    evidence. The adversarial review earned its keep again — the first anti-smuggle check
+    was a subtractive heuristic with blind spots (the path went unchecked; a malformed
+    record id could address the wrong resource), and the fix was to replace "strip what I
+    recognize" with "rebuild independently and compare." Verifying a thing by reconstructing
+    it beats verifying it by subtracting what you expect (ADR 0024).
 
 ## Reproduce everything
 
