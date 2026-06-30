@@ -463,6 +463,63 @@ competing with it in BM25, ADR 0021), which retired the Milestone-10 retrieval
 fragility and let its renewal test return to a strict assertion. The verifier
 (`eval/metrics.py`) is empty-diff; the leak-guard, extended to the new layer, holds.
 
+### Milestone 12: grounded actions over MCP — the trust substrate covers actions, not just answers
+
+Milestone 11 made Tessera an agent's evidence oracle but stopped at *answers*; an agent
+that had to *act* — file the incident an RCA describes, draft the summary of a PR —
+composed that action itself, ungrounded, outside Tessera's guarantee. Milestone 12 takes
+the named next step (the maintainer's posture unchanged: deterministic, offline,
+CI-reproducible, no spend): it extends the same trust substrate to the **action draft**.
+
+An `ActionProposal` (`tessera/agent/actions.py`, additive — not frozen core) is built
+*strictly* from a verifier-checked `GroundedResult` (the Milestone-11 boundary): the
+drafter never reads raw text, never grounds a second way, never invents content. A small
+declared catalog — `incident` (from a failed run's RCA) and `pr_summary` (from a change
+analysis) — maps the grounding's claims into role-labeled fields. Three properties make it
+a trust *extension*, not a new write surface (ADR 0023):
+
+- **Every field traces to a verifier-passing claim, re-checked.** A field's value is a
+  grounded claim's verbatim text or a verbatim *fragment* of that claim's own cited
+  evidence (a title lifted from an error-signature line); `verified` is recomputed here as
+  *(the source claim passed `is_supported`)* **and** *(the value is faithful — identical
+  text, or a per-record normalized-containment fragment, mirroring the engine's own
+  verifier exactly)*. A field that introduced one unsupported token reads `verified=False`,
+  so `all_grounded` is **earned, not tautological** — a unit test injects an unfaithful
+  field and asserts the verdict drops (the ADR 0005 discipline, at the action level).
+- **A refusal — or an incompatible grounding — is carried, never drafted over.** An RCA on
+  a run that *passed*, an unknown run, an out-of-scope question, an `incident` asked from a
+  PR question, a wrong domain: each yields a carried refusal with no fields. The
+  action-level analogue of "a refusal never becomes an answer."
+- **Propose-and-approve only.** The proposal declares `requires_approval=True` /
+  `executed=False`; Tessera writes nothing, calls no external system, renders no executable
+  payload. A human or agent approves and acts *outside* Tessera — the honest edge, named
+  here and in the limitations.
+
+The MCP server gains two thin tools, `list_actions` and `draft_action`, that only
+serialize this layer (the SDK stays the opt-in `agent` extra; the no-`mcp`-in-base-graph
+pin holds). The "ran on" artifact is extended: the committed client ↔ server session now
+also drafts an incident and a PR summary and carries a refusal (`data/mcp_session/`). The
+headline is *measured* (`tests/test_actions_boundary.py`, a CI-gated property over cases
+**derived from the data** — every failed run, every PR): each drafted action is
+field-grounded and a **lossless** projection of its grounding (same value, support, and
+verdict per field), and **faithfulness is 1.0 across the action boundary**. Faithfulness
+stays the single hard floor; field-grounding is pinned, not a new gated metric. ADR
+0005/0006 were re-examined at this boundary and recorded *still not forced* — the
+structural verifier sufficed and drafting is deterministic selection, not LLM generation.
+
+Two smaller things landed with it. The router-ambiguity divergence Milestone 11 had
+recorded was closed deterministically (Unit 2): the business router now defers a bare
+ambiguous term (`"Logistik"`, which ties across two distinct entities under `compose`'s own
+resolver) to the refusing compose path, so the `business/05` pin came out of
+`tests/test_boundary.py` and no battery number moved. And the trust-bearing core (the
+drafter) carried a **pre-merge adversarial multi-agent review** (six lenses, every finding
+independently reproduced) before merge: it caught and fixed a real soundness gap — the
+field check had compared the value against a *concatenation* of all cited records, one
+seam-spanning token weaker than the engine's per-record `is_supported` — plus a docstring
+overclaim, both pinned. The frozen core (`grounding`/`graph`/`resolution`/`ingestion`/the
+verifier) is **empty-diff** `milestone-11..HEAD`; the only existing-code change is the
+vertical-side router fix.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -568,15 +625,16 @@ Named with the same prominence as the results:
 - **Conversation is stateless.** Each question is answered from evidence
   alone; follow-ups ("and what about its renewal terms?") need the entity
   repeated.
-- **The agent boundary is read-only, and the agent calls the router.** Milestone 11
-  exposes Tessera to an AI agent over MCP as read-only grounded tools (ADR 0022) —
-  it grounds, cites, and refuses; it does not act or *propose* actions (effectful and
-  proposing tools are deferred). The boundary preserves faithfulness exactly
-  (measured, `tests/test_boundary.py`), but the agent calls the production **router**,
-  not the eval's per-case engine dispatch, and the two diverge on a bare ambiguous
-  term: `"Logistik"` is answered with lexical matches where `compose` refuses as
-  ambiguous. A pre-existing router gap (the chat surface shares it), recorded as the
-  next lever; faithfulness is unaffected (the answer is faithful to its citations).
+- **The agent boundary proposes; it does not execute.** Milestones 11–12 expose Tessera
+  to an AI agent over MCP: read-only grounded *answers* (ADR 0022) and now grounded
+  *action drafts* — propose-and-approve `incident`/`pr_summary` proposals whose every
+  field is verifier-checked, with a refusal carried rather than drafted over (ADR 0023).
+  Both boundaries preserve faithfulness exactly (measured: `tests/test_boundary.py`,
+  `tests/test_actions_boundary.py`). But Tessera still **executes nothing** — it drafts a
+  proposal a human or agent approves and acts on *outside* Tessera; effectful execution and
+  dry-run payload previews are deliberately out of scope (the honest edge of a trust layer,
+  ADR 0023). The agent calls the production **router**, which Milestone 12 aligned with
+  `compose` on the one bare-ambiguous-term divergence (`"Logistik"`) Milestone 11 recorded.
 
 ## Deliberately deferred (future work, not gaps missed)
 
@@ -585,12 +643,12 @@ synthetic corpora were drop-in shaped; a Jira/PR-and-issue export is the obvious
 next) · ER is now multi-field down to an exact key (name + address, ADR 0019; the
 **registration key** `VATRegistration`, ADR 0020), leaving only the registry-only
 floor — two distinct firms identical in name, address *and* key, which only an
-external registry or human adjudication separates · an **agentic / MCP-exposed mode
-now exists** for read-only grounded answers (Milestone 11, ADR 0022) — the remaining
-extension is **grounded *actions*** (effectful, or propose-and-approve tools, each
-grounded, cited, and verifier-checked the same way) · **aligning the router's
-ambiguity handling with `compose`** (the agent path answers the bare term `"Logistik"`
-where `compose` refuses — measured in `tests/test_boundary.py`) · LLM-judged
+external registry or human adjudication separates · an **agentic / MCP-exposed mode now
+exists** for read-only grounded answers (Milestone 11, ADR 0022) *and* for
+propose-and-approve, field-verified **action drafts** (Milestone 12, ADR 0023) — the
+remaining extension is **effectful execution behind approval** (and a dry-run
+executable-payload preview), deliberately out of scope today because executing is
+credentialed and irreversible, outside the honest scope of a trust layer · LLM-judged
 faithfulness alongside the deterministic floor · persistence, multi-tenancy, access
 governance.
 
@@ -642,6 +700,16 @@ governance.
    the eval's engine dispatch disagree. Building the surface was easy; proving it
    preserved the contract, and naming where the agent path is weaker than the engine,
    was the work worth keeping.
+10. **Extending the trust contract to actions is mostly about what you refuse to add.**
+    The grounded-action layer (Milestone 12) was small because it *consumes* the verified
+    grounding and is forbidden to do anything else — no second grounding, no prose
+    synthesis, no field whose value isn't a verbatim claim or evidence fragment, nothing
+    executed. The work that mattered was proving the negatives: a per-field verdict that is
+    provably failable, a refusal that is carried not drafted over, faithfulness measured
+    1.0 across the new boundary. The pre-merge adversarial review earned its keep by
+    catching the field check comparing a value against *concatenated* evidence — a
+    seam-spanning token weaker than the engine's own per-record verifier. A capability
+    defined by its guarantees is safer than one defined by its features (ADR 0023).
 
 ## Reproduce everything
 

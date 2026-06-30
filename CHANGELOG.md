@@ -13,6 +13,59 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-12] — 2026-06-30
+
+Extend the trust substrate from **answers to actions**: an enterprise agent can ask
+Tessera over MCP to **draft an action** — an `incident` from a root-cause analysis, a
+`pr_summary` from a change — and receive a grounded, cited, **field-verified
+propose-and-approve proposal**, or a carried refusal. Tessera drafts and verifies;
+nothing is executed. Fully **deterministic, offline, CI-reproducible** (the M8–M11
+posture); faithfulness gated at 1.0 throughout, now also **across the action boundary**.
+**Zero frozen-core delta** — the action layer is additive.
+
+### Added
+
+- **The grounded-action layer (ADR 0023).** `tessera/agent/actions.py`:
+  `draft_action(kind, domain, question)` builds an `ActionProposal` strictly from a
+  verifier-checked `GroundedResult` (the Milestone-11 boundary). Each `ActionField` carries
+  a role, a grounded value (a claim's verbatim text or a verbatim fragment of its cited
+  evidence), the inline provenance, and a **recomputed `verified` verdict** — the source
+  claim must have passed `is_supported` *and* the value be faithful (per-record normalized
+  containment, mirroring the engine's verifier). `all_grounded` is true only when every
+  field passes — earned, not tautological (a provably-failable test injects an unsupported
+  token and asserts the verdict drops). A small declared catalog: `incident` (from a devex
+  or github_actions RCA), `pr_summary` (from a devex change). A refused, route-incompatible,
+  or wrong-domain grounding is **carried as a refusal with no fields** — never drafted over.
+  Propose-and-approve: `requires_approval=True`, `executed=False`; nothing is executed.
+- **MCP action tools (spec 0090).** `tessera-mcp` gains thin `list_actions` and
+  `draft_action` tools that only serialize the layer (no drafting logic on the server); the
+  SDK stays the opt-in `agent` extra and the no-`mcp`-in-base-graph pin holds. The committed
+  `data/mcp_session/` client↔server session now also drafts an incident, a PR summary, and
+  carries a refusal.
+- **Trust across the action boundary (spec 0091).** `tests/test_actions_boundary.py`, a
+  CI-gated property over cases **derived from the data** (every failed run, every PR): each
+  drafted action is field-grounded and a **lossless** projection of its grounding (same
+  value, support, and verdict per field), and **faithfulness is 1.0 across the action
+  boundary**. ADR 0005/0006 re-examined at the boundary and recorded still not forced.
+
+### Changed
+
+- **Router-ambiguity alignment (spec 0088).** The business router now defers a bare
+  ambiguous entity term (`"Logistik"`, which ties across two distinct entities under
+  `compose`'s own resolver) to the refusing `compose` path, closing the Milestone-11
+  router-vs-engine divergence; the `business/05` pin was removed from
+  `tests/test_boundary.py` and no battery number moved.
+
+### Trust / process
+
+- A **pre-merge adversarial multi-agent review** of the grounded-action layer (six lenses,
+  every finding independently reproduced) caught and fixed a real soundness gap — the field
+  check compared the value against *concatenated* evidence, one seam-spanning token weaker
+  than the engine's per-record verifier — plus a docstring overclaim, both pinned.
+- **Frozen core empty-diff** `milestone-11..HEAD` (ADR 0008): the action layer is additive;
+  the only existing-code production change is the vertical-side router fix. Faithfulness
+  1.000 on every battery; no battery number moved.
+
 ## [milestone-11] — 2026-06-28
 
 Expose Tessera to AI agents over the **Model Context Protocol** as **read-only
