@@ -79,12 +79,14 @@ strictly bounded: it rephrases verifier-checked claims and can never add facts
 ([ADR 0013](docs/adr/0013-narration-boundary.md)). The portable local mode —
 no keys, no network, zero runtime dependencies — is the default and is what CI
 verifies. Tessera is also **exposed to AI agents over MCP** (`uv run tessera-mcp`,
-the opt-in `agent` extra) as **read-only grounded tools** — claims, provenance, and
-principled refusals an agent can call, with the trust contract *measured* to survive
-the protocol boundary ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)); grounded
-*actions* (effectful or propose-and-approve tools) are the named next step, in line
-with SAP's 2026 agentic direction. Details in
-[`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
+the opt-in `agent` extra): **read-only grounded tools** — claims, provenance, and
+principled refusals ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) — and
+**propose-and-approve action drafts** (an `incident` from a root-cause analysis, a
+`pr_summary` from a change), each field traced to a verifier-passing claim or it is not
+proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)). The trust contract is
+*measured* to survive the protocol for both. Tessera drafts and verifies; it **executes
+nothing** — a human or agent approves and acts. In line with SAP's 2026 agentic
+direction; details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
 
@@ -287,25 +289,35 @@ faithfulness verifier recomputes against every cited record.
 ### The agent surface (MCP)
 
 Tessera's thesis is a trust layer *for AI agents* — so it is callable by one. The
-`tessera-mcp` server exposes the engine over the Model Context Protocol as
-**read-only grounded tools** ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)):
+`tessera-mcp` server exposes the engine over the Model Context Protocol — read-only
+grounded tools ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) and
+propose-and-approve action drafts ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)):
 
 ```bash
 uv sync --extra agent          # opt-in SDK; the default graph + CI stay pure-stdlib
 uv run tessera-mcp             # the MCP server over stdio
 # tools: list_domains · ground(domain, question) · assertions(domain, record_id)
+#        list_actions · draft_action(action, domain, question)
 ```
 
 `ground` routes a question through the same deterministic engine and returns
 JSON-native claims — each with **full provenance inline** and a **per-claim verifier
 verdict** (the eval's own `is_supported`, run at the boundary) — or a refusal carried
-explicitly, so an agent can never mistake a refusal for an answer. The trust contract
-is **measured to survive the protocol**: over every gold case, the boundary projection
-is lossless and faithfulness stays 1.0 (`tests/test_boundary.py`). A captured real
-client↔server session is committed at
-[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Grounded *actions*
-(effectful or propose-and-approve tools) are the named next step; today the surface is
-read-only by design.
+explicitly, so an agent can never mistake a refusal for an answer. `draft_action` goes
+one step further: it maps a grounded answer into a structured **proposal** (an
+`incident` from an RCA, a `pr_summary` from a change) whose every field is a verbatim
+claim or evidence fragment carrying its own `verified` verdict — `all_grounded` is true
+only when every field passes — and an incompatible or refused grounding is carried as a
+refusal, never drafted over. The proposal declares `requires_approval` / `executed`:
+Tessera drafts and verifies; it **executes nothing**, calls no external system, renders
+no payload — a human or agent approves and acts *outside* Tessera (the honest edge).
+The trust contract is **measured to survive the protocol** for both answers and actions:
+the boundary projection is lossless and faithfulness stays 1.0 over every gold case and
+every data-derived action (`tests/test_boundary.py`, `tests/test_actions_boundary.py`). A
+captured real client↔server session — grounded answers, the ER trail, a drafted incident
+and PR summary, and a carried refusal — is committed at
+[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Effectful execution
+remains deliberately out of scope.
 
 ### Data
 
@@ -372,8 +384,9 @@ closing the last floor the address couldn't reach — two distinct firms with th
 name *and* the same address, split on their different VATs (0.909 → 1.000), with **no
 engine logic change** (it reuses the M9 exact-equality gate; ADR 0020). The
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
-(more connectors, the registry-only ER floor, a heading-chunk retrieval fragility,
-agentic/MCP mode, true million-record scale).
+(more connectors, the registry-only ER floor, **effectful execution** — Milestone 12
+drafts and verifies propose-and-approve actions over MCP but executes nothing — and true
+million-record scale).
 
 ## License
 
