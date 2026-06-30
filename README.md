@@ -80,13 +80,16 @@ strictly bounded: it rephrases verifier-checked claims and can never add facts
 no keys, no network, zero runtime dependencies — is the default and is what CI
 verifies. Tessera is also **exposed to AI agents over MCP** (`uv run tessera-mcp`,
 the opt-in `agent` extra): **read-only grounded tools** — claims, provenance, and
-principled refusals ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) — and
+principled refusals ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) —
 **propose-and-approve action drafts** (an `incident` from a root-cause analysis, a
 `pr_summary` from a change), each field traced to a verifier-passing claim or it is not
-proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)). The trust contract is
-*measured* to survive the protocol for both. Tessera drafts and verifies; it **executes
-nothing** — a human or agent approves and acts. In line with SAP's 2026 agentic
-direction; details in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
+proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)), and a **dry-run
+payload preview** — the exact GitHub request a drafted action would send, every value
+traced to a verified field ([ADR 0024](docs/adr/0024-executable-payload-preview.md)). The
+trust contract is *measured* to survive the protocol for all three. Tessera drafts,
+verifies, and renders; it **executes nothing and sends nothing** — a human or agent
+approves and acts. In line with SAP's 2026 agentic direction; details in
+[`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
 
@@ -290,14 +293,16 @@ faithfulness verifier recomputes against every cited record.
 
 Tessera's thesis is a trust layer *for AI agents* — so it is callable by one. The
 `tessera-mcp` server exposes the engine over the Model Context Protocol — read-only
-grounded tools ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) and
-propose-and-approve action drafts ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)):
+grounded tools ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)),
+propose-and-approve action drafts ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)),
+and a dry-run payload preview ([ADR 0024](docs/adr/0024-executable-payload-preview.md)):
 
 ```bash
 uv sync --extra agent          # opt-in SDK; the default graph + CI stay pure-stdlib
 uv run tessera-mcp             # the MCP server over stdio
 # tools: list_domains · ground(domain, question) · assertions(domain, record_id)
 #        list_actions · draft_action(action, domain, question)
+#        preview_payload(action, domain, question)
 ```
 
 `ground` routes a question through the same deterministic engine and returns
@@ -308,16 +313,22 @@ one step further: it maps a grounded answer into a structured **proposal** (an
 `incident` from an RCA, a `pr_summary` from a change) whose every field is a verbatim
 claim or evidence fragment carrying its own `verified` verdict — `all_grounded` is true
 only when every field passes — and an incompatible or refused grounding is carried as a
-refusal, never drafted over. The proposal declares `requires_approval` / `executed`:
-Tessera drafts and verifies; it **executes nothing**, calls no external system, renders
-no payload — a human or agent approves and acts *outside* Tessera (the honest edge).
-The trust contract is **measured to survive the protocol** for both answers and actions:
-the boundary projection is lossless and faithfulness stays 1.0 over every gold case and
-every data-derived action (`tests/test_boundary.py`, `tests/test_actions_boundary.py`). A
-captured real client↔server session — grounded answers, the ER trail, a drafted incident
-and PR summary, and a carried refusal — is committed at
-[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Effectful execution
-remains deliberately out of scope.
+refusal, never drafted over. `preview_payload` goes one boundary further still: it
+renders the **exact GitHub request** that proposal would send — a create-issue for an
+`incident`, a PR comment for a `pr_summary` — where every value traces to a verified
+field and the body is byte-reconstructable from those fields, or the payload is
+**withheld** (rendered only when `all_grounded`). The proposal and the payload declare
+`requires_approval` / `executed` / `sent`: Tessera drafts, verifies, and renders; it
+**executes nothing and sends nothing** (`{owner}`/`{repo}` stay unbound placeholders) —
+a human or agent approves and sends *outside* Tessera (the honest edge). The trust
+contract is **measured to survive the protocol** for answers, actions, and payloads: the
+boundary projections are lossless and faithfulness stays 1.0 over every gold case, every
+data-derived action, and every data-derived payload (`tests/test_boundary.py`,
+`tests/test_actions_boundary.py`, `tests/test_payloads_boundary.py`). A captured real
+client↔server session — grounded answers, the ER trail, a drafted incident and PR
+summary, a rendered create-issue and PR-comment payload, and carried refusals — is
+committed at [`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md).
+Effectful execution remains deliberately out of scope.
 
 ### Data
 
@@ -363,7 +374,7 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus five post-roadmap milestones**
+**Phases 0–4 complete, plus nine post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
@@ -382,11 +393,18 @@ demo clusters provably unchanged except the one intended split (ADR 0019). **Mil
 10** added the **registration key** (`VATRegistration`) as the most decisive field,
 closing the last floor the address couldn't reach — two distinct firms with the same
 name *and* the same address, split on their different VATs (0.909 → 1.000), with **no
-engine logic change** (it reuses the M9 exact-equality gate; ADR 0020). The
+engine logic change** (it reuses the M9 exact-equality gate; ADR 0020). With the ER
+lever spent, **milestones 11–13** opened the agentic dimension: M11 exposed the engine
+to AI agents over **MCP** as read-only grounded tools and *measured* the trust contract
+across the protocol (ADR 0022); M12 extended it from answers to **propose-and-approve
+action drafts**, every field verifier-checked (ADR 0023); and **milestone 13** carried
+it one boundary further to the **dry-run executable-payload preview** — the exact GitHub
+request a drafted action would send, every value traced to a verified field, rendered
+but **never sent** (ADR 0024). The
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
-(more connectors, the registry-only ER floor, **effectful execution** — Milestone 12
-drafts and verifies propose-and-approve actions over MCP but executes nothing — and true
-million-record scale).
+(more connectors, the registry-only ER floor, **effectful execution** — Milestones 12–13
+draft, verify, and render the exact request over MCP but execute and send nothing — and
+true million-record scale).
 
 ## License
 
