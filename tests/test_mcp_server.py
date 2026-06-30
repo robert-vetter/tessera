@@ -18,7 +18,9 @@ import pytest
 
 from tessera.agent.mcp_server import (
     tool_assertions,
+    tool_draft_action,
     tool_ground,
+    tool_list_actions,
     tool_list_domains,
 )
 from tessera.business.knowledge import build_demo_graph
@@ -62,6 +64,33 @@ def test_handler_assertions_returns_trail() -> None:
     assert json.loads(json.dumps(payload)) == payload
 
 
+def test_handler_list_actions() -> None:
+    payload = tool_list_actions()
+    actions = cast("list[dict[str, object]]", payload["actions"])
+    names = {a["name"] for a in actions}
+    assert names == {"incident", "pr_summary"}
+    assert all(a["description"] for a in actions)
+    assert json.loads(json.dumps(payload)) == payload
+
+
+def test_handler_draft_action_grounds_and_carries_refusal() -> None:
+    drafted = tool_draft_action(
+        "incident", "devex", "Why did run R-1042 fail, and has this happened before?"
+    )
+    assert drafted["grounded"] is True
+    assert drafted["all_grounded"] is True
+    assert drafted["requires_approval"] is True
+    assert drafted["executed"] is False
+    assert drafted["fields"]
+    # JSON-native (handed straight to the MCP client).
+    assert json.loads(json.dumps(drafted)) == drafted
+    # A route-incompatible request crosses as a carried refusal, never a draft.
+    refused = tool_draft_action("incident", "devex", "What does PR-201 change?")
+    assert refused["refused"] is True
+    assert refused["grounded"] is False
+    assert refused["fields"] == []
+
+
 # --- the opt-in-extra guarantee (run in CI) -----------------------------------
 
 
@@ -94,11 +123,22 @@ def test_build_server_registers_the_tools() -> None:
     server = build_server()
 
     tools = {t.name: t for t in asyncio.run(server.list_tools())}
-    assert set(tools) == {"list_domains", "ground", "assertions"}
+    assert set(tools) == {
+        "list_domains",
+        "ground",
+        "assertions",
+        "list_actions",
+        "draft_action",
+    }
     for tool in tools.values():
         assert tool.description
     assert set(tools["ground"].inputSchema["properties"]) == {"domain", "question"}
     assert set(tools["assertions"].inputSchema["properties"]) == {"domain", "record_id"}
+    assert set(tools["draft_action"].inputSchema["properties"]) == {
+        "action",
+        "domain",
+        "question",
+    }
 
     result = asyncio.run(
         server.call_tool(
@@ -128,3 +168,29 @@ def test_build_server_refusal_through_the_protocol() -> None:
     assert structured["refused"] is True
     assert structured["claims"] == []
     assert structured["refusal"]
+
+
+def test_build_server_drafts_an_action_through_the_protocol() -> None:
+    """Contract: dispatching draft_action through the server returns the serialized,
+    field-verified, propose-and-approve proposal. Requires the `agent` extra."""
+    pytest.importorskip("mcp")
+    from tessera.agent.mcp_server import build_server
+
+    server = build_server()
+    result = asyncio.run(
+        server.call_tool(
+            "draft_action",
+            {
+                "action": "incident",
+                "domain": "devex",
+                "question": "Why did run R-1042 fail, and has this happened before?",
+            },
+        )
+    )
+    structured = result[1] if isinstance(result, tuple) else result
+    assert isinstance(structured, dict)
+    assert structured["grounded"] is True
+    assert structured["all_grounded"] is True
+    assert structured["requires_approval"] is True
+    assert structured["executed"] is False
+    assert structured["fields"]
