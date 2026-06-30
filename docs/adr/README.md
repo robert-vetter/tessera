@@ -38,3 +38,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0021](0021-heading-leads-its-section.md) — A Markdown heading leads its section, not a chunk of its own (Milestone 11)
 - [0022](0022-agentic-mcp-boundary.md) — The agentic boundary: read-only, verifier-checked grounded tools over MCP (Milestone 11)
 - [0023](0023-grounded-action-boundary.md) — The grounded-action boundary: propose-and-approve, field-verified actions (Milestone 12)
+- [0024](0024-executable-payload-preview.md) — The executable-payload boundary: a dry-run preview, render ≠ send (Milestone 13)
