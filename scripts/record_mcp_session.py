@@ -1,12 +1,13 @@
 """Record a real MCP client <-> server session against ``tessera-mcp``.
 
-The "ran on" honesty for Milestones 11 and 12 (specs 0084, 0090): this spawns the
-Tessera MCP server as a subprocess and drives it with a *real* MCP client over stdio —
-listing tools, grounding a question in each domain, taking a principled refusal,
-inspecting an entity-resolution trail, and **drafting propose-and-approve actions** (an
-incident, a PR summary, and a carried refusal) — then writes the exchange to
-``data/mcp_session/`` as a committed artifact (the no-spend analogue of the
-Milestone-5 GitHub-Actions snapshot).
+The "ran on" honesty for Milestones 11, 12, and 13 (specs 0084, 0090, 0095): this
+spawns the Tessera MCP server as a subprocess and drives it with a *real* MCP client
+over stdio — listing tools, grounding a question in each domain, taking a principled
+refusal, inspecting an entity-resolution trail, **drafting propose-and-approve actions**
+(an incident, a PR summary, and a carried refusal), and **previewing the dry-run GitHub
+payloads** those actions would send (a create-issue, a PR comment, and a withheld
+payload — nothing sent) — then writes the exchange to ``data/mcp_session/`` as a
+committed artifact (the no-spend analogue of the Milestone-5 GitHub-Actions snapshot).
 
 It is NOT run in CI (CI is pure-stdlib and carries no MCP SDK). Reproduce locally:
 
@@ -88,6 +89,36 @@ ACTION_CALLS: list[tuple[dict[str, str], str]] = [
     ),
 ]
 
+# The dry-run PAYLOAD previews (Milestone 13, spec 0095): (arguments, why). Each renders
+# the exact GitHub request a verified action would send — or carries a withheld result.
+# Nothing is sent ('sent' is always false); a human or agent approves and sends.
+PAYLOAD_CALLS: list[tuple[dict[str, str], str]] = [
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "Why did run R-1042 fail, and has this happened before?",
+        },
+        "a GitHub create-issue payload rendered from the incident — values grounded",
+    ),
+    (
+        {
+            "action": "pr_summary",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a GitHub PR-comment payload rendered from the change summary",
+    ),
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a withheld payload — no request rendered over an incompatible grounding",
+    ),
+]
+
 
 def _truncate(text: str, limit: int = 160) -> str:
     text = text.replace("\n", " ").strip()
@@ -117,6 +148,31 @@ def _render_action(result: dict[str, Any]) -> list[str]:
         lines.append(
             f"  field [verified={field['verified']}] {field['name']}: "
             f"{_truncate(field['value'], 100)}"
+        )
+    return lines
+
+
+def _render_payload(result: dict[str, Any]) -> list[str]:
+    lines = [
+        f"  kind: {result['kind']}  target: {result['target']}  "
+        f"rendered: {result['rendered']}  all_grounded: {result['all_grounded']}  "
+        f"sent: {result['sent']}  requires_approval: {result['requires_approval']}",
+    ]
+    if not result["rendered"]:
+        lines.append(f"  withheld: {result['withheld_reason']}")
+        return lines
+    request = result["request"]
+    lines.append(f"  → {request['method']} {request['path']}")
+    body = request["body"]
+    if "title" in body:
+        lines.append(f"  title: {_truncate(str(body['title']), 100)}")
+    if "labels" in body:
+        lines.append(f"  labels: {body['labels']}")
+    lines.append(f"  body: {_truncate(str(body.get('body', '')), 140)}")
+    for slot in result["slots"]:
+        lines.append(
+            f"  slot [{slot['part']}/{slot['role']}] verified={slot['verified']}: "
+            f"{_truncate(slot['value'], 80)}"
         )
     return lines
 
@@ -204,6 +260,18 @@ async def _run() -> dict[str, Any]:
                     "result": res.structuredContent,
                 }
             )
+        # The dry-run payload previews (Milestone 13): render the exact request a
+        # verified action would send — or carry a withheld result. Nothing is sent.
+        for args, why in PAYLOAD_CALLS:
+            res = await session.call_tool("preview_payload", args)
+            exchange.append(
+                {
+                    "tool": "preview_payload",
+                    "arguments": args,
+                    "why": why,
+                    "result": res.structuredContent,
+                }
+            )
         captured["exchange"] = exchange
     return captured
 
@@ -249,6 +317,8 @@ def _write_transcript(captured: dict[str, Any]) -> None:
             md.extend(_render_action_catalog(step["result"]))
         elif step["tool"] == "draft_action":
             md.extend(_render_action(step["result"]))
+        elif step["tool"] == "preview_payload":
+            md.extend(_render_payload(step["result"]))
         else:
             md.extend(_render_result(step["result"]))
     md.append("")

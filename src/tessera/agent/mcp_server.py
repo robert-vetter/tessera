@@ -1,12 +1,15 @@
 """The MCP server — Tessera's grounded tools over the Model Context Protocol.
 
 A *thin transport*: it serializes the grounded-tool layer
-(:mod:`tessera.agent.grounded`, ADR 0022) and the grounded-action layer
-(:mod:`tessera.agent.actions`, ADR 0023) over MCP so an enterprise AI agent — Claude,
-or any MCP client — can call Tessera as its evidence oracle *and* ask it to draft
-grounded, propose-and-approve actions. It contains **no grounding or drafting logic**:
-every answer, verdict, refusal, and drafted field comes from those layers, and nothing
-is executed — ``draft_action`` returns a proposal a human or agent approves.
+(:mod:`tessera.agent.grounded`, ADR 0022), the grounded-action layer
+(:mod:`tessera.agent.actions`, ADR 0023), and the dry-run payload renderer
+(:mod:`tessera.agent.payloads`, ADR 0024) over MCP so an enterprise AI agent — Claude,
+or any MCP client — can call Tessera as its evidence oracle, ask it to draft grounded
+propose-and-approve actions, *and* preview the exact request those actions would send.
+It contains **no grounding, drafting, or rendering logic**: every answer, verdict,
+refusal, drafted field, and rendered payload comes from those layers, and nothing is
+executed — ``draft_action`` returns a proposal a human or agent approves, and
+``preview_payload`` renders the wire request without sending it.
 
 The MCP SDK is the opt-in ``agent`` extra (``uv sync --extra agent``), imported
 **lazily** only inside :func:`build_server` / :func:`main`. Importing this module —
@@ -24,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from tessera.agent.actions import available_actions, draft_action
 from tessera.agent.grounded import assertions, available_domains, domain, ground
+from tessera.agent.payloads import preview_payload
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -37,9 +41,11 @@ SERVER_INSTRUCTIONS = (
     "list_domains to see what you can ask about, ground to get a verified answer with "
     "provenance, and assertions to inspect why two records were linked. To act on an "
     "answer, call list_actions to see the draftable actions and draft_action to get a "
-    "grounded, cited PROPOSAL whose every field is verifier-checked — propose-and-"
-    "approve only: Tessera drafts, a human or agent approves and acts; nothing is "
-    "executed."
+    "grounded, cited PROPOSAL whose every field is verifier-checked, then "
+    "preview_payload to render the EXACT external request that proposal would send (a "
+    "GitHub create-issue or PR comment) — every value field-grounded. Propose-and-"
+    "approve only: Tessera drafts and renders, a human or agent approves and sends; "
+    "nothing is executed and nothing is sent."
 )
 
 
@@ -81,6 +87,13 @@ def tool_draft_action(action: str, domain: str, question: str) -> dict[str, obje
     return draft_action(action, domain, question).to_dict()
 
 
+def tool_preview_payload(action: str, domain: str, question: str) -> dict[str, object]:
+    """Render the exact GitHub request a grounded action would send — or carry a
+    withheld result — for ``question`` in ``domain``. Holds no logic: it delegates
+    verbatim to the payload renderer (ADR 0024). Nothing is sent (``sent`` is false)."""
+    return preview_payload(action, domain, question).to_dict()
+
+
 # --- the MCP wiring (lazily imports the SDK) ----------------------------------
 
 _GROUND_DESC = (
@@ -119,6 +132,20 @@ _DRAFT_ACTION_DESC = (
     "approve, a human or agent approves and acts outside Tessera. Args: action (one of "
     "list_actions), domain, question."
 )
+_PREVIEW_PAYLOAD_DESC = (
+    "Render the EXACT external request a grounded action would send — a dry-run "
+    "preview, never sent. Tessera drafts the action, then maps its VERIFIED fields "
+    "into the GitHub wire request (a create-issue for an incident, a PR comment for a "
+    "pr_summary): 'request' carries the method, path, and JSON body; every content "
+    "value traces to a verifier-passing field via 'slots' (each with its provenance "
+    "and 'verified' verdict); 'all_grounded' is true only when every slot is "
+    "verifier-passing. {owner}/{repo} stay unbound placeholders you fill at send "
+    "time. If the grounding refused, routed incompatibly, or any field is unverified, "
+    "'rendered' is false with 'withheld_reason' and no request — a payload is never "
+    "rendered over ungrounded ground. 'sent' is ALWAYS false and 'requires_approval' "
+    "always true: Tessera renders, a human or agent approves and sends. Args: action "
+    "(one of list_actions), domain, question."
+)
 
 
 def build_server() -> FastMCP:
@@ -151,6 +178,10 @@ def build_server() -> FastMCP:
     @server.tool(name="draft_action", description=_DRAFT_ACTION_DESC)
     def _draft_action(action: str, domain: str, question: str) -> dict[str, object]:
         return tool_draft_action(action, domain, question)
+
+    @server.tool(name="preview_payload", description=_PREVIEW_PAYLOAD_DESC)
+    def _preview_payload(action: str, domain: str, question: str) -> dict[str, object]:
+        return tool_preview_payload(action, domain, question)
 
     return server
 
