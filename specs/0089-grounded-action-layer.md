@@ -11,9 +11,11 @@ contract across the boundary; it deferred **action proposals** as the named next
 (ADR 0022). The project's thesis is "a trust layer for enterprise AI agents," and an agent
 that must *act* — file the incident an RCA describes, draft the summary of a PR — currently
 composes that action itself, ungrounded, outside Tessera's guarantee. This unit extends the
-same trust substrate to the **action draft**: a structured proposal whose every field
-traces to verifier-passing evidence, or it is not proposed at all. Propose-and-approve only;
-nothing executed (the maintainer's M12 scope, spec 0087).
+same trust substrate to the **action draft**: a structured proposal in which every field
+carries a recomputed verifier verdict, so a proposal is *fully* grounded only when every
+field is verifier-passing — and an upstream refusal or an incompatible grounding is carried
+with no fields, never drafted over. Propose-and-approve only; nothing executed (the
+maintainer's M12 scope, spec 0087).
 
 ## The design (recorded in full in ADR 0023)
 

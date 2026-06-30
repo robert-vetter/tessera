@@ -5,8 +5,11 @@ milestones, only ever produced *answers*. An enterprise agent that must *act* �
 the incident this root-cause analysis describes, draft the summary of this pull
 request — composed that action itself, ungrounded, outside Tessera's guarantee. This
 layer extends the same substrate to the **action draft**: a structured,
-JSON-serializable :class:`ActionProposal` whose **every field traces to a
-verifier-passing claim**, or it is not proposed at all.
+JSON-serializable :class:`ActionProposal` in which **every field carries a recomputed
+verifier verdict**. A field that added content its evidence does not support reads
+``verified=False``, so ``all_grounded`` — every field verifier-passing — is the earned
+action-level guarantee; and an upstream refusal or an incompatible grounding is carried
+with no fields at all, never drafted over.
 
 Three honest properties make this a trust *extension*, not a new write surface:
 
@@ -94,7 +97,9 @@ class ActionProposal:
 
     ``requires_approval`` / ``executed`` state the propose-and-approve contract in
     the payload itself: Tessera drafts; a human or agent approves and acts outside
-    Tessera; nothing here is executed (ADR 0023)."""
+    Tessera; nothing here is executed (ADR 0023). They are schema constants — the
+    layer's posture, stamped on every payload — so read ``all_grounded`` (not these
+    flags) to tell a grounded, fully-verified draft from a carried refusal."""
 
     kind: str
     domain: str
@@ -154,8 +159,10 @@ class _ActionKind:
 def _incident_title(
     claims: Sequence[GroundedClaim],
 ) -> tuple[str, GroundedClaim] | None:
-    """The most specific failing line, lifted verbatim from a log claim's evidence
-    (so it is grounded by containment). None when no error-shaped line exists."""
+    """The most specific failing line, lifted verbatim from a log claim's text and
+    re-verified by containment against that claim's cited evidence (for a log claim
+    the text *is* its evidence, so it is grounded). None when no error-shaped line
+    exists."""
     for claim in claims:
         for pattern in (_ERROR_LINE, _GH_ERROR_LINE):
             match = pattern.search(claim.text)
@@ -250,17 +257,18 @@ def _role(text: str) -> str:
     return "log"
 
 
-def _evidence_text(claim: GroundedClaim) -> str:
-    return "\n".join(e.text for e in claim.support)
-
-
 def _field(name: str, value: str, claim: GroundedClaim) -> ActionField:
     """Build a field from one source claim, recomputing groundedness: the source
     claim must have passed the boundary verifier AND the value must be faithful to
-    it — its exact text, or a normalized-containment fragment of its own evidence.
-    Anything else reads ``verified=False`` (the provably-failable check)."""
+    it — its exact text, or a normalized-containment fragment of one of its cited
+    records. The containment is checked *per record*, exactly as the engine's own
+    ``is_supported`` checks it, so this introduces no second, weaker verifier: a
+    value that only spans the seam between two records (a fragment of neither) reads
+    ``verified=False``, as does anything that adds an unsupported token — the
+    provably-failable check."""
     faithful = value == claim.text or (
-        bool(normalize(value)) and normalize(value) in normalize(_evidence_text(claim))
+        bool(normalize(value))
+        and any(normalize(value) in normalize(e.text) for e in claim.support)
     )
     return ActionField(
         name=name,

@@ -57,8 +57,23 @@ def test_incident_from_rca_is_fully_grounded() -> None:
     assert proposal.requires_approval is True
     assert proposal.executed is False
     roles = {f.name for f in proposal.fields}
-    # The action skeleton carries the RCA's structure, role-labeled.
-    assert {"failing_run", "log", "prior_occurrence", "documented_incident"} <= roles
+    # The full action skeleton, role-labeled from the engine's claim grammar — every
+    # specific role pinned, so a _role regression that silently demotes one to the
+    # catch-all "log" fails HERE (the verifier only checks faithfulness, never the
+    # role name).
+    assert {
+        "failing_run",
+        "log",
+        "prior_occurrence",
+        "documented_incident",
+        "referenced_ticket",
+        "resolving_change",
+        "referenced_pull_request",
+        "code_change",
+    } <= roles
+    # Spot-check one added role: its value carries the engine's grammar marker verbatim.
+    resolving = next(f for f in proposal.fields if f.name == "resolving_change")
+    assert resolving.value.startswith("Resolved by:")
     # The title is the specific error signature, lifted verbatim from the log.
     title = next(f for f in proposal.fields if f.name == "title")
     assert title.value == "TimeoutError: connection to payments-db timed out after 30s"
@@ -112,13 +127,17 @@ def test_incident_from_real_github_actions() -> None:
 
 def test_refused_grounding_is_carried_not_drafted() -> None:
     """A run that passed / an unknown run / an out-of-scope question grounds to a
-    refusal; the action carries it and proposes nothing (ADR 0023)."""
-    for question in (
-        "Why did run R-9999 fail?",  # unknown run
-        "What is the capital of France?",  # out of scope
+    refusal; the action carries it and proposes nothing (ADR 0023) — over the
+    synthetic devex corpus AND the real github_actions connector (a distinct
+    GroundedDomain with its own snapshot build, so the property is pinned there too)."""
+    for domain, question in (
+        ("devex", "Why did run R-9999 fail?"),  # unknown synthetic run
+        ("devex", "What is the capital of France?"),  # out of scope
+        ("github_actions", "Why did run 99999999 fail?"),  # unknown real run
+        ("github_actions", "What is the capital of France?"),  # out of scope (real)
     ):
-        proposal = draft_action("incident", "devex", question)
-        assert proposal.refused and not proposal.grounded
+        proposal = draft_action("incident", domain, question)
+        assert proposal.refused and not proposal.grounded, (domain, question)
         assert proposal.refusal
         assert proposal.fields == ()
         assert not proposal.all_grounded
@@ -158,6 +177,100 @@ def test_unsupported_field_is_caught_provably_failable() -> None:
     assert not tampered.verified
 
 
+def test_field_verifier_is_per_record_not_concatenated() -> None:
+    """The field's containment check mirrors the engine's ``is_supported`` exactly —
+    per cited record, not over a concatenation of all of them. A value that exists in
+    NO single cited record but only spans the *seam* between two reads verified=False
+    (a joined-evidence check would have let it through — the closed gap); and a value
+    empty after normalization reads False too (the bool(normalize) guard)."""
+    from tessera.agent.actions import _field
+    from tessera.agent.grounded import GroundedClaim, GroundedEvidence
+
+    a = GroundedEvidence("A", "s", "k", (), "t", "alpha beta")
+    b = GroundedEvidence("B", "s", "k", (), "t", "gamma delta")
+    claim = GroundedClaim(text="alpha beta\ngamma delta", verified=True, support=(a, b))
+    # A fragment contained in one cited record verifies.
+    assert _field("x", "beta", claim).verified
+    assert _field("x", "gamma", claim).verified
+    # A value spanning the seam between two records (a fragment of NEITHER) does not:
+    # normalize("beta gamma") == "betagamma" is a substring of the concatenation but of
+    # neither record alone — the old joined check passed it, the per-record check fails.
+    assert not _field("x", "beta gamma", claim).verified
+    # A value empty after normalization (punctuation/whitespace only) does not.
+    assert not _field("x", "   ", claim).verified
+    assert not _field("x", "...", claim).verified
+
+
+def test_partial_grounding_surfaces_unverified_field_not_dropped() -> None:
+    """The honest partial state: if a grounding carried a claim the boundary verifier
+    rejected, the field is surfaced with verified=False (not dropped, not refused over),
+    ``grounded`` stays True, and ``all_grounded`` — the earned action-level guarantee —
+    is False. Pins that 'every field traces to a verifier-passing claim' is enforced by
+    ``all_grounded``, not by withholding the proposal."""
+    from tessera.agent.actions import _CATALOG, ActionProposal, _draft_fields
+    from tessera.agent.grounded import GroundedClaim, GroundedEvidence, GroundedResult
+
+    ev = GroundedEvidence(
+        "Run:R-1", "runs", "table_row", (), "2026-01-01", "Run R-1 failed."
+    )
+    good = GroundedClaim(text="Run R-1 failed.", verified=True, support=(ev,))
+    # A claim the live verifier rejected (verified=False) but the grounding kept.
+    bad = GroundedClaim(
+        text="Recurring failure: \"X\" appears in 'a' and 'b'.",
+        verified=False,
+        support=(ev,),
+    )
+    result = GroundedResult(
+        domain="devex",
+        question="q",
+        route_kind="rca",
+        route_reason="r",
+        grounded=True,
+        refused=False,
+        refusal=None,
+        claims=(good, bad),
+    )
+    fields = _draft_fields(_CATALOG["incident"], result)
+    flags = {f.name: f.verified for f in fields}
+    assert flags["failing_run"] is True
+    assert flags["prior_occurrence"] is False  # surfaced, not dropped
+    proposal = ActionProposal(
+        kind="incident",
+        domain="devex",
+        question="q",
+        route_kind="rca",
+        route_reason="r",
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=tuple(fields),
+    )
+    assert proposal.grounded and not proposal.refused
+    assert proposal.all_grounded is False
+    assert proposal.to_dict()["all_grounded"] is False
+
+
+def test_all_grounded_false_when_grounded_but_no_fields() -> None:
+    """The all_grounded guard's bool(self.fields) term: a grounded proposal with zero
+    fields is not 'fully grounded' — guarding the vacuous ``all([]) is True`` trap that
+    an MCP consumer (Unit 4) would otherwise read as a clean draft."""
+    from tessera.agent.actions import ActionProposal
+
+    proposal = ActionProposal(
+        kind="incident",
+        domain="devex",
+        question="q",
+        route_kind="rca",
+        route_reason="r",
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=(),
+    )
+    assert proposal.all_grounded is False
+    assert proposal.to_dict()["all_grounded"] is False
+
+
 def test_to_dict_round_trips_through_json() -> None:
     payload = draft_action("incident", "devex", "Why did run R-1042 fail?").to_dict()
     restored = json.loads(json.dumps(payload))
@@ -179,17 +292,28 @@ def test_refusal_to_dict_carries_reason_and_no_fields() -> None:
 
 
 def test_draft_action_is_deterministic_across_hash_seeds() -> None:
-    """The serialized proposal must be byte-stable regardless of PYTHONHASHSEED — a
-    claim's co-supporting records are a set, sorted at the grounding boundary, and the
-    field order is the deterministic claim order. Run in subprocesses to vary seed."""
-    code = (
-        "import json; from tessera.agent.actions import draft_action;"
-        "print(json.dumps(draft_action('incident','devex',"
-        "'Why did run R-1042 fail, and has this happened before?').to_dict(),"
-        " sort_keys=True))"
+    """The serialized proposal must be byte-stable regardless of PYTHONHASHSEED — for
+    EVERY drafting shape: incident over synthetic devex AND the real github_actions
+    connector, and pr_summary. A claim's co-supporting records are a set sorted at the
+    grounding boundary, and field order is the deterministic claim order. Run in
+    subprocesses to vary the seed."""
+    gh_run = next(
+        node.record.id.removeprefix("Run:")
+        for node in build_github_actions_graph().nodes
+        if node.kind == "Run" and node.attr("status") == "failed"
+    )
+    cases = (
+        ("incident", "devex", "Why did run R-1042 fail, and has this happened before?"),
+        ("pr_summary", "devex", "What does PR-201 change?"),
+        ("incident", "github_actions", f"Why did run {gh_run} fail?"),
     )
 
-    def run(seed: str) -> str:
+    def run(kind: str, dom: str, question: str, seed: str) -> str:
+        code = (
+            "import json; from tessera.agent.actions import draft_action;"
+            f"print(json.dumps(draft_action({kind!r}, {dom!r}, {question!r}).to_dict(),"
+            " sort_keys=True))"
+        )
         env = {**os.environ, "PYTHONHASHSEED": seed}
         result = subprocess.run(
             [sys.executable, "-c", code], capture_output=True, text=True, env=env
@@ -197,4 +321,6 @@ def test_draft_action_is_deterministic_across_hash_seeds() -> None:
         assert result.returncode == 0, result.stderr
         return result.stdout
 
-    assert run("0") == run("1") == run("2026")
+    for kind, dom, question in cases:
+        outputs = {run(kind, dom, question, seed) for seed in ("0", "1", "2026")}
+        assert len(outputs) == 1, f"{kind}/{dom} not deterministic across hash seeds"
