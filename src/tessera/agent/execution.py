@@ -38,10 +38,10 @@ On the **real path only**, execution is **best-effort idempotent** (Milestone 15
 grounded request (``sha256`` over its canonical ``method``/``path``/``body``, the marker
 excluded so the key never depends on itself), stamps it onto the outgoing issue/comment
 as a marker — an HTML comment, a human-visible footer, and (for an issue) a
-deterministic ``idem-<key>`` label — and queries the target's **primary,
+deterministic ``idem-<key>`` label — and **pages** the target's **primary,
 immediately-consistent** issues/comments endpoint for that marker. A verified hit
 short-circuits to ``outcome="exists"`` (nothing created); a pre-check that cannot decide
-(a transport error or a non-2xx list response) short-circuits to
+(a page read errors or is non-2xx, or the scan hits its page cap) short-circuits to
 ``outcome="inconclusive"`` (nothing created) — **never a silent duplicate** (a correct
 refusal beats a confident duplicate, the groundedness principle applied to a side
 effect). It is **best-effort, not exactly-once**: a genuine concurrent create (two sends
@@ -312,6 +312,13 @@ class _UrllibTransport:
 
 _MARKER_PREFIX = "tessera-idempotency-key"
 
+# The pre-check pages through the primary list endpoint (issues filtered by the unique
+# ``idem-`` label collapse to ~0-1 results; a PR's comments are the whole thread). The
+# page cap bounds the worst case: if the marker is not found within it, the pre-check
+# REFUSES (``inconclusive``) rather than risk a duplicate over an un-scanned page.
+_PRECHECK_PER_PAGE = 100
+_MAX_PRECHECK_PAGES = 20
+
 
 def _canonical_request(payload: RenderedPayload) -> bytes:
     """The canonical bytes the idempotency key hashes: the grounded request's method,
@@ -530,37 +537,51 @@ class GithubActuator:
     ) -> tuple[str, dict[str, object] | None]:
         """Best-effort pre-check on the target's **primary** (immediately-consistent)
         list endpoint — the issues list filtered by the ``idem-`` label, or the PR's
-        comments list — verifying the exact marker in a candidate's body before trusting
-        it. Returns ``("exists", issue)`` on a verified hit, ``("inconclusive", d)``
-        when the list read errors or is non-2xx (refuse, never duplicate), or
-        ``("create", None)`` when the target is free of a prior identical action. The
-        eventually-consistent search index is deliberately not used, so the residual
-        window is a genuine concurrent create, not a minute of search lag."""
+        comments list — **paging** until the exact marker is found in a candidate's
+        body, the thread is exhausted (a short page), or the page cap is hit. Returns
+        ``("exists", issue)`` on a verified hit, ``("inconclusive", detail)`` when a
+        page read errors / is non-2xx **or** the cap is reached before the thread is
+        fully scanned (refuse, never duplicate), or ``("create", None)`` when the target
+        is free of a prior identical action. A label-filtered issues list collapses to
+        ~0-1 results (one short page); a busy PR's comment thread can span pages, which
+        is why the pre-check pages rather than reading only the first. The eventually-
+        consistent search index is deliberately not used, so the residual is a genuine
+        concurrent create, not a minute of search lag."""
         marker = idempotency_marker(key)
-        is_comment = payload.path.rstrip("/").endswith("/comments")
-        if is_comment:
-            list_url = self.base_url + bound_path
+        if payload.path.rstrip("/").endswith("/comments"):
+            base = f"{self.base_url}{bound_path}?per_page={_PRECHECK_PER_PAGE}"
         else:
             label = _idempotency_label(key)
-            list_url = (
-                f"{self.base_url}{bound_path}?state=all&per_page=100&labels={label}"
+            base = (
+                f"{self.base_url}{bound_path}"
+                f"?state=all&per_page={_PRECHECK_PER_PAGE}&labels={label}"
             )
-        try:
-            status, parsed = self.transport.get(list_url, headers=headers)
-        except (urllib.error.URLError, OSError) as exc:  # pragma: no cover - real net
-            return "inconclusive", {"error": f"pre-check transport error: {exc}"}
-        if not 200 <= status < 300:
-            return "inconclusive", {"status": status}
-        items: list[object] = parsed if isinstance(parsed, list) else []
-        for item in items:
-            if isinstance(item, dict):
-                body = item.get("body")
-                if isinstance(body, str) and marker in body:
-                    return "exists", {
-                        "number": item.get("number"),
-                        "html_url": item.get("html_url"),
-                    }
-        return "create", None
+        for page in range(1, _MAX_PRECHECK_PAGES + 1):
+            try:
+                status, parsed = self.transport.get(
+                    f"{base}&page={page}", headers=headers
+                )
+            except (urllib.error.URLError, OSError) as exc:  # pragma: no cover - net
+                return "inconclusive", {"error": f"pre-check transport error: {exc}"}
+            if not 200 <= status < 300:
+                return "inconclusive", {"status": status}
+            items: list[object] = parsed if isinstance(parsed, list) else []
+            for item in items:
+                if isinstance(item, dict):
+                    body = item.get("body")
+                    if isinstance(body, str) and marker in body:
+                        return "exists", {
+                            "number": item.get("number"),
+                            "html_url": item.get("html_url"),
+                        }
+            if len(items) < _PRECHECK_PER_PAGE:  # a short page = the thread's end
+                return "create", None
+        return "inconclusive", {
+            "reason": (
+                f"pre-check did not finish within {_MAX_PRECHECK_PAGES} pages; "
+                "refusing rather than risk a duplicate."
+            )
+        }
 
 
 # --- the gated entry points ---------------------------------------------------

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -20,6 +21,8 @@ from dataclasses import dataclass, field
 import pytest
 
 from tessera.agent.execution import (
+    _MAX_PRECHECK_PAGES,
+    _PRECHECK_PER_PAGE,
     ExecutionReceipt,
     GithubActuator,
     SimulatedActuator,
@@ -55,6 +58,8 @@ class FakeTransport:
     existing: list[dict[str, object]] = field(default_factory=list)
     get_status: int = 200
     raise_on_get: bool = False
+    page_size: int = _PRECHECK_PER_PAGE
+    always_full: bool = False
     gets: list[str] = field(default_factory=list)
 
     def post(
@@ -67,7 +72,12 @@ class FakeTransport:
         self.gets.append(url)
         if self.raise_on_get:
             raise urllib.error.URLError("simulated pre-check transport error")
-        return self.get_status, self.existing
+        if self.always_full:  # every page is full — simulates an endless thread
+            return self.get_status, self.existing
+        match = re.search(r"[?&]page=(\d+)", url)
+        page = int(match.group(1)) if match else 1
+        start = (page - 1) * self.page_size
+        return self.get_status, self.existing[start : start + self.page_size]
 
 
 # --- the simulated default: a grounded, lossless, side-effect-free receipt ----
@@ -371,7 +381,7 @@ def test_pr_comment_idempotency_lists_comments_and_dedupes() -> None:
     assert created.outcome == "created" and created.sent
     posted = first.calls[0][2]
     assert isinstance(posted["body"], str)
-    assert first.gets and first.gets[0].endswith("/issues/PR-201/comments")
+    assert first.gets and "/issues/PR-201/comments?" in first.gets[0]
 
     second = FakeTransport(existing=[{"id": 1, "body": posted["body"]}])
     rerun = execute_action(
@@ -381,6 +391,52 @@ def test_pr_comment_idempotency_lists_comments_and_dedupes() -> None:
     )
     assert rerun.outcome == "exists" and rerun.sent is False
     assert second.calls == []
+
+
+def test_idempotency_pre_check_paginates_a_long_comment_thread() -> None:
+    """A PR comment lands at the END of the thread, so on a busy PR its marker sits on a
+    later page: the pre-check pages through and finds it — no duplicate. (Pins the
+    adversarial review's confirmed pagination defect.)"""
+    first = FakeTransport(status=201, response={"id": 1})
+    created = execute_action(
+        *_PR_SUMMARY,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=first),
+        approve=True,
+    )
+    assert created.outcome == "created"
+    marker_body = first.calls[0][2]["body"]
+    assert isinstance(marker_body, str)
+
+    # A full first page of unrelated comments + Tessera's marker comment on page 2.
+    thread: list[dict[str, object]] = [
+        {"id": i, "body": f"comment {i}"} for i in range(_PRECHECK_PER_PAGE)
+    ] + [{"id": 999, "body": marker_body}]
+    second = FakeTransport(existing=thread)
+    rerun = execute_action(
+        *_PR_SUMMARY,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=second),
+        approve=True,
+    )
+    assert rerun.outcome == "exists" and rerun.sent is False
+    assert len(second.gets) == 2  # paged to page 2 to find the marker
+    assert second.calls == []  # no duplicate comment
+
+
+def test_pre_check_refuses_when_it_cannot_scan_the_whole_thread() -> None:
+    """A pathologically long thread whose pages never yield the marker: the pre-check
+    pages to its cap and then REFUSES (``inconclusive``), never risking a duplicate."""
+    endless = FakeTransport(
+        existing=[{"id": i, "body": f"c{i}"} for i in range(_PRECHECK_PER_PAGE)],
+        always_full=True,
+    )
+    receipt = execute_action(
+        *_PR_SUMMARY,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=endless),
+        approve=True,
+    )
+    assert receipt.outcome == "inconclusive" and receipt.sent is False
+    assert endless.calls == []  # never created despite not finding the marker
+    assert len(endless.gets) == _MAX_PRECHECK_PAGES  # capped
 
 
 # --- receipt self-consistency (adversarial-review regressions) ----------------

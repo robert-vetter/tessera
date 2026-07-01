@@ -53,11 +53,17 @@ simulated execution boundary, and **faithfulness stay 1.0** everywhere the repo 
 The simulated default embeds no marker and records the grounded template unchanged.
 
 **The pre-send check reads the primary, immediately-consistent endpoint — deliberately not
-search.** Before creating, the actuator queries the target's primary list endpoint — for an
-issue, `GET /repos/{owner}/{repo}/issues?state=all&per_page=100&labels=idem-<hex>`; for a PR
-comment, `GET …/issues/{pr}/comments` — and **verifies the exact full marker substring** in
-a returned candidate's body before trusting it (so a bare label collision can never be
-mistaken for a match). The eventually-consistent Search API (`GET /search/issues`) is
+search — and pages.** Before creating, the actuator queries the target's primary list
+endpoint — for an issue, `GET /repos/{owner}/{repo}/issues?state=all&per_page=100&labels=
+idem-<hex>`; for a PR comment, `GET …/issues/{pr}/comments?per_page=100` — and **verifies
+the exact full marker substring** in a returned candidate's body before trusting it (so a
+bare label collision can never be mistaken for a match). It **pages** (`&page=N`) until the
+marker is found, a short page ends the thread, or a page cap (`_MAX_PRECHECK_PAGES`, 20 ×
+100 = 2000 items) is hit — because a busy PR's comment thread cannot be label-filtered and
+can span pages; reading only the first page would miss a marker comment on page 2+ and
+duplicate on a plain sequential re-run. If the cap is reached before the thread is fully
+scanned, the pre-check **refuses** (`inconclusive`), never risking a duplicate over an
+un-scanned page. The eventually-consistent Search API (`GET /search/issues`) is
 *deliberately not used*: the issues/comments list endpoints read the primary datastore and
 reflect a just-created issue immediately, whereas the search index lags ~a minute. Choosing
 the primary endpoint shrinks the residual duplicate window from "any retry within the search
@@ -91,10 +97,12 @@ network is never touched in CI, and the actuator is never constructed by the def
 
 - **The real path is best-effort idempotent, not exactly-once — stated everywhere.** A
   sequential re-run of the same grounded action into the same repo is deduped reliably (the
-  primary endpoint is immediately consistent); a genuine concurrent create can still
-  duplicate. That residual is named here, in the spec, STATUS, the WRITEUP, and the runbook —
-  never asserted away. The blast radius of the one real send is further contained to a
-  throwaway sandbox repo.
+  primary endpoint is immediately consistent, and the pre-check pages the thread rather than
+  reading only its first page); a genuine concurrent create can still duplicate. A thread
+  longer than the page cap does not silently duplicate either — the pre-check refuses
+  (`inconclusive`). That residual is named here, in the spec, STATUS, the WRITEUP, and the
+  runbook — never asserted away. The blast radius of the one real send is further contained
+  to a throwaway sandbox repo.
 - **Faithfulness stays the single hard gate at 1.0, across every boundary.** The marker is
   real-path-only scaffolding and never touches the renderer or the grounded slots; the
   payload and simulated-execution boundary measurements are unchanged. The new behavior is
