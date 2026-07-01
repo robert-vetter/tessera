@@ -2785,6 +2785,7 @@
           "simulated": true,
           "detail": "dry run — no request left Tessera; a human or agent approves and sends."
         },
+        "idempotency_key": null,
         "approved": false,
         "requires_approval": true
       }
@@ -3092,6 +3093,7 @@
           "simulated": true,
           "detail": "dry run — no request left Tessera; a human or agent approves and sends."
         },
+        "idempotency_key": null,
         "approved": false,
         "requires_approval": true
       }
@@ -3129,6 +3131,7 @@
         "withheld_reason": "cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').",
         "outcome": "withheld",
         "result": {},
+        "idempotency_key": null,
         "approved": false,
         "requires_approval": true
       }

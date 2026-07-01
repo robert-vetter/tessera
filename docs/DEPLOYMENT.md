@@ -160,12 +160,51 @@ github_actions gold coverage 0.833 → 1.000 and quality 0.800 → 1.000; faithf
 CI-reproducible — CI stays offline on the deterministic/lexical path, where the
 two misses honestly remain.
 
+## The real execution one-shot — actually sending behind approval (Milestone 15)
+
+Through Milestone 14 Tessera could *render* and *simulate* a grounded GitHub action but
+sent nothing. Milestone 15 crosses that edge exactly once: a **maintainer-run,
+credentialed one-shot** that actually creates one real GitHub issue from a grounded
+incident — the "ran on X" analogue of the HANA run above, for the execution boundary.
+Everywhere else (CI, clone-and-run, the MCP surface) the default actuator stays the
+simulated one and **nothing is sent**.
+
+The credential **never enters the agent's environment** — the maintainer supplies it via a
+gitignored `.env` and runs the one-shot themselves. The runbook:
+
+1. **Create a throwaway sandbox repo**, e.g. `<you>/tessera-exec-oneshot`. The real side
+   effect is irreversible, so a disposable repo contains the blast radius.
+2. **Mint a fine-grained PAT** scoped to **`Issues: Read and write`** on **that one repo**
+   only (Read is needed for the idempotency pre-check's list call; Write to create).
+3. **Fill `.env`** (gitignored; see `.env.example`) and load it:
+
+   ```bash
+   set -a; source .env; set +a          # TESSERA_EXEC_OWNER/_REPO/_GITHUB_TOKEN
+   uv run python scripts/record_real_execution.py            # rehearsal: outcome="blocked", nothing sent
+   TESSERA_EXEC_APPROVE=true uv run python scripts/record_real_execution.py   # the real send
+   ```
+
+   The first run (no `TESSERA_EXEC_APPROVE`) is a **safe rehearsal**: the real actuator is
+   double-gated on approval **and** the credential, so it returns `outcome="blocked"` and
+   touches no network. Setting `TESSERA_EXEC_APPROVE=true` supplies the explicit approval,
+   and the actuator creates one issue — grounded in a real Tessera CI failed run, with the
+   idempotency marker embedded.
+4. **The receipt is scrubbed and committed.** The script writes
+   `data/execution/receipt.json` (via `recording.redact_receipt`: the credential is absent
+   by construction, GitHub's echoed response reduced to `number`/`html_url`/`state`/`title`)
+   and `MANIFEST.json`. `gitleaks` (pre-commit + CI) is the final secret-scan gate.
+5. **Re-running is best-effort idempotent (ADR 0026).** A second run returns
+   `outcome="exists"` (the marker embedded on the first create is found on the primary,
+   immediately-consistent issues list) and creates no duplicate. It is best-effort, **not**
+   exactly-once: a genuine concurrent create can still duplicate — named, not asserted away.
+
 ## What is verified, and what is not — honestly
 
 - **Verified in CI, key-free:** the full engine, both verticals, the eval
   floor; the platform seam's request contracts (URLs, auth headers, payload
   shapes) and failure degradation, against a fake transport
-  (`tests/test_platform.py`).
+  (`tests/test_platform.py`); the real execution seam's idempotency + gating
+  against a fake transport (`tests/test_execution.py`, `tests/test_recording.py`).
 - **Not verified here:** an end-to-end call against a real GenAI Hub
   deployment or the Anthropic API — that requires credentials this
   repository deliberately ships without. The adapters target SAP AI Core's
