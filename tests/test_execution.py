@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 
@@ -24,6 +25,8 @@ from tessera.agent.execution import (
     SimulatedActuator,
     execute_action,
     execute_payload,
+    idempotency_key,
+    idempotency_marker,
 )
 from tessera.agent.payloads import PayloadSlot, RenderedPayload, preview_payload
 
@@ -34,7 +37,13 @@ _PR_SUMMARY = ("pr_summary", "devex", "What does PR-201 change?")
 
 @dataclass
 class FakeTransport:
-    """A recording HTTP stand-in — the real network is never touched in tests or CI."""
+    """A recording HTTP stand-in — the real network is never touched in tests or CI.
+
+    ``post`` records the create call and returns ``status``/``response``. ``get`` is the
+    idempotency pre-check read: it records the URL in ``gets`` and returns the status
+    plus ``existing`` (prior issues/comments — empty by default, so nothing pre-exists).
+    Set ``existing`` to simulate a prior identical action, ``get_status`` to a non-2xx,
+    or ``raise_on_get`` to simulate an inconclusive pre-check."""
 
     status: int = 201
     response: dict[str, object] = field(
@@ -43,12 +52,22 @@ class FakeTransport:
     calls: list[tuple[str, dict[str, str], dict[str, object]]] = field(
         default_factory=list
     )
+    existing: list[dict[str, object]] = field(default_factory=list)
+    get_status: int = 200
+    raise_on_get: bool = False
+    gets: list[str] = field(default_factory=list)
 
     def post(
         self, url: str, *, headers: dict[str, str], body: dict[str, object]
     ) -> tuple[int, dict[str, object]]:
         self.calls.append((url, headers, body))
         return self.status, self.response
+
+    def get(self, url: str, *, headers: dict[str, str]) -> tuple[int, object]:
+        self.gets.append(url)
+        if self.raise_on_get:
+            raise urllib.error.URLError("simulated pre-check transport error")
+        return self.get_status, self.existing
 
 
 # --- the simulated default: a grounded, lossless, side-effect-free receipt ----
@@ -183,10 +202,13 @@ def test_real_actuator_does_not_send_without_a_credential() -> None:
 
 
 def test_real_actuator_sends_iff_approved_and_credentialed() -> None:
-    """Approved + credentialed on a grounded payload: exactly one POST, to the
-    owner/repo-bound path with no placeholders left, and ``sent=True`` is earned."""
+    """Approved + credentialed on a grounded payload: one idempotency pre-check (finding
+    nothing) then exactly one POST, to the owner/repo-bound path with no placeholders
+    left, and ``sent=True`` is earned."""
     fake = FakeTransport()
     actuator = GithubActuator(owner="acme", repo="widgets", token="t", transport=fake)
+    payload = preview_payload(*_INCIDENT)
+    key = idempotency_key(payload)
     receipt = execute_action(*_INCIDENT, actuator=actuator, approve=True)
 
     assert receipt.sent and receipt.executed and not receipt.simulated
@@ -194,14 +216,26 @@ def test_real_actuator_sends_iff_approved_and_credentialed() -> None:
     assert receipt.all_grounded
     assert receipt.result.get("status") == 201
 
+    assert len(fake.gets) == 1  # the idempotency pre-check ran and found nothing
     assert len(fake.calls) == 1
     url, headers, body = fake.calls[0]
     assert url == "https://api.github.com/repos/acme/widgets/issues"
     assert "{owner}" not in url and "{repo}" not in url
     assert headers["Authorization"] == "Bearer t"
-    # The bound path is recorded on the receipt; the wire body is the payload body.
     assert receipt.path == "/repos/acme/widgets/issues"
-    assert body == preview_payload(*_INCIDENT).body
+    # The wire body is the grounded body PLUS the deployment-scaffolding marker: the
+    # grounded content is preserved verbatim, the marker + idem-label are embedded, the
+    # receipt records exactly what was sent, and it carries the idempotency key.
+    grounded_body = payload.body["body"]
+    posted_body = body["body"]
+    posted_labels = body["labels"]
+    assert isinstance(grounded_body, str) and isinstance(posted_body, str)
+    assert isinstance(posted_labels, list)
+    assert grounded_body in posted_body
+    assert idempotency_marker(key) in posted_body
+    assert f"idem-{key.split(':')[1][:16]}" in posted_labels
+    assert receipt.body == body
+    assert receipt.idempotency_key == key
 
 
 def test_real_actuator_binds_owner_repo_but_keeps_the_grounded_pr_segment() -> None:
@@ -222,6 +256,131 @@ def test_real_actuator_non_2xx_is_an_error_not_a_send() -> None:
     assert receipt.sent is False and receipt.outcome == "error"
     assert not receipt.executed
     assert receipt.result.get("status") == 422
+
+
+# --- best-effort idempotency on the real path (Milestone 15, ADR 0026) --------
+
+
+def test_idempotency_dedupes_a_re_run_end_to_end() -> None:
+    """The core M15 property: a first approved+credentialed send creates the issue with
+    the idempotency marker embedded; a second run against a target that now holds that
+    issue finds it via the pre-check and returns ``exists`` — no duplicate POST."""
+    first = FakeTransport()
+    created = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=first),
+        approve=True,
+    )
+    assert created.outcome == "created" and created.sent
+    posted_body = first.calls[0][2]
+    assert isinstance(posted_body["body"], str)
+
+    # The target now contains exactly the issue the first run created (same marker).
+    second = FakeTransport(
+        existing=[
+            {"number": 42, "html_url": "https://x/42", "body": posted_body["body"]}
+        ]
+    )
+    rerun = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=second),
+        approve=True,
+    )
+    assert rerun.outcome == "exists" and rerun.sent is False and not rerun.executed
+    assert second.gets and second.calls == []  # a GET happened; no duplicate POST
+    assert rerun.idempotency_key == created.idempotency_key
+    existing = rerun.result.get("existing")
+    assert isinstance(existing, dict) and existing.get("number") == 42
+
+
+def test_inconclusive_precheck_refuses_rather_than_duplicates() -> None:
+    """When the pre-check cannot decide — a non-2xx list response or a transport error —
+    the actuator refuses: ``outcome="inconclusive"``, nothing sent, no POST. A correct
+    refusal beats a confident duplicate (groundedness applied to a side effect)."""
+    for fake in (
+        FakeTransport(get_status=403),  # e.g. a rate-limited list read
+        FakeTransport(raise_on_get=True),  # a transport error on the pre-check
+    ):
+        receipt = execute_action(
+            *_INCIDENT,
+            actuator=GithubActuator(owner="o", repo="r", token="t", transport=fake),
+            approve=True,
+        )
+        assert receipt.outcome == "inconclusive"
+        assert receipt.sent is False and not receipt.executed
+        assert receipt.withheld is False and receipt.withheld_reason is None
+        assert fake.calls == []  # never created over an undecidable pre-check
+        assert receipt.idempotency_key  # the key is still recorded, for audit
+
+
+def test_precheck_requires_the_exact_marker_not_just_a_label_hit() -> None:
+    """A candidate returned by the label-filtered list that does NOT carry the exact
+    marker in its body is not trusted — the actuator creates rather than falsely
+    deduping on a bare label collision."""
+    fake = FakeTransport(
+        existing=[{"number": 1, "html_url": "https://x/1", "body": "unrelated issue"}]
+    )
+    receipt = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=fake),
+        approve=True,
+    )
+    assert receipt.outcome == "created" and receipt.sent
+    assert len(fake.calls) == 1  # the non-matching candidate was correctly ignored
+
+
+def test_idempotency_key_is_deterministic_and_excludes_the_marker() -> None:
+    """The key is a stable ``sha256:`` digest of the grounded request, computed without
+    the marker (so it never depends on itself) and identical across calls."""
+    payload = preview_payload(*_INCIDENT)
+    key = idempotency_key(payload)
+    assert key.startswith("sha256:") and len(key) == len("sha256:") + 64
+    assert idempotency_key(payload) == key  # deterministic
+    # The grounded payload carries no marker/key: the key is a function of the grounded
+    # body alone, so embedding the key later cannot change it (it converges).
+    assert key not in json.dumps(payload.body)
+
+
+def test_simulated_and_withheld_receipts_carry_no_idempotency_key() -> None:
+    """The idempotency key is a real-path concept: the simulated dry run and the
+    ungrounded / blocked gates form no real send and carry ``idempotency_key=None``."""
+    simulated = execute_action(*_INCIDENT)
+    assert simulated.simulated and simulated.idempotency_key is None
+    withheld = execute_action("incident", "devex", "What does PR-201 change?")
+    assert withheld.withheld and withheld.idempotency_key is None
+    blocked = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(
+            owner="o", repo="r", token="t", transport=FakeTransport()
+        ),
+        approve=False,
+    )
+    assert blocked.outcome == "blocked" and blocked.idempotency_key is None
+
+
+def test_pr_comment_idempotency_lists_comments_and_dedupes() -> None:
+    """A pr_summary comment carries no label, so its pre-check lists the PR's comments
+    and matches the exact marker: a first send creates the comment; a re-run against a
+    thread that already contains it returns ``exists`` with no duplicate."""
+    first = FakeTransport(status=201, response={"id": 1})
+    created = execute_action(
+        *_PR_SUMMARY,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=first),
+        approve=True,
+    )
+    assert created.outcome == "created" and created.sent
+    posted = first.calls[0][2]
+    assert isinstance(posted["body"], str)
+    assert first.gets and first.gets[0].endswith("/issues/PR-201/comments")
+
+    second = FakeTransport(existing=[{"id": 1, "body": posted["body"]}])
+    rerun = execute_action(
+        *_PR_SUMMARY,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=second),
+        approve=True,
+    )
+    assert rerun.outcome == "exists" and rerun.sent is False
+    assert second.calls == []
 
 
 # --- receipt self-consistency (adversarial-review regressions) ----------------

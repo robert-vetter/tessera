@@ -33,6 +33,26 @@ request a second way and invents nothing. The gate that makes execution a trust
    exactly what was (or would be) sent and why it was allowed, without a second
    round-trip.
 
+On the **real path only**, execution is **best-effort idempotent** (Milestone 15, ADR
+0026). Before creating, :class:`GithubActuator` derives a deterministic key from the
+grounded request (``sha256`` over its canonical ``method``/``path``/``body``, the marker
+excluded so the key never depends on itself), stamps it onto the outgoing issue/comment
+as a marker — an HTML comment, a human-visible footer, and (for an issue) a
+deterministic ``idem-<key>`` label — and queries the target's **primary,
+immediately-consistent** issues/comments endpoint for that marker. A verified hit
+short-circuits to ``outcome="exists"`` (nothing created); a pre-check that cannot decide
+(a transport error or a non-2xx list response) short-circuits to
+``outcome="inconclusive"`` (nothing created) — **never a silent duplicate** (a correct
+refusal beats a confident duplicate, the groundedness principle applied to a side
+effect). It is **best-effort, not exactly-once**: a genuine concurrent create (two sends
+before either issue is listable) can still duplicate; the eventually-consistent search
+index is deliberately *not* used, so the residual window is that true race, not a
+~minute of search lag. The marker is declared deployment scaffolding (like the fixed M13
+labels/headings): a deterministic function of already-verified values, asserting no new
+claim, and it never enters the M13 renderer or the grounded slots — so **faithfulness
+stays 1.0 across every boundary**. The simulated default embeds no marker and does no
+pre-check; it records the grounded template unchanged.
+
 Deterministic, offline, pure-stdlib on the verifiable core: this module imports only
 the payload layer, the grounded-evidence type, and the standard library, so the
 leak-guard (``tests/test_agent.py``) still holds — no embedding / LLM / cloud / MCP
@@ -47,6 +67,7 @@ in this repository; it sends nothing (ADR 0025, the honest edge carried from M13
 
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.error
 import urllib.request
@@ -107,6 +128,10 @@ class ExecutionReceipt:
     withheld_reason: str | None
     outcome: str
     result: dict[str, object] = field(default_factory=dict)
+    # The deterministic best-effort-idempotency key of the request, on the real path
+    # (``sha256:<hex>``); ``None`` on the simulated dry run and the ungrounded/blocked
+    # gates, which form no real send (Milestone 15, ADR 0026).
+    idempotency_key: str | None = None
     approved: bool = False
     requires_approval: bool = True
     route_kind: str = ""
@@ -142,6 +167,7 @@ class ExecutionReceipt:
             "withheld_reason": self.withheld_reason,
             "outcome": self.outcome,
             "result": self.result,
+            "idempotency_key": self.idempotency_key,
             "approved": self.approved,
             "requires_approval": self.requires_approval,
         }
@@ -159,6 +185,7 @@ def _receipt(
     withheld_reason: str | None = None,
     result: dict[str, object] | None = None,
     approved: bool = False,
+    idempotency_key: str | None = None,
     method: str | None = None,
     path: str | None = None,
     body: dict[str, object] | None = None,
@@ -189,6 +216,7 @@ def _receipt(
         withheld_reason=withheld_reason,
         outcome=outcome,
         result={} if result is None else result,
+        idempotency_key=idempotency_key,
         approved=approved,
         route_kind=payload.route_kind,
         route_reason=payload.route_reason,
@@ -240,11 +268,18 @@ class SimulatedActuator:
 class Transport(Protocol):
     """The HTTP seam the real actuator sends through — injected so the network stays
     out of tests (a fake transport records the call and returns a canned response) and
-    out of CI entirely. The default is :class:`_UrllibTransport` (stdlib ``urllib``)."""
+    out of CI entirely. The default is :class:`_UrllibTransport` (stdlib ``urllib``).
+
+    ``get`` is the read half the idempotency pre-check needs (Milestone 15): it returns
+    the parsed JSON, which for the issues/comments list endpoints is a JSON *array*, so
+    the payload type is ``object`` (a ``list`` or, for a search-style endpoint, a
+    ``dict``) rather than ``post``'s ``dict``."""
 
     def post(
         self, url: str, *, headers: dict[str, str], body: dict[str, object]
     ) -> tuple[int, dict[str, object]]: ...
+
+    def get(self, url: str, *, headers: dict[str, str]) -> tuple[int, object]: ...
 
 
 @dataclass(frozen=True)
@@ -263,6 +298,77 @@ class _UrllibTransport:
         parsed = json.loads(payload) if payload else {}
         return status, parsed if isinstance(parsed, dict) else {"response": parsed}
 
+    def get(
+        self, url: str, *, headers: dict[str, str]
+    ) -> tuple[int, object]:  # pragma: no cover - real network, never in CI
+        request = urllib.request.Request(url, headers=headers, method="GET")
+        with urllib.request.urlopen(request) as response:
+            status = int(response.status)
+            payload = response.read().decode("utf-8")
+        return status, (json.loads(payload) if payload else [])
+
+
+# --- best-effort idempotency (real path only, Milestone 15, ADR 0026) ---------
+
+_MARKER_PREFIX = "tessera-idempotency-key"
+
+
+def _canonical_request(payload: RenderedPayload) -> bytes:
+    """The canonical bytes the idempotency key hashes: the grounded request's method,
+    (unbound) path, and body — deployment-independent (``{owner}``/``{repo}`` still
+    unbound), so the same grounded action has one key regardless of target; per-repo
+    dedup comes from querying *within* the target repo. Sorted keys + fixed separators
+    make it byte-stable across processes and ``PYTHONHASHSEED``."""
+    return json.dumps(
+        {"method": payload.method, "path": payload.path, "body": payload.body},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+
+
+def idempotency_key(payload: RenderedPayload) -> str:
+    """The deterministic best-effort-idempotency key of a grounded request
+    (``"sha256:<hex>"``). A pure function of the grounded ``method``/``path``/``body``,
+    computed *without* the marker so the key never depends on itself."""
+    return "sha256:" + hashlib.sha256(_canonical_request(payload)).hexdigest()
+
+
+def idempotency_marker(key: str) -> str:
+    """The exact, machine-findable marker embedded in the issue/comment body — an HTML
+    comment (invisible when the Markdown renders) carrying the key. The pre-check
+    verifies this exact substring in a candidate's body before trusting it, so a label
+    collision alone can never be mistaken for a match."""
+    return f"<!-- {_MARKER_PREFIX}: {key} -->"
+
+
+def _idempotency_label(key: str) -> str:
+    """A short, deterministic, index-independent label handle for the key — the filter
+    on the primary (immediately-consistent) issues-list endpoint. Issues only; a comment
+    carries no label, so its pre-check lists the PR's comments for the marker."""
+    digest = key.split(":", 1)[1]
+    return f"idem-{digest[:16]}"
+
+
+def _embed_idempotency(body: dict[str, object], key: str) -> dict[str, object]:
+    """Return a *copy* of the request body with the idempotency marker embedded — a
+    footer (HTML comment + a human-visible line) appended to ``body`` and, for an issue,
+    the ``idem-`` label appended to ``labels``. Declared scaffolding: a deterministic
+    function of already-verified values, it asserts no new claim and never touches the
+    grounded slots. Copies every mutated container, so the payload stays untouched."""
+    marked = dict(body)
+    marker = idempotency_marker(key)
+    text = marked.get("body")
+    if isinstance(text, str):
+        marked["body"] = (
+            f"{text}\n\n---\n{marker}\n"
+            f"_Idempotency key `{key}` — Tessera (best-effort deduplicated)._"
+        )
+    labels = marked.get("labels")
+    if isinstance(labels, list):
+        marked["labels"] = [*labels, _idempotency_label(key)]
+    return marked
+
 
 @dataclass(frozen=True)
 class GithubActuator:
@@ -271,6 +377,10 @@ class GithubActuator:
     approved and holds a credential. Missing either, it declines and records why
     (``outcome="blocked"``, ``sent=False``), so ``sent=True`` is *earned*, never a
     rubber stamp. A transport error records ``outcome="error"`` and ``sent=False``.
+    Before creating, it runs a best-effort idempotency pre-check (Milestone 15, ADR
+    0026): a verified prior identical action yields ``outcome="exists"`` and an
+    undecidable pre-check yields ``outcome="inconclusive"`` — both ``sent=False``, never
+    a silent duplicate.
 
     Pure-stdlib (``urllib``); no new dependency, no pip extra. The opt-in is
     constructing this class with a credential + an explicit ``owner``/``repo`` binding.
@@ -315,21 +425,70 @@ class GithubActuator:
                 result={"reason": "no GitHub credential configured; nothing sent."},
                 approved=True,
             )
-        url = self.base_url + self._bind(payload.path)
+
+        # Approved AND credentialed: form the real, best-effort-idempotent request. The
+        # key is a pure function of the grounded payload; the marker is deployment
+        # scaffolding embedded into a copy of the body (the payload is untouched).
+        key = idempotency_key(payload)
+        marked_body = _embed_idempotency(payload.body, key)
+        bound_path = self._bind(payload.path)
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json",
         }
+
+        # Pre-send existence check on the primary (immediately-consistent) endpoint —
+        # never silently create over an already-existing or an undecidable result.
+        verdict, detail = self._existing(payload, bound_path, key, headers)
+        if verdict == "inconclusive":
+            return _receipt(
+                payload,
+                actuator=self.name,
+                path=bound_path,
+                body=marked_body,
+                outcome="inconclusive",
+                idempotency_key=key,
+                result={
+                    "reason": (
+                        "the idempotency pre-check could not confirm the target is "
+                        "free of a prior identical action; nothing created."
+                    ),
+                    "detail": detail,
+                },
+                approved=True,
+            )
+        if verdict == "exists":
+            return _receipt(
+                payload,
+                actuator=self.name,
+                path=bound_path,
+                body=marked_body,
+                outcome="exists",
+                idempotency_key=key,
+                result={
+                    "reason": (
+                        "an identical grounded action already exists at the target "
+                        "(matched idempotency key); nothing created."
+                    ),
+                    "existing": detail,
+                },
+                approved=True,
+            )
+
+        url = self.base_url + bound_path
         try:
             status, response = self.transport.post(
-                url, headers=headers, body=payload.body
+                url, headers=headers, body=marked_body
             )
         except (urllib.error.URLError, OSError) as exc:  # pragma: no cover - real net
             return _receipt(
                 payload,
                 actuator=self.name,
+                path=bound_path,
+                body=marked_body,
                 outcome="error",
+                idempotency_key=key,
                 result={"error": f"transport error; nothing created: {exc}"},
                 approved=True,
             )
@@ -337,7 +496,10 @@ class GithubActuator:
             return _receipt(
                 payload,
                 actuator=self.name,
+                path=bound_path,
+                body=marked_body,
                 outcome="error",
+                idempotency_key=key,
                 result={
                     "status": status,
                     "response": response,
@@ -348,14 +510,57 @@ class GithubActuator:
         return _receipt(
             payload,
             actuator=self.name,
-            path=self._bind(payload.path),
+            path=bound_path,
+            body=marked_body,
             executed=True,
             simulated=False,
             sent=True,
             outcome="created",
+            idempotency_key=key,
             result={"status": status, "response": response},
             approved=True,
         )
+
+    def _existing(
+        self,
+        payload: RenderedPayload,
+        bound_path: str,
+        key: str,
+        headers: dict[str, str],
+    ) -> tuple[str, dict[str, object] | None]:
+        """Best-effort pre-check on the target's **primary** (immediately-consistent)
+        list endpoint — the issues list filtered by the ``idem-`` label, or the PR's
+        comments list — verifying the exact marker in a candidate's body before trusting
+        it. Returns ``("exists", issue)`` on a verified hit, ``("inconclusive", d)``
+        when the list read errors or is non-2xx (refuse, never duplicate), or
+        ``("create", None)`` when the target is free of a prior identical action. The
+        eventually-consistent search index is deliberately not used, so the residual
+        window is a genuine concurrent create, not a minute of search lag."""
+        marker = idempotency_marker(key)
+        is_comment = payload.path.rstrip("/").endswith("/comments")
+        if is_comment:
+            list_url = self.base_url + bound_path
+        else:
+            label = _idempotency_label(key)
+            list_url = (
+                f"{self.base_url}{bound_path}?state=all&per_page=100&labels={label}"
+            )
+        try:
+            status, parsed = self.transport.get(list_url, headers=headers)
+        except (urllib.error.URLError, OSError) as exc:  # pragma: no cover - real net
+            return "inconclusive", {"error": f"pre-check transport error: {exc}"}
+        if not 200 <= status < 300:
+            return "inconclusive", {"status": status}
+        items: list[object] = parsed if isinstance(parsed, list) else []
+        for item in items:
+            if isinstance(item, dict):
+                body = item.get("body")
+                if isinstance(body, str) and marker in body:
+                    return "exists", {
+                        "number": item.get("number"),
+                        "html_url": item.get("html_url"),
+                    }
+        return "create", None
 
 
 # --- the gated entry points ---------------------------------------------------
