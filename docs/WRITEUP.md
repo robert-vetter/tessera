@@ -580,6 +580,67 @@ body, and labels. The frozen core (`grounding`/`graph`/`resolution`/`ingestion`/
 verifier) and the vertical answer layers are **empty-diff** `milestone-12..HEAD`; the whole
 milestone is additive.
 
+### Milestone 14: effectful execution behind approval — the first time Tessera can act
+
+Through thirteen milestones Tessera only ever *rendered* the wire request and sent
+nothing (`sent=False`; `{owner}`/`{repo}` unbound). An agent that had to actually act took
+that request and sent it itself, outside Tessera's guarantee. Milestone 14 takes the
+named next step — **effectful execution behind approval** — in the one posture that keeps
+the honest scope intact: the verifiable core actuates nothing, and the real path is an
+opt-in seam this repository never exercises. The measured boundary reaches its fourth
+station: read (M11) → action draft (M12) → executable payload (M13) → **execute** (M14).
+
+The execution layer (`tessera/agent/execution.py`, additive — not frozen core) consumes
+the M13 renderer and adds an `Actuator` seam with a single gated entry, `execute_action`:
+
+- **Nothing executes over ungrounded ground.** `execute_action` renders the M13 payload
+  and, unless it is `all_grounded`, returns a **withheld** `ExecutionReceipt` — no
+  request, nothing executed, nothing sent. The gate is *before* dispatch, so it holds for
+  every actuator, including a real, approved, credentialed one. This is the
+  execution-level analogue of "a refusal never becomes an answer."
+- **The default sends nothing and is transparently simulated.** `SimulatedActuator` (the
+  default everywhere the repo runs — tests, CI, the MCP surface) records the exact request
+  that *would* be sent — lossless with respect to the M13 payload — and a synthetic result
+  marked `simulated=True` / `sent=False`, carrying **no fabricated resource id**. A
+  simulation is never dressed as a real execution.
+- **The real path is an opt-in seam, double-gated, and `sent=True` is earned.**
+  `GithubActuator` binds `{owner}`/`{repo}` (a deployment binding, not evidence) and POSTs
+  to GitHub **iff** `approved=True` **and** it holds a credential. It uses only stdlib
+  `urllib` — no new dependency, no pip extra; the opt-in is a credential + an explicit
+  binding + approval. Its transport is injected, so it is contract-tested against a *fake*
+  transport in CI, but **its real transport and the real network are never invoked in CI**,
+  and it is never constructed by the default path. Tessera renders and simulates here; it
+  sends nothing.
+- **The receipt is the lossless trust record.** `ExecutionReceipt` carries the gated
+  request, the grounded slots with recomputed verdicts and provenance, the actuator, the
+  approval, and the outcome — so an agent can audit exactly what was, or would be, sent
+  and why it was allowed.
+
+The MCP server gains one thin tool, `execute_action`, wired to the **simulated actuator
+only** — the transport server holds no credential and can never send; the committed
+client ↔ server session now also runs a simulated create-issue execution, a simulated
+PR-comment execution, and a withheld execution (`sent=false` throughout). The headline is
+*measured* (`tests/test_execution_boundary.py`, a CI-gated property over cases **derived
+from the data** — every failed run, every PR): every simulated execution consumed an
+`all_grounded` payload and its receipt is a lossless record (each slot's verdict
+recomputed independently from the grounding), **faithfulness is 1.0 across the execution
+boundary**, nothing executes over ungrounded ground, and the real path sends iff
+approved+credentialed (fake transport). Faithfulness stays the single hard floor; the
+execution property is pinned, not a new gated metric. ADR 0005/0006 were re-examined at
+this boundary and recorded *still not forced*.
+
+The trust-bearing execution layer carried its **mandated pre-merge adversarial
+multi-agent review** (six lenses, nine agents, every finding independently reproduced):
+**0 majors**, three confirmed findings, all fixed and pinned before merge — the receipt
+aliased the payload's mutable `body` dict (copy-on-inherit); `blocked`/`error` receipts
+set `withheld_reason` while `withheld=False` (reserved that field for the ungrounded gate,
+carrying block/error detail in `outcome`+`result`); and "never invoked in CI" *overclaimed*
+the actuator (it *is* contract-tested in CI against a fake transport — only the real
+transport/network is never invoked in CI), scoped across the docstrings, ADR 0025, and the
+specs. The frozen core (`grounding`/`graph`/`resolution`/`ingestion`/the verifier) and the
+vertical answer layers are **empty-diff** `milestone-13..HEAD`; the whole milestone is the
+additive execution layer plus the thin MCP tool.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -685,20 +746,30 @@ Named with the same prominence as the results:
 - **Conversation is stateless.** Each question is answered from evidence
   alone; follow-ups ("and what about its renewal terms?") need the entity
   repeated.
-- **The agent boundary proposes and renders; it does not execute or send.** Milestones
-  11–13 expose Tessera to an AI agent over MCP: read-only grounded *answers* (ADR 0022),
-  grounded *action drafts* — propose-and-approve `incident`/`pr_summary` proposals whose
-  every field is verifier-checked, with a refusal carried rather than drafted over (ADR
-  0023) — and a *dry-run payload preview*: the exact GitHub request a drafted action would
-  send, every value traced to a verified field, rendered only when fully grounded (ADR
-  0024). All three boundaries preserve faithfulness exactly (measured:
-  `tests/test_boundary.py`, `tests/test_actions_boundary.py`,
-  `tests/test_payloads_boundary.py`). But Tessera still **executes nothing and sends
-  nothing** — it renders a request whose `{owner}`/`{repo}` stay unbound, which a human or
-  agent approves and sends *outside* Tessera; effectful execution is deliberately out of
-  scope (the honest edge of a trust layer, ADR 0024). The agent calls the production
-  **router**, which Milestone 12 aligned with `compose` on the one bare-ambiguous-term
-  divergence (`"Logistik"`) Milestone 11 recorded.
+- **The agent boundary reaches execution, but sends nothing in this repository.**
+  Milestones 11–14 expose Tessera to an AI agent over MCP: read-only grounded *answers*
+  (ADR 0022), grounded *action drafts* — propose-and-approve `incident`/`pr_summary`
+  proposals whose every field is verifier-checked, with a refusal carried rather than
+  drafted over (ADR 0023) — a *dry-run payload preview* rendering the exact GitHub request
+  a drafted action would send, every value traced to a verified field, only when fully
+  grounded (ADR 0024), and **effectful execution behind approval** (ADR 0025). All four
+  boundaries preserve faithfulness exactly (measured: `tests/test_boundary.py`,
+  `tests/test_actions_boundary.py`, `tests/test_payloads_boundary.py`,
+  `tests/test_execution_boundary.py`). Execution is gated on a fully-grounded payload —
+  **nothing executes over ungrounded ground** — and the default `SimulatedActuator` (used
+  by the tests, CI, clone-and-run, and the MCP surface) **sends nothing**, recording the
+  exact request that would go and a transparently synthetic result. A real `GithubActuator`
+  exists as an opt-in seam (stdlib `urllib`, double-gated on approval **and** a credential
+  so `sent=True` is earned), contract-tested against a fake transport, but **its real
+  transport and the real network are never invoked in CI**, and no real request is sent
+  from this repository. Actually sending — and a maintainer-authorized real one-shot — is
+  the named next posture step, deliberately not taken (credentialed and irreversible, ADR
+  0025). The agent calls the production **router**, which Milestone 12 aligned with
+  `compose` on the one bare-ambiguous-term divergence (`"Logistik"`) Milestone 11 recorded.
+- **A real create-issue is not idempotent.** On the opt-in real path a re-run would create
+  a duplicate issue; Tessera records this as a caller responsibility (the receipt makes the
+  intended request auditable before approval) rather than engineering a dedup key — the
+  real path is opt-in and out of CI (ADR 0025).
 
 ## Deliberately deferred (future work, not gaps missed)
 
@@ -709,15 +780,17 @@ next) · ER is now multi-field down to an exact key (name + address, ADR 0019; t
 floor — two distinct firms identical in name, address *and* key, which only an
 external registry or human adjudication separates · an **agentic / MCP-exposed mode now
 exists** for read-only grounded answers (Milestone 11, ADR 0022), propose-and-approve,
-field-verified **action drafts** (Milestone 12, ADR 0023), *and* a **dry-run
+field-verified **action drafts** (Milestone 12, ADR 0023), a **dry-run
 executable-payload preview** that renders the exact GitHub request but sends nothing
-(Milestone 13, ADR 0024) — the one remaining extension is **effectful execution behind
-approval**, deliberately out of scope today because executing is credentialed and
-irreversible, outside the honest scope of a trust layer (done honestly it would *consume*
-this renderer — a simulated default actuator plus an opt-in real path and an execution
-receipt) · a second real connector (Jira / PR-and-issue export) and a second payload
-target · LLM-judged faithfulness alongside the deterministic floor · persistence,
-multi-tenancy, access governance.
+(Milestone 13, ADR 0024), *and* **effectful execution behind approval** — a simulated
+default actuator that sends nothing plus an opt-in real GitHub path, both gated on a
+fully-grounded payload, with an execution receipt as the trust record (Milestone 14, ADR
+0025). What is deliberately *not* taken: **actually sending from this repository** — a
+maintainer-authorized real one-shot (a credentialed, irreversible external side effect)
+and engineered idempotency on the real path are the named next posture steps · a second
+payload target (Jira create-issue) · a second real connector (Jira / PR-and-issue export)
+· LLM-judged faithfulness alongside the deterministic floor · persistence, multi-tenancy,
+access governance.
 
 ## What was learned
 
@@ -789,6 +862,19 @@ multi-tenancy, access governance.
     record id could address the wrong resource), and the fix was to replace "strip what I
     recognize" with "rebuild independently and compare." Verifying a thing by reconstructing
     it beats verifying it by subtracting what you expect (ADR 0024).
+12. **The first capability that can act is defined by the gates it cannot skip, and the
+    simulations it cannot dress up as real.** Milestone 14 lets Tessera *execute* — but the
+    honest core is a simulated actuator that sends nothing, gated so nothing runs over an
+    ungrounded payload, with a real path that exists only as an opt-in seam this repository
+    never fires. Building the actuator was easy; the work was the discipline around it — the
+    real actuator is double-gated so `sent=True` is *earned*, the simulated result carries
+    no fabricated resource id (a simulation dressed as a real success would be the exact lie
+    a trust layer must not tell), and the receipt is a lossless record an agent can audit.
+    The adversarial review earned its keep a fourth time, catching the receipt aliasing the
+    payload's mutable body and — most in-character for this project — an "invoked in CI"
+    claim that overstated what the code enforces (the real *transport* is never invoked in
+    CI; the actuator *is* contract-tested there). On a surface that can finally cause a side
+    effect, the cheapest and most valuable check was still honesty about the words (ADR 0025).
 
 ## Reproduce everything
 
@@ -802,7 +888,7 @@ uv run tessera-devex "Why did run R-1042 fail, and how was it fixed?"
 bash scripts/gate.sh            # format · lint · strict types · tests · eval floor
 
 uv sync --extra agent           # opt-in: the MCP server SDK (CI stays pure-stdlib)
-uv run tessera-mcp              # the read-only grounded tools over MCP (stdio)
+uv run tessera-mcp              # grounded tools over MCP: ground · draft · preview · execute (simulated)
 uv run --extra agent python scripts/record_mcp_session.py  # a real client↔server session
 ```
 
