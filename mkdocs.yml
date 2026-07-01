@@ -76,6 +76,7 @@ nav:
       - 0022 The agentic / MCP boundary: adr/0022-agentic-mcp-boundary.md
       - 0023 The grounded-action boundary: adr/0023-grounded-action-boundary.md
       - 0024 The executable-payload boundary: adr/0024-executable-payload-preview.md
+      - 0025 The execution boundary, simulated by default: adr/0025-execution-behind-approval.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
