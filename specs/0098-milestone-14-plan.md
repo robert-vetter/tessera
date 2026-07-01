@@ -42,8 +42,9 @@ down: the **verifiable core is a simulated actuator** — it consumes an `all_gr
 `RenderedPayload`, produces an `ExecutionReceipt`, and sends nothing (deterministic,
 offline, no spend, nothing irreversible) — with the **real GitHub actuator as an
 opt-in seam** behind credentials + approval, contract-tested against an injected fake
-transport but **never invoked in CI/clone-and-run** (the M6-embedding-seam /
-SAP-adapter posture). The gate that makes execution a *trust* extension rather than a
+transport with its **real transport/network never invoked in CI/clone-and-run** (the
+M6-embedding-seam / SAP-adapter posture). The gate that makes execution a *trust*
+extension rather than a
 new write surface is the M13 payload: **execution requires an `all_grounded`
 `RenderedPayload`** — the execution analogue of M11's "a refusal never becomes an
 answer," M12's "a refusal is carried, never drafted over," and M13's "a payload is
@@ -65,8 +66,9 @@ never rendered over ungrounded ground."
    effect), and (b) simulated-only with no real adapter built at all. The chosen
    middle is: **build the simulated actuator + receipt as the CI-verifiable core, AND
    a real `GithubActuator` behind a credentialed, explicitly-enabled, approval-gated
-   opt-in, contract-tested against a fake transport but never invoked in CI or the
-   default clone-and-run.** Zero spend, nothing irreversible in-repo; the honest edge
+   opt-in, contract-tested against a fake transport with its real transport/network
+   never invoked in CI or the default clone-and-run.** Zero spend, nothing irreversible
+   in-repo; the honest edge
    is *"would send a grounded request, gated on approval — and in this repository, we
    prove it renders and would send, without sending."* This matches the M6 embedding
    seam and the Phase-4 SAP adapters: designed-for and contract-tested, provisioning
@@ -132,7 +134,7 @@ way and invents nothing.** A new layer `src/tessera/agent/execution.py` (additiv
      tests). `execute` refuses (a receipt with `sent=False` and a reason) unless
      `approved=True` and a credential is present; otherwise it performs the POST and
      records `sent=True` with the real response. **Never constructed by the default
-     path; never invoked in CI.**
+     path; its real transport/network never invoked in CI.**
 2. **`execute_action(kind, domain, question, *, actuator=SimulatedActuator(),
    approve=False) -> ExecutionReceipt`** — renders the M13 payload for the grounded
    action; if it is **not** `all_grounded`, returns a **withheld** receipt
@@ -215,7 +217,8 @@ would be sent, every value field-grounded, and nothing actually sent — or a ca
 - [ ] **Actuator + `ExecutionReceipt` + ADR 0025 (Unit 2, spec 0099).**
       `src/tessera/agent/execution.py` — the `Actuator` protocol, `SimulatedActuator`
       (default), `GithubActuator` (opt-in, stdlib `urllib`, injected transport,
-      approval+credential-gated, never invoked in CI), `ExecutionReceipt`, and
+      approval+credential-gated, real transport/network never invoked in CI),
+      `ExecutionReceipt`, and
       `execute_action` **gated on `RenderedPayload.all_grounded`**. Simulated result
       transparently synthetic; real `sent=True` earned (fake-transport contract test);
       withheld-never-executed; JSON-serializable receipt. Leak-guard extended
@@ -255,7 +258,7 @@ would be sent, every value field-grounded, and nothing actually sent — or a ca
 | Unit | Spec | Content |
 |---|---|---|
 | 1 | 0098 | this plan + the two recorded scope decisions (asked 2026-07-01) + finer decisions + the design for ADR 0025 |
-| 2 | 0099 | `src/tessera/agent/execution.py` — `Actuator`/`SimulatedActuator`/`GithubActuator`/`ExecutionReceipt`/`execute_action`, gated on `all_grounded`, simulated default + opt-in real seam (stdlib urllib, injected transport, approval+credential-gated, never invoked in CI), leak-guard extended; **ADR 0025**; **adversarial review** |
+| 2 | 0099 | `src/tessera/agent/execution.py` — `Actuator`/`SimulatedActuator`/`GithubActuator`/`ExecutionReceipt`/`execute_action`, gated on `all_grounded`, simulated default + opt-in real seam (stdlib urllib, injected transport, approval+credential-gated, real transport/network never invoked in CI), leak-guard extended; **ADR 0025**; **adversarial review** |
 | 3 | 0100 | `tessera-mcp` `execute_action` tool (thin transport, simulated only); no-`mcp`-in-base pin holds; wiring contract test; committed real client-session transcript (simulated execution + withheld) |
 | 4 | 0101 | trust across the execution boundary: simulated executions consumed grounded payloads + lossless receipts + faithfulness 1.0; nothing-over-ungrounded pin; real-path-sends-iff-approved+credentialed (fake transport); pinned CI measurement; ADR 0005/0006 re-examined and recorded unforced |
 | 5 | 0102 | close: WRITEUP/README/CHANGELOG/STATUS, ADR nav/index, empty-diff core audit, tag `milestone-14`, memory, kickoff |
