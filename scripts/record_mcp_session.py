@@ -1,13 +1,16 @@
 """Record a real MCP client <-> server session against ``tessera-mcp``.
 
-The "ran on" honesty for Milestones 11, 12, and 13 (specs 0084, 0090, 0095): this
-spawns the Tessera MCP server as a subprocess and drives it with a *real* MCP client
-over stdio — listing tools, grounding a question in each domain, taking a principled
-refusal, inspecting an entity-resolution trail, **drafting propose-and-approve actions**
-(an incident, a PR summary, and a carried refusal), and **previewing the dry-run GitHub
-payloads** those actions would send (a create-issue, a PR comment, and a withheld
-payload — nothing sent) — then writes the exchange to ``data/mcp_session/`` as a
-committed artifact (the no-spend analogue of the Milestone-5 GitHub-Actions snapshot).
+The "ran on" honesty for Milestones 11, 12, 13, and 14 (specs 0084, 0090, 0095, 0100):
+this spawns the Tessera MCP server as a subprocess and drives it with a *real* MCP
+client over stdio — listing tools, grounding a question in each domain, taking a
+principled refusal, inspecting an entity-resolution trail, **drafting
+propose-and-approve actions** (an incident, a PR summary, and a carried refusal),
+**previewing the dry-run
+GitHub payloads** those actions would send (a create-issue, a PR comment, and a withheld
+payload), and **executing them through the simulated actuator** (an incident and a PR
+summary as dry runs, and a withheld execution — ``sent`` false throughout, nothing sent)
+— then writes the exchange to ``data/mcp_session/`` as a committed artifact (the
+no-spend analogue of the Milestone-5 GitHub-Actions snapshot).
 
 It is NOT run in CI (CI is pure-stdlib and carries no MCP SDK). Reproduce locally:
 
@@ -119,6 +122,37 @@ PAYLOAD_CALLS: list[tuple[dict[str, str], str]] = [
     ),
 ]
 
+# The execution calls (Milestone 14, spec 0100): (arguments, why). Each runs the
+# grounded action through the SIMULATED actuator — the exact request that would be sent,
+# and nothing sent (the server holds no credential). 'sent' is always false; a
+# not-fully-grounded action is withheld with no request.
+EXECUTE_CALLS: list[tuple[dict[str, str], str]] = [
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "Why did run R-1042 fail, and has this happened before?",
+        },
+        "a simulated create-issue execution — grounded, sent=false, nothing sent",
+    ),
+    (
+        {
+            "action": "pr_summary",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a simulated PR-comment execution from the change summary",
+    ),
+    (
+        {
+            "action": "incident",
+            "domain": "devex",
+            "question": "What does PR-201 change?",
+        },
+        "a withheld execution — nothing executed over an incompatible grounding",
+    ),
+]
+
 
 def _truncate(text: str, limit: int = 160) -> str:
     text = text.replace("\n", " ").strip()
@@ -169,6 +203,27 @@ def _render_payload(result: dict[str, Any]) -> list[str]:
     if "labels" in body:
         lines.append(f"  labels: {body['labels']}")
     lines.append(f"  body: {_truncate(str(body.get('body', '')), 140)}")
+    for slot in result["slots"]:
+        lines.append(
+            f"  slot [{slot['part']}/{slot['role']}] verified={slot['verified']}: "
+            f"{_truncate(slot['value'], 80)}"
+        )
+    return lines
+
+
+def _render_execution(result: dict[str, Any]) -> list[str]:
+    lines = [
+        f"  kind: {result['kind']}  actuator: {result['actuator']}  "
+        f"outcome: {result['outcome']}  all_grounded: {result['all_grounded']}  "
+        f"executed: {result['executed']}  simulated: {result['simulated']}  "
+        f"sent: {result['sent']}  requires_approval: {result['requires_approval']}",
+    ]
+    if result["withheld"]:
+        lines.append(f"  withheld: {result['withheld_reason']}")
+        return lines
+    request = result["request"]
+    lines.append(f"  → (dry run, not sent) {request['method']} {request['path']}")
+    lines.append(f"  result: {_truncate(str(result['result']), 140)}")
     for slot in result["slots"]:
         lines.append(
             f"  slot [{slot['part']}/{slot['role']}] verified={slot['verified']}: "
@@ -272,6 +327,18 @@ async def _run() -> dict[str, Any]:
                     "result": res.structuredContent,
                 }
             )
+        # The simulated executions (Milestone 14): run each verified action through the
+        # simulated actuator — a dry run recording the exact request; nothing sent.
+        for args, why in EXECUTE_CALLS:
+            res = await session.call_tool("execute_action", args)
+            exchange.append(
+                {
+                    "tool": "execute_action",
+                    "arguments": args,
+                    "why": why,
+                    "result": res.structuredContent,
+                }
+            )
         captured["exchange"] = exchange
     return captured
 
@@ -287,7 +354,7 @@ def _write_transcript(captured: dict[str, Any]) -> None:
         "",
         "Captured by `uv run --extra agent python scripts/record_mcp_session.py`: a",
         "real MCP client driving the `tessera-mcp` server over stdio (specs 0084,",
-        "0090). Not",
+        "0090, 0095, 0100). Not",
         "run in CI (no MCP SDK); the structured tool results are deterministic.",
         "",
         f"**Server:** `{captured['server']['name']}` "
@@ -319,6 +386,8 @@ def _write_transcript(captured: dict[str, Any]) -> None:
             md.extend(_render_action(step["result"]))
         elif step["tool"] == "preview_payload":
             md.extend(_render_payload(step["result"]))
+        elif step["tool"] == "execute_action":
+            md.extend(_render_execution(step["result"]))
         else:
             md.extend(_render_result(step["result"]))
     md.append("")

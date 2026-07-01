@@ -16,9 +16,11 @@ from typing import cast
 
 import pytest
 
+from tessera.agent.execution import execute_action
 from tessera.agent.mcp_server import (
     tool_assertions,
     tool_draft_action,
+    tool_execute_action,
     tool_ground,
     tool_list_actions,
     tool_list_domains,
@@ -124,6 +126,36 @@ def test_handler_preview_payload_renders_and_withholds() -> None:
     assert withheld["request"] == {"method": "", "path": "", "body": {}}
 
 
+def test_handler_execute_action_simulates_and_withholds() -> None:
+    """The handler is thin transport: it returns exactly the execution layer's
+    serialized receipt (ADR 0025), running the SIMULATED actuator. A grounded action
+    executes as a dry run (sent false); an incompatible grounding is withheld with no
+    request. The server never sends."""
+    executed = tool_execute_action(
+        "incident", "devex", "Why did run R-1042 fail, and has this happened before?"
+    )
+    # Thin transport: byte-equal to the layer's own serialization, no added logic.
+    assert (
+        executed
+        == execute_action(
+            "incident",
+            "devex",
+            "Why did run R-1042 fail, and has this happened before?",
+        ).to_dict()
+    )
+    assert executed["all_grounded"] is True
+    assert executed["simulated"] is True
+    assert executed["sent"] is False
+    assert executed["actuator"] == "simulated"
+    assert executed["requires_approval"] is True
+    assert json.loads(json.dumps(executed)) == executed
+    # A route-incompatible request is withheld, never executed.
+    withheld = tool_execute_action("incident", "devex", "What does PR-201 change?")
+    assert withheld["withheld"] is True
+    assert withheld["sent"] is False
+    assert withheld["request"] == {"method": "", "path": "", "body": {}}
+
+
 # --- the opt-in-extra guarantee (run in CI) -----------------------------------
 
 
@@ -163,6 +195,7 @@ def test_build_server_registers_the_tools() -> None:
         "list_actions",
         "draft_action",
         "preview_payload",
+        "execute_action",
     }
     for tool in tools.values():
         assert tool.description
@@ -174,6 +207,11 @@ def test_build_server_registers_the_tools() -> None:
         "question",
     }
     assert set(tools["preview_payload"].inputSchema["properties"]) == {
+        "action",
+        "domain",
+        "question",
+    }
+    assert set(tools["execute_action"].inputSchema["properties"]) == {
         "action",
         "domain",
         "question",
@@ -261,3 +299,30 @@ def test_build_server_previews_a_payload_through_the_protocol() -> None:
     request = cast("dict[str, object]", structured["request"])
     assert request["method"] == "POST"
     assert request["path"] == "/repos/{owner}/{repo}/issues"
+
+
+def test_build_server_executes_an_action_through_the_protocol() -> None:
+    """Contract: dispatching execute_action through the server returns the serialized
+    execution receipt from the SIMULATED actuator — grounded, and sent is false (the
+    server holds no credential). Requires the `agent` extra."""
+    pytest.importorskip("mcp")
+    from tessera.agent.mcp_server import build_server
+
+    server = build_server()
+    result = asyncio.run(
+        server.call_tool(
+            "execute_action",
+            {
+                "action": "incident",
+                "domain": "devex",
+                "question": "Why did run R-1042 fail, and has this happened before?",
+            },
+        )
+    )
+    structured = result[1] if isinstance(result, tuple) else result
+    assert isinstance(structured, dict)
+    assert structured["all_grounded"] is True
+    assert structured["simulated"] is True
+    assert structured["sent"] is False
+    assert structured["actuator"] == "simulated"
+    assert structured["requires_approval"] is True

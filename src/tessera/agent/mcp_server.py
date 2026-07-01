@@ -2,14 +2,19 @@
 
 A *thin transport*: it serializes the grounded-tool layer
 (:mod:`tessera.agent.grounded`, ADR 0022), the grounded-action layer
-(:mod:`tessera.agent.actions`, ADR 0023), and the dry-run payload renderer
-(:mod:`tessera.agent.payloads`, ADR 0024) over MCP so an enterprise AI agent — Claude,
+(:mod:`tessera.agent.actions`, ADR 0023), the dry-run payload renderer
+(:mod:`tessera.agent.payloads`, ADR 0024), and the execution layer
+(:mod:`tessera.agent.execution`, ADR 0025) over MCP so an enterprise AI agent — Claude,
 or any MCP client — can call Tessera as its evidence oracle, ask it to draft grounded
-propose-and-approve actions, *and* preview the exact request those actions would send.
-It contains **no grounding, drafting, or rendering logic**: every answer, verdict,
-refusal, drafted field, and rendered payload comes from those layers, and nothing is
-executed — ``draft_action`` returns a proposal a human or agent approves, and
-``preview_payload`` renders the wire request without sending it.
+propose-and-approve actions, preview the exact request those actions would send, *and*
+execute them through the **simulated** actuator. It contains **no grounding, drafting,
+rendering, or execution logic**: every answer, verdict, refusal, drafted field, rendered
+payload, and execution receipt comes from those layers. Nothing is sent —
+``draft_action`` returns a proposal a human or agent approves, ``preview_payload``
+renders the wire request without sending it, and ``execute_action`` runs the
+**simulated** actuator only (the server holds no credential), so its receipt carries
+``sent=false``. The opt-in real GitHub actuator (ADR 0025) is deliberately *not* exposed
+here — real execution is a local/API opt-in behind a credential, never this surface.
 
 The MCP SDK is the opt-in ``agent`` extra (``uv sync --extra agent``), imported
 **lazily** only inside :func:`build_server` / :func:`main`. Importing this module —
@@ -26,6 +31,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tessera.agent.actions import available_actions, draft_action
+from tessera.agent.execution import execute_action
 from tessera.agent.grounded import assertions, available_domains, domain, ground
 from tessera.agent.payloads import preview_payload
 
@@ -43,9 +49,11 @@ SERVER_INSTRUCTIONS = (
     "answer, call list_actions to see the draftable actions and draft_action to get a "
     "grounded, cited PROPOSAL whose every field is verifier-checked, then "
     "preview_payload to render the EXACT external request that proposal would send (a "
-    "GitHub create-issue or PR comment) — every value field-grounded. Propose-and-"
-    "approve only: Tessera drafts and renders, a human or agent approves and sends; "
-    "nothing is executed and nothing is sent."
+    "GitHub create-issue or PR comment) — every value field-grounded — and "
+    "execute_action to run it through the SIMULATED actuator (nothing is sent; the "
+    "server holds no credential). Propose-and-approve only: Tessera drafts, renders, "
+    "and simulates; a human or agent approves and sends. Every execute_action receipt "
+    "carries sent=false."
 )
 
 
@@ -92,6 +100,14 @@ def tool_preview_payload(action: str, domain: str, question: str) -> dict[str, o
     withheld result — for ``question`` in ``domain``. Holds no logic: it delegates
     verbatim to the payload renderer (ADR 0024). Nothing is sent (``sent`` is false)."""
     return preview_payload(action, domain, question).to_dict()
+
+
+def tool_execute_action(action: str, domain: str, question: str) -> dict[str, object]:
+    """Execute a grounded action through the **simulated** actuator — the exact request
+    that would be sent, and nothing sent (the server holds no credential). Holds no
+    logic: it delegates verbatim to the execution layer (ADR 0025). ``sent`` is always
+    false; a not-fully-grounded action is withheld with no request."""
+    return execute_action(action, domain, question).to_dict()
 
 
 # --- the MCP wiring (lazily imports the SDK) ----------------------------------
@@ -146,6 +162,19 @@ _PREVIEW_PAYLOAD_DESC = (
     "always true: Tessera renders, a human or agent approves and sends. Args: action "
     "(one of list_actions), domain, question."
 )
+_EXECUTE_ACTION_DESC = (
+    "Execute a grounded action through Tessera's SIMULATED actuator — a dry run that "
+    "records the exact request that WOULD be sent and sends NOTHING. Tessera drafts "
+    "the action, renders its GitHub payload, and (only if every field is "
+    "verifier-passing) hands it to the simulated actuator: the 'receipt' carries the "
+    "request (method/path/body), the grounded 'slots' each with a 'verified' verdict "
+    "and provenance, and the outcome. 'sent' is ALWAYS false and 'simulated' true — "
+    "the server holds no credential and can never send; a human or agent approves and "
+    "sends OUTSIDE Tessera. If the grounding refused, routed incompatibly, or any "
+    "field is unverified, 'withheld' is true with no request — nothing is executed "
+    "over ungrounded ground. 'requires_approval' is always true. Args: action (one of "
+    "list_actions), domain, question."
+)
 
 
 def build_server() -> FastMCP:
@@ -182,6 +211,10 @@ def build_server() -> FastMCP:
     @server.tool(name="preview_payload", description=_PREVIEW_PAYLOAD_DESC)
     def _preview_payload(action: str, domain: str, question: str) -> dict[str, object]:
         return tool_preview_payload(action, domain, question)
+
+    @server.tool(name="execute_action", description=_EXECUTE_ACTION_DESC)
+    def _execute_action(action: str, domain: str, question: str) -> dict[str, object]:
+        return tool_execute_action(action, domain, question)
 
     return server
 
