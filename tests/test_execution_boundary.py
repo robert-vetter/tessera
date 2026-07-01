@@ -54,12 +54,18 @@ class _FakeTransport:
     status: int = 201
     response: dict[str, object] = field(default_factory=lambda: {"number": 1})
     calls: list[str] = field(default_factory=list)
+    gets: list[str] = field(default_factory=list)
 
     def post(
         self, url: str, *, headers: dict[str, str], body: dict[str, object]
     ) -> tuple[int, dict[str, object]]:
         self.calls.append(url)
         return self.status, self.response
+
+    def get(self, url: str, *, headers: dict[str, str]) -> tuple[int, object]:
+        # The idempotency pre-check read: nothing pre-exists, so a create proceeds.
+        self.gets.append(url)
+        return 200, []
 
 
 def _failed_runs(build: BuildGraph) -> list[str]:
