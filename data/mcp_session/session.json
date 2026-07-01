@@ -27,6 +27,10 @@
     {
       "name": "preview_payload",
       "description": "Render the EXACT external request a grounded action would send — a dry-run preview, never sent. Tessera drafts the action, then maps its VERIFIED fields into the GitHub wire request (a create-issue for an incident, a PR comment for a pr_summary): 'request' carries the method, path, and JSON body; every content value traces to a verifier-passing field via 'slots' (each with its provenance and 'verified' verdict); 'all_grounded' is true only when every slot is verifier-passing. {owner}/{repo} stay unbound placeholders you fill at send time. If the grounding refused, routed incompatibly, or any field is unverified, 'rendered' is false with 'withheld_reason' and no request — a payload is never rendered over ungrounded ground. 'sent' is ALWAYS false and 'requires_approval' always true: Tessera renders, a human or agent approves and sends. Args: action (one of list_actions), domain, question."
+    },
+    {
+      "name": "execute_action",
+      "description": "Execute a grounded action through Tessera's SIMULATED actuator — a dry run that records the exact request that WOULD be sent and sends NOTHING. Tessera drafts the action, renders its GitHub payload, and (only if every field is verifier-passing) hands it to the simulated actuator: the 'receipt' carries the request (method/path/body), the grounded 'slots' each with a 'verified' verdict and provenance, and the outcome. 'sent' is ALWAYS false and 'simulated' true — the server holds no credential and can never send; a human or agent approves and sends OUTSIDE Tessera. If the grounding refused, routed incompatibly, or any field is unverified, 'withheld' is true with no request — nothing is executed over ungrounded ground. 'requires_approval' is always true. Args: action (one of list_actions), domain, question."
     }
   ],
   "exchange": [
@@ -2390,6 +2394,742 @@
         "withheld_reason": "cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').",
         "all_grounded": false,
         "sent": false,
+        "requires_approval": true
+      }
+    },
+    {
+      "tool": "execute_action",
+      "arguments": {
+        "action": "incident",
+        "domain": "devex",
+        "question": "Why did run R-1042 fail, and has this happened before?"
+      },
+      "why": "a simulated create-issue execution — grounded, sent=false, nothing sent",
+      "result": {
+        "kind": "incident",
+        "domain": "devex",
+        "question": "Why did run R-1042 fail, and has this happened before?",
+        "target": "github",
+        "route": {
+          "kind": "rca",
+          "reason": "names pipeline run R-1042 — root-cause analysis"
+        },
+        "request": {
+          "method": "POST",
+          "path": "/repos/{owner}/{repo}/issues",
+          "body": {
+            "title": "TimeoutError: connection to payments-db timed out after 30s",
+            "body": "## Failing run\nRun R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.\n\n## Error log\n```\n--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n\n## Prior occurrence\nRecurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.\n\n## Documented incident\nDocumented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.\n\n## Referenced ticket\nTicket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).\n\n## Resolved by\nResolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.\n\n## Pull request\nPR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.\n\n## Code change\n```\ndiff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```",
+            "labels": [
+              "incident"
+            ]
+          }
+        },
+        "slots": [
+          {
+            "part": "title",
+            "role": "title",
+            "label": "",
+            "value": "TimeoutError: connection to payments-db timed out after 30s",
+            "verified": true,
+            "support": [
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "failing_run",
+            "label": "Failing run",
+            "value": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+            "verified": true,
+            "support": [
+              {
+                "id": "Run:R-1042",
+                "source": "devex_synthetic/runs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Run"
+                    ],
+                    [
+                      "row",
+                      "13"
+                    ]
+                  ],
+                  "render": "table Run, row 13"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "log",
+            "label": "Error log",
+            "value": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+            "verified": true,
+            "support": [
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "prior_occurrence",
+            "label": "Prior occurrence",
+            "value": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "run_R-0987:chunk5",
+                "source": "devex_synthetic/logs/run_R-0987.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "15-18"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 15-18, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+              },
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "documented_incident",
+            "label": "Documented incident",
+            "value": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              },
+              {
+                "id": "run_R-1042:chunk5",
+                "source": "devex_synthetic/logs/run_R-1042.log",
+                "locator": {
+                  "kind": "log-span",
+                  "parts": [
+                    [
+                      "lines",
+                      "16-19"
+                    ],
+                    [
+                      "section",
+                      "integration-tests"
+                    ],
+                    [
+                      "chunk",
+                      "5"
+                    ]
+                  ],
+                  "render": "lines 16-19, section integration-tests, chunk 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "referenced_ticket",
+            "label": "Referenced ticket",
+            "value": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+            "verified": true,
+            "support": [
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "resolving_change",
+            "label": "Resolved by",
+            "value": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-198",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "3"
+                    ]
+                  ],
+                  "render": "table PR, row 3"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+              },
+              {
+                "id": "Ticket:DEVEX-187",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "5"
+                    ]
+                  ],
+                  "render": "table Ticket, row 5"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "referenced_pull_request",
+            "label": "Pull request",
+            "value": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-198",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "3"
+                    ]
+                  ],
+                  "render": "table PR, row 3"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "code_change",
+            "label": "Code change",
+            "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR-198.diff:hunk1",
+                "source": "devex_synthetic/prs/PR-198.diff",
+                "locator": {
+                  "kind": "diff-hunk",
+                  "parts": [
+                    [
+                      "file",
+                      "src/payments/db_client.py"
+                    ],
+                    [
+                      "hunk",
+                      "1"
+                    ],
+                    [
+                      "lines",
+                      "4-7"
+                    ]
+                  ],
+                  "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+              }
+            ]
+          }
+        ],
+        "actuator": "simulated",
+        "payload_grounded": true,
+        "all_grounded": true,
+        "executed": true,
+        "simulated": true,
+        "sent": false,
+        "withheld": false,
+        "withheld_reason": null,
+        "outcome": "simulated",
+        "result": {
+          "simulated": true,
+          "detail": "dry run — no request left Tessera; a human or agent approves and sends."
+        },
+        "approved": false,
+        "requires_approval": true
+      }
+    },
+    {
+      "tool": "execute_action",
+      "arguments": {
+        "action": "pr_summary",
+        "domain": "devex",
+        "question": "What does PR-201 change?"
+      },
+      "why": "a simulated PR-comment execution from the change summary",
+      "result": {
+        "kind": "pr_summary",
+        "domain": "devex",
+        "question": "What does PR-201 change?",
+        "target": "github",
+        "route": {
+          "kind": "summary",
+          "reason": "names pull request PR-201 — change summary"
+        },
+        "request": {
+          "method": "POST",
+          "path": "/repos/{owner}/{repo}/issues/PR-201/comments",
+          "body": {
+            "body": "## Summary\nAdd retry with backoff to payments-db client\n\n## Pull request\nPR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage.\n\n## Code change\n```\ndiff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,13 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=30)\n+        last_error: Exception | None = None\n+        for attempt in range(3):\n+            try:\n+                return self._pool.acquire(timeout=30)\n+            except TimeoutError as error:\n+                last_error = error\n+                sleep(2**attempt)\n+        raise last_error\n```\n\n## Code change\n```\ndiff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -44,4 +50,5 @@ class PaymentsDbClient:\n     def close(self) -> None:\n+        self._retry_metrics.flush()\n         self._pool.release_all()\n```\n\n## Code change\n```\ndiff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.py\n@@ -30,3 +30,10 @@ def test_connect_happy_path():\n     assert client.connect() is not None\n+\n+def test_connect_retries_on_timeout():\n+    pool = FlakyPool(failures=2)\n+    client = PaymentsDbClient(pool)\n+    assert client.connect() is not None\n+    assert pool.acquire_calls == 3\n```\n\n## Motivating ticket\nMotivating ticket: \"DEVEX-204\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.\n\n## Referenced ticket\nTicket DEVEX-204 (task, in progress) for component SVC-PAY: \"Harden payments-db client against slow connections\" — Follow-up to DEVEX-187: add retry with exponential backoff to the payments-db client so transient slowness does not fail the pipeline. (created 2026-06-05)."
+          }
+        },
+        "slots": [
+          {
+            "part": "path",
+            "role": "resource",
+            "label": "",
+            "value": "PR-201",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-201",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "4"
+                    ]
+                  ],
+                  "render": "table PR, row 4"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "title",
+            "label": "Summary",
+            "value": "Add retry with backoff to payments-db client",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-201",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "4"
+                    ]
+                  ],
+                  "render": "table PR, row 4"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "pull_request",
+            "label": "Pull request",
+            "value": "PR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-201",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "4"
+                    ]
+                  ],
+                  "render": "table PR, row 4"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "code_change",
+            "label": "Code change",
+            "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,13 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=30)\n+        last_error: Exception | None = None\n+        for attempt in range(3):\n+            try:\n+                return self._pool.acquire(timeout=30)\n+            except TimeoutError as error:\n+                last_error = error\n+                sleep(2**attempt)\n+        raise last_error",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR-201.diff:hunk1",
+                "source": "devex_synthetic/prs/PR-201.diff",
+                "locator": {
+                  "kind": "diff-hunk",
+                  "parts": [
+                    [
+                      "file",
+                      "src/payments/db_client.py"
+                    ],
+                    [
+                      "hunk",
+                      "1"
+                    ],
+                    [
+                      "lines",
+                      "4-14"
+                    ]
+                  ],
+                  "render": "file src/payments/db_client.py, hunk 1, lines 4-14"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,13 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=30)\n+        last_error: Exception | None = None\n+        for attempt in range(3):\n+            try:\n+                return self._pool.acquire(timeout=30)\n+            except TimeoutError as error:\n+                last_error = error\n+                sleep(2**attempt)\n+        raise last_error"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "code_change",
+            "label": "Code change",
+            "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -44,4 +50,5 @@ class PaymentsDbClient:\n     def close(self) -> None:\n+        self._retry_metrics.flush()\n         self._pool.release_all()",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR-201.diff:hunk2",
+                "source": "devex_synthetic/prs/PR-201.diff",
+                "locator": {
+                  "kind": "diff-hunk",
+                  "parts": [
+                    [
+                      "file",
+                      "src/payments/db_client.py"
+                    ],
+                    [
+                      "hunk",
+                      "2"
+                    ],
+                    [
+                      "lines",
+                      "18-21"
+                    ]
+                  ],
+                  "render": "file src/payments/db_client.py, hunk 2, lines 18-21"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -44,4 +50,5 @@ class PaymentsDbClient:\n     def close(self) -> None:\n+        self._retry_metrics.flush()\n         self._pool.release_all()"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "code_change",
+            "label": "Code change",
+            "value": "diff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.py\n@@ -30,3 +30,10 @@ def test_connect_happy_path():\n     assert client.connect() is not None\n+\n+def test_connect_retries_on_timeout():\n+    pool = FlakyPool(failures=2)\n+    client = PaymentsDbClient(pool)\n+    assert client.connect() is not None\n+    assert pool.acquire_calls == 3",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR-201.diff:hunk3",
+                "source": "devex_synthetic/prs/PR-201.diff",
+                "locator": {
+                  "kind": "diff-hunk",
+                  "parts": [
+                    [
+                      "file",
+                      "tests/payments/test_db_client.py"
+                    ],
+                    [
+                      "hunk",
+                      "3"
+                    ],
+                    [
+                      "lines",
+                      "25-32"
+                    ]
+                  ],
+                  "render": "file tests/payments/test_db_client.py, hunk 3, lines 25-32"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "diff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.py\n@@ -30,3 +30,10 @@ def test_connect_happy_path():\n     assert client.connect() is not None\n+\n+def test_connect_retries_on_timeout():\n+    pool = FlakyPool(failures=2)\n+    client = PaymentsDbClient(pool)\n+    assert client.connect() is not None\n+    assert pool.acquire_calls == 3"
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "motivating_ticket",
+            "label": "Motivating ticket",
+            "value": "Motivating ticket: \"DEVEX-204\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+            "verified": true,
+            "support": [
+              {
+                "id": "PR:PR-201",
+                "source": "devex_synthetic/prs.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "PR"
+                    ],
+                    [
+                      "row",
+                      "4"
+                    ]
+                  ],
+                  "render": "table PR, row 4"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "PR PR-201: \"Add retry with backoff to payments-db client\" by dana.petrov, branch feat/db-retry, merged commit 04b0452b on 2026-06-09 — Fixes DEVEX-204: wraps payments-db calls in retry with exponential backoff (three attempts) and extends integration coverage."
+              },
+              {
+                "id": "Ticket:DEVEX-204",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "7"
+                    ]
+                  ],
+                  "render": "table Ticket, row 7"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-204 (task, in progress) for component SVC-PAY: \"Harden payments-db client against slow connections\" — Follow-up to DEVEX-187: add retry with exponential backoff to the payments-db client so transient slowness does not fail the pipeline. (created 2026-06-05)."
+              }
+            ]
+          },
+          {
+            "part": "body",
+            "role": "referenced_ticket",
+            "label": "Referenced ticket",
+            "value": "Ticket DEVEX-204 (task, in progress) for component SVC-PAY: \"Harden payments-db client against slow connections\" — Follow-up to DEVEX-187: add retry with exponential backoff to the payments-db client so transient slowness does not fail the pipeline. (created 2026-06-05).",
+            "verified": true,
+            "support": [
+              {
+                "id": "Ticket:DEVEX-204",
+                "source": "devex_synthetic/tickets.csv",
+                "locator": {
+                  "kind": "table-row",
+                  "parts": [
+                    [
+                      "table",
+                      "Ticket"
+                    ],
+                    [
+                      "row",
+                      "7"
+                    ]
+                  ],
+                  "render": "table Ticket, row 7"
+                },
+                "ingested_at": "2026-06-10",
+                "text": "Ticket DEVEX-204 (task, in progress) for component SVC-PAY: \"Harden payments-db client against slow connections\" — Follow-up to DEVEX-187: add retry with exponential backoff to the payments-db client so transient slowness does not fail the pipeline. (created 2026-06-05)."
+              }
+            ]
+          }
+        ],
+        "actuator": "simulated",
+        "payload_grounded": true,
+        "all_grounded": true,
+        "executed": true,
+        "simulated": true,
+        "sent": false,
+        "withheld": false,
+        "withheld_reason": null,
+        "outcome": "simulated",
+        "result": {
+          "simulated": true,
+          "detail": "dry run — no request left Tessera; a human or agent approves and sends."
+        },
+        "approved": false,
+        "requires_approval": true
+      }
+    },
+    {
+      "tool": "execute_action",
+      "arguments": {
+        "action": "incident",
+        "domain": "devex",
+        "question": "What does PR-201 change?"
+      },
+      "why": "a withheld execution — nothing executed over an incompatible grounding",
+      "result": {
+        "kind": "incident",
+        "domain": "devex",
+        "question": "What does PR-201 change?",
+        "target": "github",
+        "route": {
+          "kind": "summary",
+          "reason": "names pull request PR-201 — change summary"
+        },
+        "request": {
+          "method": "",
+          "path": "",
+          "body": {}
+        },
+        "slots": [],
+        "actuator": "simulated",
+        "payload_grounded": false,
+        "all_grounded": false,
+        "executed": false,
+        "simulated": false,
+        "sent": false,
+        "withheld": true,
+        "withheld_reason": "cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').",
+        "outcome": "withheld",
+        "result": {},
+        "approved": false,
         "requires_approval": true
       }
     }
