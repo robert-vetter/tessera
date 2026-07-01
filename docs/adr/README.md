@@ -39,3 +39,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0022](0022-agentic-mcp-boundary.md) — The agentic boundary: read-only, verifier-checked grounded tools over MCP (Milestone 11)
 - [0023](0023-grounded-action-boundary.md) — The grounded-action boundary: propose-and-approve, field-verified actions (Milestone 12)
 - [0024](0024-executable-payload-preview.md) — The executable-payload boundary: a dry-run preview, render ≠ send (Milestone 13)
+- [0025](0025-execution-behind-approval.md) — The execution boundary: effectful execution behind approval, simulated by default (Milestone 14)
