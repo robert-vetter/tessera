@@ -13,6 +13,63 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-14] — 2026-07-01
+
+Take the named next step and reach the fourth boundary: from the **executable payload**
+(M13) to **effectful execution behind approval**. An enterprise agent can ask Tessera
+over MCP to **execute** a grounded action — run by a **simulated actuator that sends
+nothing** by default, gated on a fully-grounded payload so **nothing executes over
+ungrounded ground** — and receive a lossless `ExecutionReceipt`. A real GitHub actuator
+exists as an opt-in seam (double-gated on approval **and** a credential, so `sent=True`
+is earned), contract-tested against a fake transport but **its real transport/network
+never invoked in CI**. Fully **deterministic, offline, CI-reproducible** (the M8–M13
+posture); faithfulness gated at 1.0 throughout, now also **across the execution
+boundary**. **Zero frozen-core delta** — the whole milestone is the additive execution
+layer plus the thin MCP tool.
+
+### Added
+
+- **The execution layer (ADR 0025).** `tessera/agent/execution.py`: an `Actuator`
+  protocol; `SimulatedActuator` (the default — records the exact would-be request and
+  sends nothing, transparently synthetic, no fabricated resource id); an opt-in
+  `GithubActuator` (stdlib `urllib`, an injected `Transport`, approval + credential
+  gated, its real transport/network never invoked in CI); `ExecutionReceipt` (a lossless,
+  JSON-serializable trust record); and `execute_action` / `execute_payload` gated on
+  `RenderedPayload.all_grounded`.
+- **MCP `execute_action` tool (spec 0100).** A thin seventh tool on `tessera-mcp` wired
+  to the **simulated** actuator only (the server holds no credential and can never send);
+  the committed `data/mcp_session/` session now also runs a simulated create-issue
+  execution, a simulated PR-comment execution, and a withheld execution.
+- **Trust across the execution boundary (spec 0101).** `tests/test_execution_boundary.py`,
+  a CI-gated property over data-derived cases: every simulated execution consumed an
+  `all_grounded` payload and its receipt is a lossless record (each slot's verdict
+  recomputed independently from the grounding); **faithfulness is 1.0 across the execution
+  boundary**; nothing executes over ungrounded ground; the real path sends iff
+  approved+credentialed (fake transport).
+
+### Trust properties
+
+- **Nothing executes over ungrounded ground.** Unless the M13 payload is `all_grounded`,
+  `execute_action` returns a **withheld** receipt — no request, nothing executed, nothing
+  sent. The gate is before dispatch, so it holds for every actuator (the execution
+  analogue of "a refusal never becomes an answer").
+- **The default sends nothing; a simulation is never dressed as real.** The simulated
+  receipt is marked `simulated=True` / `sent=False` and carries no fabricated resource id.
+- **`sent=True` is earned.** The real path is double-gated (approval **and** a credential);
+  a non-2xx or transport error is an `error`, not a send. Render/simulate ≠ send:
+  `{owner}`/`{repo}` stay unbound; nothing leaves this repository.
+
+### Process
+
+- The trust-bearing execution layer carried its **mandated pre-merge adversarial
+  multi-agent review** (6 lenses × 9 agents, every finding independently reproduced): **0
+  majors**, 3 confirmed findings, all fixed and pinned before merge — the receipt aliased
+  the payload's mutable `body` dict (copy-on-inherit); `blocked`/`error` receipts set
+  `withheld_reason` while `withheld=False` (reserved that field for the ungrounded gate);
+  and "never invoked in CI" **overclaimed** the actuator (it *is* contract-tested in CI
+  against a fake transport — only the real transport/network is not), scoped across the
+  docstrings, ADR 0025, and the specs.
+
 ## [milestone-13] — 2026-06-30
 
 Carry the trust contract one boundary further — from the **action draft** (M12) to the

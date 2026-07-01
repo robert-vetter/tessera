@@ -83,12 +83,16 @@ the opt-in `agent` extra): **read-only grounded tools** — claims, provenance, 
 principled refusals ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) —
 **propose-and-approve action drafts** (an `incident` from a root-cause analysis, a
 `pr_summary` from a change), each field traced to a verifier-passing claim or it is not
-proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)), and a **dry-run
+proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)), a **dry-run
 payload preview** — the exact GitHub request a drafted action would send, every value
-traced to a verified field ([ADR 0024](docs/adr/0024-executable-payload-preview.md)). The
-trust contract is *measured* to survive the protocol for all three. Tessera drafts,
-verifies, and renders; it **executes nothing and sends nothing** — a human or agent
-approves and acts. In line with SAP's 2026 agentic direction; details in
+traced to a verified field ([ADR 0024](docs/adr/0024-executable-payload-preview.md)) —
+and **effectful execution behind approval**, gated on a fully-grounded payload, run by a
+**simulated actuator that sends nothing** by default with an opt-in real path behind a
+credential and approval ([ADR 0025](docs/adr/0025-execution-behind-approval.md)). The
+trust contract is *measured* to survive the protocol for all four. Tessera drafts,
+verifies, renders, and simulates; **nothing is sent from this repository** (the real
+actuator's network is never invoked in CI) — a human or agent approves and sends. In line
+with SAP's 2026 agentic direction; details in
 [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
@@ -295,7 +299,9 @@ Tessera's thesis is a trust layer *for AI agents* — so it is callable by one. 
 `tessera-mcp` server exposes the engine over the Model Context Protocol — read-only
 grounded tools ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)),
 propose-and-approve action drafts ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)),
-and a dry-run payload preview ([ADR 0024](docs/adr/0024-executable-payload-preview.md)):
+a dry-run payload preview ([ADR 0024](docs/adr/0024-executable-payload-preview.md)), and
+effectful execution behind approval, simulated by default
+([ADR 0025](docs/adr/0025-execution-behind-approval.md)):
 
 ```bash
 uv sync --extra agent          # opt-in SDK; the default graph + CI stay pure-stdlib
@@ -303,6 +309,7 @@ uv run tessera-mcp             # the MCP server over stdio
 # tools: list_domains · ground(domain, question) · assertions(domain, record_id)
 #        list_actions · draft_action(action, domain, question)
 #        preview_payload(action, domain, question)
+#        execute_action(action, domain, question)   # simulated; sends nothing
 ```
 
 `ground` routes a question through the same deterministic engine and returns
@@ -317,18 +324,27 @@ refusal, never drafted over. `preview_payload` goes one boundary further still: 
 renders the **exact GitHub request** that proposal would send — a create-issue for an
 `incident`, a PR comment for a `pr_summary` — where every value traces to a verified
 field and the body is byte-reconstructable from those fields, or the payload is
-**withheld** (rendered only when `all_grounded`). The proposal and the payload declare
-`requires_approval` / `executed` / `sent`: Tessera drafts, verifies, and renders; it
-**executes nothing and sends nothing** (`{owner}`/`{repo}` stay unbound placeholders) —
-a human or agent approves and sends *outside* Tessera (the honest edge). The trust
-contract is **measured to survive the protocol** for answers, actions, and payloads: the
-boundary projections are lossless and faithfulness stays 1.0 over every gold case, every
-data-derived action, and every data-derived payload (`tests/test_boundary.py`,
-`tests/test_actions_boundary.py`, `tests/test_payloads_boundary.py`). A captured real
+**withheld** (rendered only when `all_grounded`). `execute_action` takes the last step:
+it runs the grounded action through a **simulated actuator** that records the exact
+request and **sends nothing** — gated on a fully-grounded payload, so **nothing executes
+over ungrounded ground** — returning an `ExecutionReceipt` (the lossless request + its
+grounded slots + the outcome). A real GitHub actuator exists as an opt-in seam
+(double-gated on approval **and** a credential, so `sent=True` is earned), but the MCP
+surface wires the **simulated** actuator only — the server holds no credential and can
+never send. Tessera drafts, verifies, renders, and simulates; **nothing is sent from this
+repository** (`{owner}`/`{repo}` stay unbound; the real actuator's network is never
+invoked in CI) — a human or agent approves and sends *outside* Tessera (the honest edge).
+The trust contract is **measured to survive the protocol** for answers, actions, payloads,
+and executions: the boundary projections are lossless and faithfulness stays 1.0 over
+every gold case, every data-derived action, every data-derived payload, and every
+data-derived execution (`tests/test_boundary.py`, `tests/test_actions_boundary.py`,
+`tests/test_payloads_boundary.py`, `tests/test_execution_boundary.py`). A captured real
 client↔server session — grounded answers, the ER trail, a drafted incident and PR
-summary, a rendered create-issue and PR-comment payload, and carried refusals — is
-committed at [`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md).
-Effectful execution remains deliberately out of scope.
+summary, a rendered create-issue and PR-comment payload, a simulated execution of each,
+and carried refusals — is committed at
+[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Actually sending from
+this repository (a credentialed, irreversible real one-shot) remains deliberately out of
+scope.
 
 ### Data
 
@@ -394,17 +410,20 @@ demo clusters provably unchanged except the one intended split (ADR 0019). **Mil
 closing the last floor the address couldn't reach — two distinct firms with the same
 name *and* the same address, split on their different VATs (0.909 → 1.000), with **no
 engine logic change** (it reuses the M9 exact-equality gate; ADR 0020). With the ER
-lever spent, **milestones 11–13** opened the agentic dimension: M11 exposed the engine
+lever spent, **milestones 11–14** opened the agentic dimension: M11 exposed the engine
 to AI agents over **MCP** as read-only grounded tools and *measured* the trust contract
 across the protocol (ADR 0022); M12 extended it from answers to **propose-and-approve
-action drafts**, every field verifier-checked (ADR 0023); and **milestone 13** carried
-it one boundary further to the **dry-run executable-payload preview** — the exact GitHub
-request a drafted action would send, every value traced to a verified field, rendered
-but **never sent** (ADR 0024). The
+action drafts**, every field verifier-checked (ADR 0023); M13 carried it one boundary
+further to the **dry-run executable-payload preview** — the exact GitHub request a drafted
+action would send, every value traced to a verified field, rendered but **never sent**
+(ADR 0024); and **milestone 14** reached **effectful execution behind approval** — a
+simulated actuator that sends nothing (the CI-verifiable core) plus an opt-in real path,
+both gated on a fully-grounded payload, with an execution receipt as the trust record
+(ADR 0025). Each of the four boundaries is *measured* to preserve faithfulness 1.0. The
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
-(more connectors, the registry-only ER floor, **effectful execution** — Milestones 12–13
-draft, verify, and render the exact request over MCP but execute and send nothing — and
-true million-record scale).
+(more connectors, the registry-only ER floor, **actually sending** — M11–14 draft,
+verify, render, and simulate over MCP but send nothing from this repository — and true
+million-record scale).
 
 ## License
 
