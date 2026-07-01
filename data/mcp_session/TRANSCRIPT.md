@@ -2,7 +2,7 @@
 
 Captured by `uv run --extra agent python scripts/record_mcp_session.py`: a
 real MCP client driving the `tessera-mcp` server over stdio (specs 0084,
-0090). Not
+0090, 0095, 0100). Not
 run in CI (no MCP SDK); the structured tool results are deterministic.
 
 **Server:** `tessera` v`1.28.1`
@@ -15,6 +15,7 @@ run in CI (no MCP SDK); the structured tool results are deterministic.
 - **`list_actions`** — List the actions you can draft from a grounded answer, each with the domains and the route (e.g. an RCA, a change-summary) it draws from. Call this to choose an action for draft_action().
 - **`draft_action`** — Draft a grounded, cited action PROPOSAL from an answer — never an executed action. Tessera grounds the question, then maps the verified claims into role-labeled fields, each carrying its provenance a…
 - **`preview_payload`** — Render the EXACT external request a grounded action would send — a dry-run preview, never sent. Tessera drafts the action, then maps its VERIFIED fields into the GitHub wire request (a create-issue f…
+- **`execute_action`** — Execute a grounded action through Tessera's SIMULATED actuator — a dry run that records the exact request that WOULD be sent and sends NOTHING. Tessera drafts the action, renders its GitHub payload, …
 
 ## The exchange
 
@@ -189,4 +190,41 @@ _a GitHub PR-comment payload rendered from the change summary_
 _a withheld payload — no request rendered over an incompatible grounding_
 
   kind: incident  target: github  rendered: False  all_grounded: False  sent: False  requires_approval: True
+  withheld: cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').
+
+### → `execute_action` {"action": "incident", "domain": "devex", "question": "Why did run R-1042 fail, and has this happened before?"}
+_a simulated create-issue execution — grounded, sent=false, nothing sent_
+
+  kind: incident  actuator: simulated  outcome: simulated  all_grounded: True  executed: True  simulated: True  sent: False  requires_approval: True
+  → (dry run, not sent) POST /repos/{owner}/{repo}/issues
+  result: {'simulated': True, 'detail': 'dry run — no request left Tessera; a human or agent approves and sends.'}
+  slot [title/title] verified=True: TimeoutError: connection to payments-db timed out after 30s
+  slot [body/failing_run] verified=True: Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests),…
+  slot [body/log] verified=True: --- job: integration-tests --- 14:09 INFO  starting payments-service integratio…
+  slot [body/prior_occurrence] verified=True: Recurring failure: "TimeoutError: connection to payments-db timed out after 30s…
+  slot [body/documented_incident] verified=True: Documented incident: "TimeoutError: connection to payments-db timed out after 3…
+  slot [body/referenced_ticket] verified=True: Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: "Payments CI faili…
+  slot [body/resolving_change] verified=True: Resolved by: "DEVEX-187" appears in 'devex_synthetic/prs.csv' and 'devex_synthe…
+  slot [body/referenced_pull_request] verified=True: PR PR-198: "Raise payments-db pool timeout" by dana.petrov, branch fix/db-pool-…
+  slot [body/code_change] verified=True: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -18,7 +18…
+
+### → `execute_action` {"action": "pr_summary", "domain": "devex", "question": "What does PR-201 change?"}
+_a simulated PR-comment execution from the change summary_
+
+  kind: pr_summary  actuator: simulated  outcome: simulated  all_grounded: True  executed: True  simulated: True  sent: False  requires_approval: True
+  → (dry run, not sent) POST /repos/{owner}/{repo}/issues/PR-201/comments
+  result: {'simulated': True, 'detail': 'dry run — no request left Tessera; a human or agent approves and sends.'}
+  slot [path/resource] verified=True: PR-201
+  slot [body/title] verified=True: Add retry with backoff to payments-db client
+  slot [body/pull_request] verified=True: PR PR-201: "Add retry with backoff to payments-db client" by dana.petrov, branc…
+  slot [body/code_change] verified=True: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -18,7 +18…
+  slot [body/code_change] verified=True: diff --git a/src/payments/db_client.py b/src/payments/db_client.py @@ -44,4 +50…
+  slot [body/code_change] verified=True: diff --git a/tests/payments/test_db_client.py b/tests/payments/test_db_client.p…
+  slot [body/motivating_ticket] verified=True: Motivating ticket: "DEVEX-204" appears in 'devex_synthetic/prs.csv' and 'devex_…
+  slot [body/referenced_ticket] verified=True: Ticket DEVEX-204 (task, in progress) for component SVC-PAY: "Harden payments-db…
+
+### → `execute_action` {"action": "incident", "domain": "devex", "question": "What does PR-201 change?"}
+_a withheld execution — nothing executed over an incompatible grounding_
+
+  kind: incident  actuator: simulated  outcome: withheld  all_grounded: False  executed: False  simulated: False  sent: False  requires_approval: True
   withheld: cannot draft a 'incident' from this question: it routed to 'summary', not 'rca' — name a pipeline run (e.g. 'Why did run R-1042 fail?').
