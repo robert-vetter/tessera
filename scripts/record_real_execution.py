@@ -25,9 +25,10 @@ Environment:
 
 Without owner/repo/token it prints instructions and sends nothing. With them but WITHOUT
 ``TESSERA_EXEC_APPROVE=true`` the real actuator returns ``outcome="blocked"`` (nothing
-sent) — a safe rehearsal. The receipt is scrubbed (``recording.redact_receipt``) and
-written to ``data/execution/``. Re-running is best-effort idempotent (ADR 0026): a
-re-run returns ``outcome="exists"`` (marker embedded), creating no duplicate.
+sent, nothing written) — a safe rehearsal. Only an approved send scrubs the receipt
+(``recording.redact_receipt``) and writes it to ``data/execution/``. Re-running is
+best-effort idempotent (ADR 0026): a re-run returns ``outcome="exists"`` (marker
+embedded), creating no duplicate.
 """
 
 from __future__ import annotations
@@ -141,6 +142,17 @@ def main() -> None:
     receipt = execute_action(
         action, domain, question, actuator=actuator, approve=approve
     )
+    _summarize(receipt)
+
+    # Only an approved (real) attempt is recorded — a rehearsal (approve unset →
+    # outcome="blocked", no network) writes nothing, so it can never be mistaken for,
+    # or committed as, the one-shot.
+    if not approve:
+        print(
+            "(rehearsal — nothing sent, nothing written; "
+            "set TESSERA_EXEC_APPROVE=true to send and record.)"
+        )
+        return
     scrubbed = redact_receipt(receipt.to_dict())
     _write(
         scrubbed,
@@ -150,7 +162,6 @@ def main() -> None:
         domain=domain,
         question=question,
     )
-    _summarize(receipt)
     print(f"wrote {OUT_DIR / 'receipt.json'} and MANIFEST.json (scrubbed)")
 
 
