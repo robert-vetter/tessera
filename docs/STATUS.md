@@ -1570,3 +1570,126 @@ persistence** / **BTP serving** (container → AI Core / Kyma). The ER lever is 
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #104–#107 merged. Tagged
   `milestone-13`.
+
+---
+
+## 2026-07-01 — Milestone 14 COMPLETE (effectful execution behind approval, simulated by default)
+
+**Mode note:** ran **autonomously** from one kickoff after a project-shaping scope
+discussion. The maintainer chose (asked 2026-07-01): **(1) thrust** — effectful
+execution behind approval (over a second payload target / a second connector / HANA
+persistence / BTP serving); **(2) posture** — a **simulated core + an opt-in real seam
+that sends nothing in-repo** (over *also* doing a maintainer-authorized real one-shot,
+and over a simulated-only build with no real adapter). Five units, each spec → branch →
+implement → gate → PR → CI-green → squash-merge. Fully **offline / CI-reproducible**.
+
+**The problem this milestone answers.** Through thirteen milestones Tessera only ever
+*rendered* the wire request and sent nothing (M13: `sent=False`, `{owner}`/`{repo}`
+unbound). An agent that had to *act* took that request and sent it itself, outside
+Tessera's guarantee. ADR 0023/0024 named effectful execution as the next step and
+recorded how to do it honestly in a clone-and-run/CI project: a simulated default
+actuator + an opt-in real path + an execution receipt — it would *consume* the M13
+renderer. M14 takes it, reaching the fourth measured boundary: read (M11) → action draft
+(M12) → executable payload (M13) → **execute** (M14).
+
+**Done this session (5 units, PRs #109–#112 + this close)**
+- **Phase plan** (spec 0098, #109) + the two recorded scope decisions + the finer
+  decisions + the design for ADR 0025.
+- **The actuator + `ExecutionReceipt` + ADR 0025** (spec 0099, #110):
+  `tessera/agent/execution.py` (additive, *not* frozen core) — an `Actuator` protocol;
+  `SimulatedActuator` (the default — records the exact would-be request, sends nothing,
+  transparently synthetic, no fabricated resource id); an opt-in `GithubActuator` (stdlib
+  `urllib`, an injected `Transport`, approval + credential gated, its real
+  transport/network never invoked in CI, contract-tested vs a fake transport);
+  `ExecutionReceipt` (lossless, JSON-serializable); and `execute_action` /
+  `execute_payload` **gated on `RenderedPayload.all_grounded`** — nothing executes over
+  ungrounded ground. The real path is double-gated (approval **and** credential), so
+  `sent=True` is *earned*. Leak-guard extended (executing pulls no
+  embedding/LLM/`hdbcli`/`mcp` import; the simulated path opens no socket).
+  **Carried its mandated pre-merge adversarial multi-agent review** (6 lenses, 9 agents,
+  every finding independently reproduced): **0 majors**, 3 confirmed findings, all fixed
+  before merge — (1) the receipt aliased the payload's mutable `body` dict → copy on
+  inherit; (2) `blocked`/`error` receipts set `withheld_reason` while `withheld=False` →
+  reserved `withheld_reason` for the ungrounded gate, carry block/error detail in
+  `outcome`+`result`; (3) "never invoked in CI" **overclaimed** the actuator (it *is*
+  contract-tested in CI against a fake transport — only the real transport/network is
+  not) → scoped across the docstrings, ADR 0025, and the specs. Each pinned by a
+  regression test.
+- **MCP `execute_action` tool** (spec 0100, #111): a thin seventh tool on `tessera-mcp`
+  wired to the **simulated** actuator only (the server holds no credential and can never
+  send); the no-`mcp`-in-base pin holds; a contract test pins handler output == the
+  layer's `to_dict()`; the committed `data/mcp_session/` session now also runs a
+  simulated create-issue execution, a simulated PR-comment execution, and a withheld
+  execution (`sent=false` throughout).
+- **Trust across the execution boundary** (spec 0101, #112):
+  `tests/test_execution_boundary.py`, a CI-gated property over data-derived cases (every
+  failed run + every PR): every simulated execution consumed an `all_grounded` payload
+  and its receipt is a **lossless** record (each slot's verdict recomputed independently
+  from the grounding); **faithfulness is 1.0 across the execution boundary**; nothing
+  executes over ungrounded ground; the real path sends iff approved+credentialed (fake
+  transport). ADR 0005/0006 re-examined and recorded **still not forced**.
+- **Close** (spec 0102, this entry): the ADR 0008 **empty-diff frozen-core audit**
+  (`milestone-13..HEAD` over the engine + verifier + the vertical answer layers + the
+  M11/M13 agent layers — **empty**; only `agent/execution.py` new + `agent/mcp_server.py`
+  thin tool); WRITEUP M14 section + updated limitations/future-work + a 12th "what was
+  learned"; README (the execute tool, the four measured boundaries, the corrected scope:
+  simulated by default, real path opt-in behind credentials+approval, nothing sent from
+  this repo); CHANGELOG `[milestone-14]`; ADR 0025 nav + index (added in Unit 2); tag
+  `milestone-14`; memory; kickoff.
+
+**Current eval numbers (unchanged — the execution layer is a consumer, not a new path)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: faithfulness 1.000, coverage 0.950 (offline) / 1.000 (online HANA,
+  M7), quality 0.889 / 1.000; synthetic 24: all 1.000.**
+- **github_actions — gold 5: faithfulness 1.000, coverage 0.833 / 1.000 (online, M7),
+  quality 0.800 / 1.000; synthetic 8: all 1.000.**
+- **New, recorded and gated in CI: faithfulness is 1.0 *across the execution boundary***
+  over every data-derived execution (`tests/test_execution_boundary.py`), the receipt a
+  lossless record and nothing executed over ungrounded ground. Deterministic across
+  `PYTHONHASHSEED` 0/1/42/2026; **430 tests pass** with the `agent` extra (in CI the SDK
+  contract tests skip).
+
+**Milestone check (spec 0098 success criterion):** an enterprise AI agent can ask
+Tessera over MCP to execute a grounded action and receive an `ExecutionReceipt` for a
+**simulated** execution — the exact request that would be sent, every value
+field-grounded, and nothing sent — or a carried **withheld** receipt when the action is
+not fully grounded, offline and in CI; every simulated execution consumed an
+`all_grounded` payload and its receipt is a lossless record (measured); nothing executes
+over ungrounded ground; the real path sends iff approved+credentialed (fake transport);
+the default clone-and-run + CI stay pure-stdlib; **zero frozen-core delta**. **Met.**
+Tagged `milestone-14`.
+
+**Open questions / risks**
+- **Frozen core untouched** (ADR 0008): the empty-diff audit `milestone-13..HEAD` over
+  the engine + verifier + the business/devex answer layers + the M11/M13 agent layers is
+  **empty**. The whole milestone is the additive `tessera/agent/execution.py` + the thin
+  MCP tool + tests + specs + the ADR + docs.
+- **The honest edge: render/simulate ≠ send; nothing leaves this repository.** The
+  default `SimulatedActuator` (used by tests, CI, clone-and-run, and the MCP surface)
+  sends nothing. The real `GithubActuator` is built and contract-tested against a *fake*
+  transport, but its real transport/network is never invoked in CI and it is never
+  constructed by the default path. Actually sending — a maintainer-authorized real
+  one-shot — is the named next posture step, deliberately not taken (credentialed and
+  irreversible). A real create-issue is not idempotent; recorded as a caller
+  responsibility (the receipt is auditable before approval), not engineered.
+- **The structural-verifier limit (ADR 0005) carries through:** a receipt slot
+  `verified=True` means its value is mechanically supported by its citation, not that
+  performing the action is wise; approval is the second gate on the real path, and the
+  approver still judges. ADR 0005 (LLM-judge) and 0006 (semantic routing) re-examined at
+  the execution boundary and recorded **not forced**; no measured case forces either. The
+  M6/M7 online HANA numbers remain timestamped, not CI-reproducible; M14 added no online
+  number.
+
+**Next milestone — to be defined with the maintainer.** Readiest candidates: **actually
+sending behind approval** (a maintainer-authorized real GitHub one-shot — the first real
+side effect, credentialed/spend-adjacent/irreversible; the seam is built and
+contract-tested, so it is a small, separate posture decision) and/or **engineered
+idempotency** on the real path / a **second payload+execution target** (Jira create-issue,
+proving the actuator contract generalizes across target schemas) / a **second real
+connector** (Jira / PR-and-issue export) / **full HANA graph persistence** / **BTP
+serving** (container → AI Core / Kyma). The ER lever is spent (registry-only residual);
+ADR 0005/0006 triggers remain live and unacted.
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #109–#112 merged. Tagged
+  `milestone-14`.
