@@ -77,6 +77,7 @@ nav:
       - 0023 The grounded-action boundary: adr/0023-grounded-action-boundary.md
       - 0024 The executable-payload boundary: adr/0024-executable-payload-preview.md
       - 0025 The execution boundary, simulated by default: adr/0025-execution-behind-approval.md
+      - 0026 Best-effort idempotency on the real path: adr/0026-best-effort-idempotency.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
