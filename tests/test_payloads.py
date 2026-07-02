@@ -436,6 +436,23 @@ def test_fence_injection_from_content_is_neutralized() -> None:
     assert (payload.method, payload.path, payload.body) == (method, path, expected_body)
 
 
+def test_multiline_value_in_a_non_fenced_role_is_withheld() -> None:
+    """Review M2: the fence hardening covers fenced roles only — a multiline value in
+    a non-fenced role would enter the markdown body verbatim (headings, links). Such a
+    payload is withheld, never rendered."""
+    subject = ActionField(
+        "pull_request", "pr text", True, (_evidence("PR:PR-201", "pr text"),)
+    )
+    hostile = "ok first line\n## Injected heading\n[click](https://evil.example)"
+    ticket = ActionField(
+        "motivating_ticket", hostile, True, (_evidence("Ticket:T-1", hostile),)
+    )
+    payload = render_payload(_pr_proposal(subject, ticket))
+    assert not payload.rendered and payload.body == {}
+    assert payload.withheld_reason and "multiline" in payload.withheld_reason
+    assert "motivating_ticket" in payload.withheld_reason
+
+
 @pytest.mark.parametrize(
     "hostile_id",
     [

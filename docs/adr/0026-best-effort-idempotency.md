@@ -53,8 +53,9 @@ simulated execution boundary, and **faithfulness stay 1.0** everywhere the repo 
 The simulated default embeds no marker and records the grounded template unchanged.
 
 **The pre-send check reads the primary, immediately-consistent endpoint — deliberately not
-search — and pages.** Before creating, the actuator queries the target's primary list
-endpoint — for an issue, `GET /repos/{owner}/{repo}/issues?state=all&per_page=100&labels=
+search — and pages.** *(The issues URL below is superseded — the label filter was removed;
+see the 2026-07-02 addendum.)* Before creating, the actuator queries the target's primary
+list endpoint — for an issue, `GET /repos/{owner}/{repo}/issues?state=all&per_page=100&labels=
 idem-<hex>`; for a PR comment, `GET …/issues/{pr}/comments?per_page=100` — and **verifies
 the exact full marker substring** in a returned candidate's body before trusting it (so a
 bare label collision can never be mistaken for a match). It **pages** (`&page=N`) until the
@@ -109,11 +110,13 @@ network is never touched in CI, and the actuator is never constructed by the def
   pinned by fake-transport contract tests (`created` with the marker embedded, `exists`,
   `inconclusive`, exact-marker-not-just-label, an end-to-end re-run dedupe, and PR-comment
   dedupe), not by a new gated metric.
-- **A create that fails to attach the `idem-` label degrades to the residual window.** The
-  mechanism relies on the label being attached (an `Issues: write` fine-grained PAT covers
-  it); if it is not, the body's HTML-comment marker is still present but the label-filtered
-  list would not surface it, so a re-run could duplicate. Named as a known limit, acceptable
-  for the opt-in, sandbox-scoped one-shot.
+- **A create that fails to attach the `idem-` label degrades to the residual window.**
+  *(Superseded — the 2026-07-02 addendum removed this residual: the pre-check is now
+  label-independent.)* The mechanism relies on the label being attached (an
+  `Issues: write` fine-grained PAT covers it); if it is not, the body's HTML-comment
+  marker is still present but the label-filtered list would not surface it, so a re-run
+  could duplicate. Named as a known limit, acceptable for the opt-in, sandbox-scoped
+  one-shot.
 - **The structural-verifier limit (ADR 0005) carries through unchanged.** A slot
   `verified=True`, and now an `idempotency_key`, mean the request is mechanically grounded
   and self-identifying — not that sending it is wise. Approval is still the human/agent gate
@@ -127,7 +130,8 @@ network is never touched in CI, and the actuator is never constructed by the def
   the primary check: the search index is eventually consistent (~a minute of lag), so a
   retry inside the window would miss an existing issue and duplicate — a much larger residual
   than the primary list endpoint's true-concurrent-race window. The immediately-consistent
-  list endpoint keyed on a deterministic label is strictly more honest. (Search could be
+  list endpoint keyed on a deterministic label is strictly more honest *(the label keying
+  was later removed — 2026-07-02 addendum; the endpoint choice stands)*. (Search could be
   added as a supplementary finder later; it would only widen coverage, never the guarantee.)
 - **A deterministic key stamped on the receipt only, with no pre-send read.** Rejected as
   the deliverable: it makes duplicates *detectable* after the fact but prevents none — it
@@ -151,21 +155,39 @@ network is never touched in CI, and the actuator is never constructed by the def
 
 The 2026-07-02 audit (finding **B2**) showed the original issues pre-check filtered the
 listing by the `idem-` label and scanned bodies only *within* that filtered result —
-making dedup silently depend on the label surviving. A fine-grained PAT that cannot
-create labels, a later label deletion, or GitHub dropping an unknown label would make
-the filter return empty and a re-run would **duplicate despite the body marker** — a
-residual this ADR's original list did not name.
+making dedup silently depend on the label surviving. The original Consequences
+**accepted the attach-failure variant as a known limit** rather than engineering it
+away; the audit's contribution is eliminating it (and adding the variants the original
+did not name: a label deleted later, and GitHub's documented permission-based silent
+drop — labels on create are *silently dropped* for callers without push access, which
+a least-privilege fine-grained PAT may well be). Any of these would make the filter
+return empty and a re-run would **duplicate despite the body marker**.
 
 **Change:** the issues pre-check now scans the **unfiltered** `state=all` listing for
-the exact body marker (same pagination, same refuse-on-cap), exactly like the comments
-path. The `idem-` label is still embedded, but demoted to a *visible, non-load-bearing
-handle* — dedup rests only on the signal that was verified anyway (the exact marker
-substring). Cost: a busy repo pages more and can hit the cap, yielding an honest
-`inconclusive`; irrelevant for the sandbox one-shot and documented here.
+the exact body marker — the same marker scan the comments path always did (the
+comments listing has no state dimension to widen). Same pagination, same
+refuse-on-cap. The `idem-` label is still embedded, but demoted to a *visible,
+non-load-bearing handle* — dedup rests only on the signal that was verified anyway
+(the exact marker substring). Costs, stated: the unfiltered listing **includes pull
+requests**, which consume the 20×100 page cap, so a busy repo reaches the honest
+`inconclusive` refusal sooner; a listed item's `body` can be `null` (skipped);
+irrelevant for the sandbox one-shot.
 
-**Residual now named (audit B4, speculative but real):** the marker is a deterministic
-function of the grounded payload, so a party able to place content into the target
-repo's issues/comments (or into a log that reaches an issue body) could pre-embed the
-exact marker and force a false `exists` — a **denial-of-create**, never a wrong send.
-Accepted for the sandbox one-shot posture; a real multi-tenant deployment would need an
-authorship check on the candidate (out of scope, recorded).
+**Residuals now named:**
+
+- **Marker spoof → denial-of-create, and (since the B1 persistence policy) a
+  persistable false `exists`:** the marker is a deterministic function of the grounded
+  payload, so a party able to place content into the target repo's issues/comments (or
+  into a log that reaches an issue body) could pre-embed the exact marker and force a
+  false `exists` — never a wrong send, but the resulting receipt's `existing` detail
+  would cite the spoofed item and is exactly what the recorder persists. The one-shot
+  maintainer therefore **verifies the printed `html_url` is their own issue before
+  committing**; a real multi-tenant deployment would need an authorship check on the
+  candidate (out of scope, recorded).
+- **Mid-scan deletion page-boundary race:** deleting/transferring an item newer than
+  the marked issue between page fetches can shift the marker across an already-fetched
+  page boundary and skip it — the same class as the genuine concurrent create; requires
+  a multi-page listing and second-level timing, impossible on the one-page sandbox.
+- **Keys are stable only within a renderer version:** the fence rule (spec 0109, B4)
+  feeds the rendered body and therefore the key — do not change the renderer between a
+  failed one-shot attempt and its retry.

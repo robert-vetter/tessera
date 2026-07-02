@@ -18,31 +18,59 @@ path). All five are fixed before the one-shot may run.
 ## Acceptance criteria
 
 - [x] **B1** — persistence policy moved into the tested `agent/recording.py`:
-      `should_persist` (only `created`/`exists` are written) +
-      `guard_no_clobber` (an existing `receipt*.json` refuses **before any
-      network**); the recorder prints-and-exits-nonzero on an approved attempt
-      ending `blocked`/`inconclusive`/`error`. Pinned by tests.
+      `should_persist` (only `created`/`exists` are written; `exists` is the
+      crash-recovery record, never a live re-run demonstration) +
+      `guard_no_clobber` (an existing `receipt*.json`, matched
+      case-insensitively, refuses **before any network**); the recorder
+      prints-and-exits-nonzero on an approved attempt ending in any
+      non-consummated outcome (`withheld`/`inconclusive`/`error` — and
+      defensively `blocked`), exits non-zero on approved-but-credential-less
+      invocations, and creates the receipt with exclusive-create (`"x"`). The
+      policy *functions* are pinned by tests; the recorder's wiring (guard
+      before actuator construction; print + `SystemExit`) is deliberate,
+      untested script glue.
 - [x] **B2** — the issues pre-check scans the **unfiltered** `state=all`
       listing for the exact body marker; the `idem-` label is demoted to a
       visible, non-load-bearing handle. ADR 0026 addendum records the change,
-      the paging cost, and the (now named) marker-spoof denial-of-create
-      residual. Pinned by a label-independence test (`labels=` absent from the
-      pre-check URL; dedup succeeds on a label-less prior issue).
+      the paging/PR-inclusion cost, and the named residuals (marker spoof —
+      denial-of-create *and*, under B1, a persistable false `exists`;
+      mid-scan-deletion page race; renderer-version key stability). Pinned by
+      a label-independence test (`labels=` absent from the pre-check URL;
+      dedup succeeds on a label-less prior issue behind a null-body PR item).
 - [x] **B3** — `GithubActuator.token` is `field(repr=False)`; a test pins that
-      `repr`/`str`/f-string never surface the credential.
+      `repr`/`str`/f-string never surface the credential (`asdict()` bypass
+      noted as a guarded-against-by-convention non-use).
 - [x] **B4** — fenced sections use a fence strictly longer than any backtick
-      run in the value (min 3, pure function of the value); the boundary
-      test's *independent* reconstruction implements the same declared rule;
-      a hostile-content test pins no-breakout + byte-equality. ADR 0024
-      addendum.
+      run in the value (min 3, pure function of the value); **both**
+      independent reconstructions (`tests/test_payloads.py` and the CI-gated
+      `tests/test_payloads_boundary.py`) implement the same declared rule; a
+      hostile-content test pins no-breakout + byte-equality. Follow-on
+      (review M2): a multiline value in a *non-fenced* role withholds the
+      payload. ADR 0024 addendum.
 - [x] **B5** — the `{pr}` segment passes `[A-Za-z0-9._-]+` (dots-only
       rejected) or the payload is withheld; parametrized hostile-id tests
       (`..`, `?`, `#`, `%2e%2e`, `/`, whitespace, empty). ADR 0024 addendum.
-- [x] Gate green; **456 tests** (13 new); every battery number byte-identical
-      (fences unchanged on the current corpus — no value carries a backtick
-      run); leak-guard untouched.
-- [x] **Pre-merge adversarial multi-agent review** on the diff (side-effect-
-      capable surface), findings triaged and confirmed ones fixed before merge.
+- [x] **Review M1** — the real transport refuses redirects (`_RefuseRedirects`):
+      urllib's default handler forwards `Authorization` cross-origin and
+      rewrites POST→GET, which could misreport a moved repo's listing as
+      `created`; any 3xx now surfaces as `error`/`inconclusive`. Pinned by a
+      handler test.
+- [x] Gate green; **459 tests** (16 new); every battery number byte-identical.
+      Byte-stability stated precisely: the raw logs carry single-backtick runs
+      but no *fenced value* does (the excerpting drops those lines), so every
+      fence degenerates to the old form; leak-guard untouched.
+- [x] **Pre-merge adversarial multi-agent review** ran on the diff (5 lenses:
+      recorder correctness, GitHub semantics, security, faithfulness contract,
+      docs honesty; every finding independently reproduced by its reviewer).
+      Outcome: 3 confirmed majors — the CI-gated boundary reconstruction still
+      hardcoded the old fence (fixed: rule ported); the recorder's MANIFEST
+      note promised the pre-B1 re-run behavior (fixed: reworded); the ADR 0026
+      addendum misstated the original ADR's history (fixed: reworded, and the
+      audit table corrected) — plus the M1/M2/M3 hardening minors and a set of
+      wording/test findings, all fixed in this PR before merge. Verified
+      clean by the reviewers: fence rule sufficient per CommonMark; allowlist
+      complete against 31 hostile probes incl. unicode; no credential channel
+      via repr/receipts/recorder; committed artifacts byte-stable.
 
 ## Scope
 
@@ -54,8 +82,10 @@ scaffolding vocabulary, or the eval.
 ## Eval impact
 
 None — proven: all six battery lines byte-identical before/after (the fence
-rule degenerates to the old ``` fence for every current value; the pre-check
-change affects only real-path GETs; the recorder is not imported at runtime).
+rule degenerates to the old ``` fence for every value the renderer currently
+fences — the raw logs' single-backtick punycode lines never reach a fenced
+field; the pre-check change affects only real-path GETs; the recorder is not
+imported at runtime).
 
 ## Risks / open questions
 

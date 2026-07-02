@@ -559,6 +559,30 @@ def test_all_grounded_is_provably_failable() -> None:
     assert bad.all_grounded is False
 
 
+def test_real_transport_refuses_redirects() -> None:
+    """Review M1: urllib's default redirect handler forwards every header — including
+    ``Authorization`` — cross-origin and rewrites POST→GET on 301/302/303, which could
+    misreport a moved repo's listing GET as a created resource. The real transport's
+    handler must refuse any redirect by raising."""
+    import io
+    from http.client import HTTPMessage
+
+    from tessera.agent.execution import _RefuseRedirects
+
+    handler = _RefuseRedirects()
+    request = urllib.request.Request("https://api.github.com/repos/o/r/issues")
+    with pytest.raises(urllib.error.HTTPError) as excinfo:
+        handler.redirect_request(
+            request,
+            io.BytesIO(b""),
+            301,
+            "Moved Permanently",
+            HTTPMessage(),
+            "https://evil.example/capture",
+        )
+    assert "redirect refused" in str(excinfo.value.reason)
+
+
 def test_actuator_repr_never_leaks_the_credential() -> None:
     """Audit B3: the PAT is a normal dataclass field, so ``repr()``/``str()`` — a
     traceback, a log line, a debug print — must never surface it."""
@@ -583,9 +607,16 @@ def test_issues_precheck_is_label_independent() -> None:
     posted_body = first.calls[0][2]
     assert isinstance(posted_body["body"], str)
 
-    # The prior issue exists with the marker in its body but NO label of any kind.
+    # The prior issue exists with the marker in its body but NO label of any kind —
+    # and sits behind the two things a real unfiltered listing always contains
+    # (review F2): a pull request (the issues endpoint returns PRs too) and an item
+    # with a null body. The scan must skip both and still find the marker.
     second = FakeTransport(
-        existing=[{"number": 9, "html_url": "https://x/9", "body": posted_body["body"]}]
+        existing=[
+            {"number": 3, "html_url": "https://x/3", "body": None, "pull_request": {}},
+            {"number": 4, "html_url": "https://x/4", "body": "unrelated issue"},
+            {"number": 9, "html_url": "https://x/9", "body": posted_body["body"]},
+        ]
     )
     rerun = execute_action(
         *_INCIDENT,

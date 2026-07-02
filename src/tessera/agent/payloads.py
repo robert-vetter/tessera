@@ -19,13 +19,14 @@ write surface:
    one verified :class:`~tessera.agent.actions.ActionField` placed under a fixed label;
    the ``{pr}`` path segment of a PR comment is the verified subject field's own cited
    **pull-request** record id. Each :class:`PayloadSlot` carries the value, its
-   ``verified`` verdict, and inline provenance. Everything else on the wire is fixed
-   *scaffolding*, never asserted grounded: the section headings (:data:`SECTION_LABELS`)
-   and code fences, the section separator, the fixed issue ``labels``, and the unbound
-   ``{owner}``/``{repo}`` placeholders. The renderer copies content *verbatim* and adds
-   nothing — it introduces **no second verifier** (field verification already reduces,
-   at the M12 boundary, to claim faithfulness gated at 1.0 plus an "added-nothing"
-   check).
+   ``verified`` verdict, and inline provenance. Everything else on the wire is
+   declared *scaffolding*, never asserted grounded: the section headings
+   (:data:`SECTION_LABELS`), the per-value code fences (length computed from the
+   value so content can never close them — :func:`_fence`, audit B4), the section
+   separator, the fixed issue ``labels``, and the unbound ``{owner}``/``{repo}``
+   placeholders. The renderer copies content *verbatim* and adds nothing — it
+   introduces **no second verifier** (field verification already reduces, at the M12
+   boundary, to claim faithfulness gated at 1.0 plus an "added-nothing" check).
 2. **Rendered iff ``all_grounded``; otherwise withheld.** A refused, route-
    incompatible, wrong-domain, or partially-verified proposal — or an ``incident``
    with no grounded title (GitHub issues require one) — yields a
@@ -39,7 +40,7 @@ write surface:
    Tessera (ADR 0024 — the honest edge).
 
 The whole wire request is a pure, deterministic template over the verified field values
-plus that fixed scaffolding, so it is *byte-reconstructable* from the proposal's
+plus that declared scaffolding, so it is *byte-reconstructable* from the proposal's
 verified fields alone — a renderer that smuggled an ungrounded token anywhere (the body,
 the labels, or the path) fails an independent reconstruction (the provably-failable
 "added-nothing" check, Unit 4).
@@ -59,11 +60,15 @@ from tessera.agent.grounded import GroundedEvidence
 
 # --- the declared body scaffolding -------------------------------------------
 #
-# Fixed template vocabulary, declared so the boundary test can prove the rendered
-# body adds *nothing* beyond grounded values + this known scaffolding (the
-# byte-reconstruction / added-nothing check, Unit 4). Maps a source field role to its
-# Markdown section heading; ``_FENCED_ROLES`` wrap the value in a code fence (logs and
-# diffs, where verbatim formatting matters and the value may itself contain ``##``).
+# Declared template vocabulary, so the boundary test can prove the rendered body adds
+# *nothing* beyond grounded values + this known scaffolding (the byte-reconstruction /
+# added-nothing check, Unit 4). Maps a source field role to its Markdown section
+# heading; ``_FENCED_ROLES`` wrap the value in a code fence (logs and diffs, where
+# verbatim formatting matters and the value may itself contain ``##``). The fence rule
+# is part of the declared scaffolding (spec 0109, audit B4): fence length =
+# max(3, longest backtick run in the value + 1), so content can never close it. A
+# multiline value in a NON-fenced role is never rendered — the payload is withheld
+# (review M2: markdown injection is a fence problem only inside fences).
 
 SECTION_LABELS: dict[str, str] = {
     "title": "Summary",  # used only when the title is a body section (pr_summary)
@@ -352,6 +357,21 @@ def render_payload(proposal: ActionProposal) -> RenderedPayload:
             proposal,
             "github",
             f"no declared section label for field role(s) {', '.join(unmapped)}; "
+            "none rendered.",
+        )
+    # A multiline value is renderable only inside a fence (review M2, spec 0109): a
+    # non-fenced role's value placed verbatim into the markdown body could smuggle
+    # headings/links past the fence hardening. No current field is multiline outside
+    # the fenced roles; if one ever is, the payload is withheld, not rendered unsafely.
+    multiline = sorted(
+        {f.name for f in body_fields if f.name not in _FENCED_ROLES and "\n" in f.value}
+    )
+    if multiline:
+        return _withheld(
+            proposal,
+            "github",
+            "a multiline value in non-fenced field role(s) "
+            f"{', '.join(multiline)} cannot be rendered as markdown safely; "
             "none rendered.",
         )
 

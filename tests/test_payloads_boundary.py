@@ -23,6 +23,7 @@ not a new gated metric (the M11/M12 pattern).
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Iterator
 
 from tessera.agent.actions import ActionProposal, draft_action
@@ -37,6 +38,8 @@ BuildGraph = Callable[[], KnowledgeGraph]
 # tests/test_payloads); the boundary rebuilds the wire request from the verified field
 # VALUES alone, so any token added beyond grounded values + this declared scaffolding
 # makes the rebuild differ. Replicated, not imported, so the check stays independent.
+# The scaffolding includes the fence rule (spec 0109, audit B4): a fence is strictly
+# longer than any backtick run inside the value, minimum 3.
 _LABELS = {
     "title": "Summary",
     "failing_run": "Failing run",
@@ -85,13 +88,20 @@ def _expected_request(proposal: ActionProposal) -> tuple[str, str, dict[str, obj
     """Rebuild the exact wire (method, path, body) from the proposal's verified fields +
     the declared scaffolding, independently of the renderer's own assembly."""
 
+    def fence(value: str) -> str:
+        # Independent copy of the declared fence rule; the non-degenerate pin (a value
+        # actually carrying backtick runs) lives in tests/test_payloads.py's
+        # hostile-content test — today's corpus values are backtick-free, so this
+        # degenerates to ``` for every derived case.
+        longest = max((len(run) for run in re.findall(r"`+", value)), default=0)
+        return "`" * max(3, longest + 1)
+
     def section(name: str, value: str) -> str:
         label = _LABELS[name]
-        return (
-            f"## {label}\n```\n{value}\n```"
-            if name in _FENCED
-            else f"## {label}\n{value}"
-        )
+        if name in _FENCED:
+            mark = fence(value)
+            return f"## {label}\n{mark}\n{value}\n{mark}"
+        return f"## {label}\n{value}"
 
     if proposal.kind == "incident":
         title = next(f for f in proposal.fields if f.name == "title").value

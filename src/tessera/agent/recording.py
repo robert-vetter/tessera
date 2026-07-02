@@ -20,9 +20,10 @@ committed artifact.
 :func:`should_persist` and :func:`guard_no_clobber` are the recorder's persistence
 policy (audit B1): only a **consummated** outcome (``created``/``exists``) is written,
 and an existing receipt on disk is **never overwritten** — the one-shot's artifact is
-historic. An approved attempt that ends ``blocked``/``inconclusive``/``error`` is
-printed for inspection but not persisted, so a failed attempt can neither block a
-retry nor clobber the record.
+historic. An approved attempt that ends in any other outcome (``withheld`` /
+``inconclusive`` / ``error`` — and, defensively, ``blocked``) is printed for
+inspection but not persisted, so a failed attempt can neither block a retry nor
+clobber the record.
 """
 
 from __future__ import annotations
@@ -59,18 +60,26 @@ def _redact(value: object) -> object:
     return value
 
 
-# The only outcomes worth persisting: the one-shot itself ("created") or the on-record
-# idempotency demonstration ("exists"). Everything else is a non-event or a failure the
-# maintainer fixes and retries — printing it suffices; persisting it would either block
-# the retry or overwrite history (audit B1).
+# The only outcomes worth persisting: the one-shot itself ("created"), or "exists" as
+# the crash-recovery record — a send whose receipt was lost between POST and write is
+# recovered by the re-run's pre-check finding the marker. (Once a receipt exists on
+# disk, guard_no_clobber refuses before any network, so "exists" is never recorded as
+# a live re-run demonstration.) Everything else is a non-event or a failure the
+# maintainer fixes and retries — printing it suffices; persisting it would either
+# block the retry or overwrite history (audit B1).
 _PERSISTED_OUTCOMES = frozenset({"created", "exists"})
 
 
 def should_persist(outcome: str) -> bool:
     """True iff an approved attempt with this ``outcome`` is written to
     ``data/execution/``. Only a consummated send (``created``) or a verified prior one
-    (``exists``) is a record; ``blocked``/``inconclusive``/``error`` attempts are
-    printed, never persisted (audit B1)."""
+    (``exists``, the crash-recovery case) is a record; every other outcome
+    (``withheld``/``inconclusive``/``error`` — and defensively ``blocked``) is
+    printed, never persisted (audit B1). Honesty note (review M3): an ``exists``
+    record is only as trustworthy as the matched item's authorship — the marker is a
+    deterministic function of a public payload, so the maintainer verifies the
+    printed ``html_url`` is their own issue before committing the receipt (ADR 0026
+    addendum)."""
     return outcome in _PERSISTED_OUTCOMES
 
 
@@ -78,14 +87,18 @@ def guard_no_clobber(out_dir: Path) -> None:
     """Refuse (``SystemExit``) when ``out_dir`` already holds a recorded receipt — the
     one-shot's artifact is historic and is never overwritten (audit B1). Run this
     *before any network activity*, so a re-run against an already-recorded one-shot
-    sends nothing and touches nothing."""
-    existing = sorted(p.name for p in out_dir.glob("receipt*.json"))
+    sends nothing and touches nothing. The match is case-insensitive (review F5: on a
+    case-insensitive filesystem ``RECEIPT.json`` names the same file a later write
+    would truncate)."""
+    existing = sorted(
+        p.name for p in out_dir.glob("receipt*.json", case_sensitive=False)
+    )
     if existing:
         raise SystemExit(
             "refusing to run: a recorded receipt already exists in "
             f"{out_dir} ({', '.join(existing)}). The one-shot artifact is historic — "
             "it is never overwritten. If you truly intend a new record, move the "
-            "existing receipt (and its MANIFEST.json) aside first."
+            "existing receipt (and its MANIFEST.json) OUT of this directory first."
         )
 
 

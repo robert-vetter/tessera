@@ -170,3 +170,12 @@ def test_guard_no_clobber_passes_on_a_fresh_dir_and_refuses_on_a_receipt(
         guard_no_clobber(tmp_path)
     message = str(excinfo.value)
     assert "never overwritten" in message and "receipt.json" in message
+
+
+def test_guard_no_clobber_is_case_insensitive(tmp_path: Path) -> None:
+    """Review F5: on a case-insensitive filesystem ``ReCeIpT.json`` names the very
+    file a later write would truncate — the guard must match receipts regardless of
+    case (and does so on case-sensitive filesystems too)."""
+    (tmp_path / "ReCeIpT.json").write_text("{}", "utf-8")
+    with pytest.raises(SystemExit):
+        guard_no_clobber(tmp_path)
