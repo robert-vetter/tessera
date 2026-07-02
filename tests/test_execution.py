@@ -324,9 +324,9 @@ def test_inconclusive_precheck_refuses_rather_than_duplicates() -> None:
 
 
 def test_precheck_requires_the_exact_marker_not_just_a_label_hit() -> None:
-    """A candidate returned by the label-filtered list that does NOT carry the exact
-    marker in its body is not trusted — the actuator creates rather than falsely
-    deduping on a bare label collision."""
+    """A candidate returned by the (unfiltered) issues listing that does NOT carry the
+    exact marker in its body is not trusted — the actuator creates rather than falsely
+    deduping on a near-miss body."""
     fake = FakeTransport(
         existing=[{"number": 1, "html_url": "https://x/1", "body": "unrelated issue"}]
     )
@@ -557,6 +557,44 @@ def test_all_grounded_is_provably_failable() -> None:
         outcome="simulated",
     )
     assert bad.all_grounded is False
+
+
+def test_actuator_repr_never_leaks_the_credential() -> None:
+    """Audit B3: the PAT is a normal dataclass field, so ``repr()``/``str()`` — a
+    traceback, a log line, a debug print — must never surface it."""
+    actuator = GithubActuator(owner="o", repo="r", token="sekrit-PAT-value")
+    assert "sekrit-PAT-value" not in repr(actuator)
+    assert "sekrit-PAT-value" not in str(actuator)
+    assert "sekrit-PAT-value" not in f"{actuator}"
+
+
+def test_issues_precheck_is_label_independent() -> None:
+    """Audit B2: the issues pre-check must not depend on the ``idem-`` label surviving
+    (a PAT that cannot create labels, a deleted label, GitHub dropping it). The listing
+    request carries no ``labels=`` filter — dedup rests on the exact body marker alone,
+    which the fake target here carries WITHOUT any label."""
+    first = FakeTransport()
+    created = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=first),
+        approve=True,
+    )
+    assert created.outcome == "created"
+    posted_body = first.calls[0][2]
+    assert isinstance(posted_body["body"], str)
+
+    # The prior issue exists with the marker in its body but NO label of any kind.
+    second = FakeTransport(
+        existing=[{"number": 9, "html_url": "https://x/9", "body": posted_body["body"]}]
+    )
+    rerun = execute_action(
+        *_INCIDENT,
+        actuator=GithubActuator(owner="o", repo="r", token="t", transport=second),
+        approve=True,
+    )
+    assert rerun.outcome == "exists" and second.calls == []
+    assert second.gets and "labels=" not in second.gets[0]
+    assert "state=all" in second.gets[0]
 
 
 def test_simulated_execution_is_deterministic_across_hash_seeds() -> None:

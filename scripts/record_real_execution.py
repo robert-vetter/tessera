@@ -25,10 +25,15 @@ Environment:
 
 Without owner/repo/token it prints instructions and sends nothing. With them but WITHOUT
 ``TESSERA_EXEC_APPROVE=true`` the real actuator returns ``outcome="blocked"`` (nothing
-sent, nothing written) — a safe rehearsal. Only an approved send scrubs the receipt
-(``recording.redact_receipt``) and writes it to ``data/execution/``. Re-running is
-best-effort idempotent (ADR 0026): a re-run returns ``outcome="exists"`` (marker
-embedded), creating no duplicate.
+sent, nothing written) — a safe rehearsal. Only an approved, **consummated** attempt
+(``created`` or ``exists``) scrubs the receipt (``recording.redact_receipt``) and writes
+it to ``data/execution/``; an approved attempt ending ``blocked``/``inconclusive``/
+``error`` is printed for inspection and exits non-zero, persisting nothing, so a failed
+attempt neither blocks a retry nor overwrites anything (audit B1). An already-recorded
+receipt is never clobbered: an approved re-run refuses *before any network*
+(``recording.guard_no_clobber``). Re-running before the record exists is best-effort
+idempotent (ADR 0026): the pre-check finds the embedded marker and returns
+``outcome="exists"``, creating no duplicate.
 """
 
 from __future__ import annotations
@@ -39,7 +44,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from tessera.agent.execution import ExecutionReceipt, GithubActuator, execute_action
-from tessera.agent.recording import redact_receipt
+from tessera.agent.recording import guard_no_clobber, redact_receipt, should_persist
 from tessera.devex.knowledge import build_github_actions_graph
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "data" / "execution"
@@ -138,6 +143,11 @@ def main() -> None:
         print(_INSTRUCTIONS)
         return
 
+    # An approved run may write — so refuse a clobber BEFORE any network activity
+    # (audit B1): if the one-shot is already recorded, nothing is sent or touched.
+    if approve:
+        guard_no_clobber(OUT_DIR)
+
     actuator = GithubActuator(owner=owner, repo=repo, token=token)
     receipt = execute_action(
         action, domain, question, actuator=actuator, approve=approve
@@ -154,6 +164,15 @@ def main() -> None:
         )
         return
     scrubbed = redact_receipt(receipt.to_dict())
+    # Persist only a consummated outcome (created/exists). A blocked/inconclusive/
+    # error attempt is printed for inspection and exits non-zero — nothing written,
+    # so the failed attempt neither blocks the retry nor overwrites history (B1).
+    if not should_persist(receipt.outcome):
+        print(json.dumps(scrubbed, indent=2, ensure_ascii=False))
+        raise SystemExit(
+            f"approved attempt ended outcome={receipt.outcome!r} — nothing persisted. "
+            "Inspect the receipt above, fix the cause, and re-run."
+        )
     _write(
         scrubbed,
         owner=owner,

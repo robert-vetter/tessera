@@ -1,12 +1,13 @@
-"""Redact a real :class:`~tessera.agent.execution.ExecutionReceipt` for committing.
+"""Redaction + persistence policy for the real-execution one-shot record.
 
-Milestone 15 Unit 3 (spec 0105). The real execution one-shot records an
-``ExecutionReceipt`` from an actual GitHub send (spec 0106). The receipt never carries
-the credential *by construction* — the ``Authorization`` header is built locally inside
-``GithubActuator.execute`` and is never passed into the receipt — but a real ``created``
-receipt's ``result["response"]`` is GitHub's echoed issue/comment JSON, which carries
-volatile and identifying fields (the author ``user`` block, ``node_id``s, internal API
-URLs, timestamps) that have no place in a committed provenance artifact.
+Milestone 15 Unit 3 (spec 0105); persistence policy Milestone 16 Unit 2 (spec 0109,
+audit B1). The real execution one-shot records an ``ExecutionReceipt`` from an actual
+GitHub send. The receipt never carries the credential *by construction* — the
+``Authorization`` header is built locally inside ``GithubActuator.execute`` and is
+never passed into the receipt — but a real ``created`` receipt's ``result["response"]``
+is GitHub's echoed issue/comment JSON, which carries volatile and identifying fields
+(the author ``user`` block, ``node_id``s, internal API URLs, timestamps) that have no
+place in a committed provenance artifact.
 
 :func:`redact_receipt` reduces that echoed response to a small, honest allow-list
 (``number``/``html_url``/``state``/``title`` — enough to verify the send happened and
@@ -15,11 +16,19 @@ anywhere in the receipt with ``"***"``. It is a pure function over the receipt's
 ``to_dict()`` shape, so it is unit-tested offline and never touches the network.
 gitleaks (pinned, enforced in pre-commit and CI) is the final secret-scan gate on the
 committed artifact.
+
+:func:`should_persist` and :func:`guard_no_clobber` are the recorder's persistence
+policy (audit B1): only a **consummated** outcome (``created``/``exists``) is written,
+and an existing receipt on disk is **never overwritten** — the one-shot's artifact is
+historic. An approved attempt that ends ``blocked``/``inconclusive``/``error`` is
+printed for inspection but not persisted, so a failed attempt can neither block a
+retry nor clobber the record.
 """
 
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 # The only fields of GitHub's echoed response worth committing: enough to verify the
 # send and locate the resource, nothing identifying or volatile. An allow-list (not a
@@ -48,6 +57,36 @@ def _redact(value: object) -> object:
     if isinstance(value, list):
         return [_redact(item) for item in value]
     return value
+
+
+# The only outcomes worth persisting: the one-shot itself ("created") or the on-record
+# idempotency demonstration ("exists"). Everything else is a non-event or a failure the
+# maintainer fixes and retries — printing it suffices; persisting it would either block
+# the retry or overwrite history (audit B1).
+_PERSISTED_OUTCOMES = frozenset({"created", "exists"})
+
+
+def should_persist(outcome: str) -> bool:
+    """True iff an approved attempt with this ``outcome`` is written to
+    ``data/execution/``. Only a consummated send (``created``) or a verified prior one
+    (``exists``) is a record; ``blocked``/``inconclusive``/``error`` attempts are
+    printed, never persisted (audit B1)."""
+    return outcome in _PERSISTED_OUTCOMES
+
+
+def guard_no_clobber(out_dir: Path) -> None:
+    """Refuse (``SystemExit``) when ``out_dir`` already holds a recorded receipt — the
+    one-shot's artifact is historic and is never overwritten (audit B1). Run this
+    *before any network activity*, so a re-run against an already-recorded one-shot
+    sends nothing and touches nothing."""
+    existing = sorted(p.name for p in out_dir.glob("receipt*.json"))
+    if existing:
+        raise SystemExit(
+            "refusing to run: a recorded receipt already exists in "
+            f"{out_dir} ({', '.join(existing)}). The one-shot artifact is historic — "
+            "it is never overwritten. If you truly intend a new record, move the "
+            "existing receipt (and its MANIFEST.json) aside first."
+        )
 
 
 def redact_receipt(receipt: dict[str, object]) -> dict[str, object]:

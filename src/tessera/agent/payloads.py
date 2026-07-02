@@ -51,6 +51,7 @@ embedding / LLM / cloud / MCP import reaches the verifier.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from tessera.agent.actions import ActionField, ActionProposal, draft_action
@@ -79,6 +80,10 @@ SECTION_LABELS: dict[str, str] = {
 }
 _FENCED_ROLES = frozenset({"log", "code_change"})
 _SECTION_SEP = "\n\n"
+
+# The only characters a grounded ``{pr}`` resource id may carry into the URL path —
+# one clean segment, no separators, no query/fragment/percent tricks (audit B5).
+_RESOURCE_SEGMENT = re.compile(r"[A-Za-z0-9._-]+")
 
 
 # --- the declared GitHub targets (small, one system) --------------------------
@@ -220,12 +225,24 @@ class RenderedPayload:
 # --- rendering ----------------------------------------------------------------
 
 
+def _fence(value: str) -> str:
+    """A backtick fence strictly longer than any backtick run inside ``value``
+    (minimum 3). A log or diff line containing ``\\`\\`\\``` could otherwise close the
+    fence early and inject markdown — headings, links, fake sections — into the
+    rendered (and, on the real path, actually created) issue (audit B4). Still a pure
+    function of the value, so the body stays byte-reconstructable."""
+    longest = max((len(run) for run in re.findall(r"`+", value)), default=0)
+    return "`" * max(3, longest + 1)
+
+
 def _section(slot: PayloadSlot) -> str:
     """Render one body section: a fixed ``## {label}`` heading over the grounded
-    value, code-fenced for logs and diffs. A pure function of (label, role, value),
-    so the assembled body is byte-reconstructable from the verified fields."""
+    value, code-fenced for logs and diffs (fence length neutralizes any backtick run
+    in the value — :func:`_fence`). A pure function of (label, role, value), so the
+    assembled body is byte-reconstructable from the verified fields."""
     if slot.role in _FENCED_ROLES:
-        return f"## {slot.label}\n```\n{slot.value}\n```"
+        fence = _fence(slot.value)
+        return f"## {slot.label}\n{fence}\n{slot.value}\n{fence}"
     return f"## {slot.label}\n{slot.value}"
 
 
@@ -273,13 +290,15 @@ def _resource_slot(subject: ActionField) -> PayloadSlot | None:
     """The ``{pr}`` resource id for a PR comment, taken from the subject field's own
     cited **pull-request** record (the first support id with a ``PR:`` prefix, e.g.
     ``PR:PR-201`` → ``PR-201``) — a grounded identifier, traced. None when the subject
-    cites no PR record, or the id is not a clean single path segment, so a comment is
-    never addressed to an unbacked or malformed resource (the payload is withheld)."""
+    cites no PR record, or the id is not a clean single path segment (the
+    ``[A-Za-z0-9._-]+`` allowlist, never a dots-only segment — audit B5: ``?``/``#``/
+    ``..``/percent-encoding must not reach the URL path), so a comment is never
+    addressed to an unbacked or malformed resource (the payload is withheld)."""
     pr = next((e for e in subject.support if e.id.startswith("PR:")), None)
     if pr is None:
         return None
     resource = pr.id.removeprefix("PR:")
-    if not resource or "/" in resource or any(c.isspace() for c in resource):
+    if not _RESOURCE_SEGMENT.fullmatch(resource) or set(resource) <= {"."}:
         return None
     return PayloadSlot(
         part="path",

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -53,10 +54,18 @@ _EXPECTED_LABELS = {
 _EXPECTED_FENCED = {"log", "code_change"}
 
 
+def _expected_fence(value: str) -> str:
+    # Independent copy of the declared fence rule (audit B4): strictly longer than any
+    # backtick run inside the value, minimum 3 — so content can never close the fence.
+    longest = max((len(run) for run in re.findall(r"`+", value)), default=0)
+    return "`" * max(3, longest + 1)
+
+
 def _expected_section(fld: ActionField) -> str:
     label = _EXPECTED_LABELS[fld.name]
     if fld.name in _EXPECTED_FENCED:
-        return f"## {label}\n```\n{fld.value}\n```"
+        fence = _expected_fence(fld.value)
+        return f"## {label}\n{fence}\n{fld.value}\n{fence}"
     return f"## {label}\n{fld.value}"
 
 
@@ -384,6 +393,71 @@ def test_to_dict_round_trips_through_json(
     request = payload["request"]
     assert isinstance(request, dict)
     assert set(request) == {"method", "path", "body"}
+
+
+def _pr_proposal(*fields: ActionField) -> ActionProposal:
+    return ActionProposal(
+        kind="pr_summary",
+        domain="devex",
+        question="q",
+        route_kind="summary",
+        route_reason="r",
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=fields,
+    )
+
+
+def test_fence_injection_from_content_is_neutralized() -> None:
+    """Audit B4: a log/diff value containing a backtick fence must not be able to
+    close the section's fence and inject markdown (headings, links) into the rendered
+    — and, on the real path, actually created — issue. The fence is lengthened past
+    any run in the value; the value stays verbatim; reconstruction still matches."""
+    subject = ActionField(
+        "pull_request", "pr text", True, (_evidence("PR:PR-201", "pr text"),)
+    )
+    hostile = "- ok line\n```\n## Injected heading\n[click me](https://evil.example)"
+    diff = ActionField(
+        "code_change", hostile, True, (_evidence("Diff:PR-201#h1", hostile),)
+    )
+    proposal = _pr_proposal(subject, diff)
+    payload = render_payload(proposal)
+    assert payload.rendered and payload.all_grounded
+
+    body = payload.body["body"]
+    assert isinstance(body, str)
+    # The hostile value sits verbatim inside a 4-backtick fence it cannot close —
+    # exactly one opening and one closing fence of that length exist.
+    assert f"## Code change\n````\n{hostile}\n````" in body
+    assert body.count("````") == 2
+    # The independent reconstruction (same declared rule) still matches byte-for-byte.
+    method, path, expected_body = _expected_request(proposal)
+    assert (payload.method, payload.path, payload.body) == (method, path, expected_body)
+
+
+@pytest.mark.parametrize(
+    "hostile_id",
+    [
+        "PR:..",  # path traversal segment
+        "PR:.",  # self segment
+        "PR:PR-1?draft=true",  # query injection
+        "PR:PR-1#frag",  # fragment injection
+        "PR:%2e%2e",  # percent-encoded traversal
+        "PR:PR/201",  # extra path segment
+        "PR:PR 201",  # whitespace
+        "PR:",  # empty
+    ],
+)
+def test_resource_segment_allowlist_withholds_malformed_ids(hostile_id: str) -> None:
+    """Audit B5: the ``{pr}`` segment admits only ``[A-Za-z0-9._-]+`` (and never a
+    dots-only segment) — anything else is withheld, never spliced into the URL path."""
+    subject = ActionField(
+        "pull_request", "pr text", True, (_evidence(hostile_id, "pr text"),)
+    )
+    payload = render_payload(_pr_proposal(subject))
+    assert not payload.rendered and payload.path == ""
+    assert payload.withheld_reason
 
 
 def test_payload_is_deterministic_across_hash_seeds() -> None:

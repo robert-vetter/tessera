@@ -146,3 +146,26 @@ network is never touched in CI, and the actuator is never constructed by the def
   unverified deployment string part of the grounded payload and perturb the faithfulness
   measurement. The marker stays real-path scaffolding, added at send, outside the grounded
   set.
+
+## Addendum (2026-07-02, spec 0109 — audit B2/B4): the pre-check is label-independent
+
+The 2026-07-02 audit (finding **B2**) showed the original issues pre-check filtered the
+listing by the `idem-` label and scanned bodies only *within* that filtered result —
+making dedup silently depend on the label surviving. A fine-grained PAT that cannot
+create labels, a later label deletion, or GitHub dropping an unknown label would make
+the filter return empty and a re-run would **duplicate despite the body marker** — a
+residual this ADR's original list did not name.
+
+**Change:** the issues pre-check now scans the **unfiltered** `state=all` listing for
+the exact body marker (same pagination, same refuse-on-cap), exactly like the comments
+path. The `idem-` label is still embedded, but demoted to a *visible, non-load-bearing
+handle* — dedup rests only on the signal that was verified anyway (the exact marker
+substring). Cost: a busy repo pages more and can hit the cap, yielding an honest
+`inconclusive`; irrelevant for the sandbox one-shot and documented here.
+
+**Residual now named (audit B4, speculative but real):** the marker is a deterministic
+function of the grounded payload, so a party able to place content into the target
+repo's issues/comments (or into a log that reaches an issue body) could pre-embed the
+exact marker and force a false `exists` — a **denial-of-create**, never a wrong send.
+Accepted for the sandbox one-shot posture; a real multi-tenant deployment would need an
+authorship check on the candidate (out of scope, recorded).
