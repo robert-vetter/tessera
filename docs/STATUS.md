@@ -1804,3 +1804,91 @@ internship and the Z Fellows cohort (customer-ready MVP + visible traction).
   (`AUDIT_2026-07-02.md`, `MARKET.md`, `ROADMAP2.md`), this entry, and their
   mkdocs nav wiring — via branch → PR per branch protection. No code changes.
   Not tagged (M15 remains in flight until its Units 4–5 close).
+
+---
+
+## 2026-07-02 — Milestone 16 Units 1–4 COMPLETE (close & clean; the one-shot is two commands away)
+
+**Mode note:** maintainer-directed start the same day as the audit ("begin M16
+and prepare the one-shot so I can execute it without problems"). Context
+corrections recorded: the maintainer is a Z Fellows **applicant in final
+selection** (a one-month build period with weekly ship-updates and a check-in
+presentation — ROADMAP2 updated), and the Anthropic API key is now in `.env`
+(ROADMAP2 decision #4, done). Units per discipline: spec → branch → gate → PR
+→ CI-green → squash-merge (PRs #119–#123).
+
+**Done this session**
+- **Plan** (spec 0107, #119): unit breakdown + six recorded decisions
+  (forward-only spec numbering; recorder persistence policy; label-independent
+  pre-check; transparent-verifier rule; public sandbox repo; M16 tags at its
+  close, which includes M15's).
+- **Unit 1 — drift repair** (spec 0108, #120): audit D1–D7 acted on — STATUS
+  backfill for the M15 sessions (honestly labeled), CHANGELOG, WRITEUP
+  idempotency truth, DEPLOYMENT embeddings row ("built and measured on SAP"),
+  README count/pointers/M15-in-flight wording, CAPABILITIES future-work
+  markers, the `specs/README.md` numbering ledger, ROADMAP2 Z-Fellows
+  correction — plus **68 stale merged remote branches pruned** (3 refs remain:
+  main + two dependabot).
+- **Unit 2 — trust-path fixes B1–B5** (spec 0109, #121): recorder
+  never-clobbers (policy in tested `recording.py`; case-insensitive guard,
+  exclusive-create, persist only `created`/`exists`, non-consummated approved
+  attempts print + exit non-zero); the idempotency pre-check is
+  **label-independent** (unfiltered `state=all` marker scan; ADR 0026
+  addendum); `token` excluded from `repr`; **content-proof fences** (per-value
+  length; ADR 0024 addendum); `{pr}` allowlist. **Carried the mandated 5-lens
+  pre-merge adversarial review** (recorder correctness, GitHub semantics —
+  docs-verified, security, faithfulness contract, docs honesty; every finding
+  independently reproduced): **3 confirmed majors, all fixed before merge** —
+  (1) the CI-gated boundary reconstruction still hardcoded the old fence
+  (rule ported); (2) the recorder's MANIFEST note promised the pre-B1 re-run
+  behavior (reworded); (3) the ADR 0026 addendum misstated the original ADR's
+  history (reworded; audit table corrected; superseded-markers added). Review
+  hardening also landed: the real transport **refuses redirects** (urllib
+  forwards `Authorization` cross-origin and rewrites POST→GET — a moved repo
+  could have minted a false `created`); multiline values in non-fenced roles
+  withhold the payload; the spoofed-`exists`-is-persistable residual is named
+  (verify-the-URL step in the runbook); null-body/PR items in the pre-check
+  test fake.
+- **Unit 3 — verifier honesty** (spec 0110, #122): refuse-kind claims are now
+  faithfulness-scored (audit B7; measured effect zero — all six battery lines
+  byte-identical, the floor's reach widened); over-citation and
+  cross-word-boundary containment named in an ADR 0005 addendum and pinned by
+  committed specimens (audit B6).
+- **Unit 4 — one-shot preparation** (spec 0111, #123): public sandbox repo
+  **created** (`robert-vetter/tessera-exec-oneshot`, with purpose README);
+  `.env` prefilled with the non-secret `TESSERA_EXEC_*` values (PAT
+  placeholder + mint link); DEPLOYMENT runbook rewritten for the post-0109
+  recorder (incl. the verify-the-issue-URL honesty step and the
+  labels-silently-dropped note); the **M15 close checklist** recorded in the
+  spec so any session can execute it after the send. The no-credential
+  instructions path re-verified live (prints instructions, sends nothing).
+
+**Current eval numbers (unchanged throughout — verified at every unit's gate)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- **461 tests** (443 → +18 across 0109/0110); gate green on every PR.
+
+**Next**
+- **The maintainer's one-shot** (spec 0111): mint the fine-grained PAT
+  (Issues RW on `tessera-exec-oneshot` only), paste it into `.env`, run the
+  rehearsal, run the approved send, verify the printed issue URL.
+- Then any session executes the **0111 close checklist** → commit the scrubbed
+  receipt → WRITEUP/README/CHANGELOG → empty-diff audit → tags `milestone-15`
+  + `milestone-16` → hand back the **M17 kickoff** (demoable to humans:
+  narration, web UI over the existing trust objects, hosted demo — the
+  Z Fellows "live demo anyone can try" commitment).
+
+**Open questions / risks**
+- The remaining maintainer decisions (ROADMAP2 checklist): HANA instance
+  health, SALT HF access request, hosting choice, BTP account, the Z Fellows
+  check-in date, launch consent. None blocks the one-shot.
+- Two open dependabot PRs (#59 actions/cache, #60 python group) — take through
+  a normal gate cycle when convenient.
+- The sandbox repo is public and idle until the send — run the one-shot soon
+  (the runbook's verify-URL step covers the remote spoof case regardless).
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #118–#123 merged this
+  day. Not tagged (M15/M16 tag together after the send, per spec 0107
+  decision 6).
