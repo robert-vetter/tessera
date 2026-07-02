@@ -111,3 +111,45 @@ def test_adr0006_intent_verbs_remain_the_router_ceiling() -> None:
     forces it (a correct refusal is the honest fallback)."""
     for phrasing in ("rank our clients", "order them by revenue", "our best account"):
         assert not mentions_superlative(phrasing)
+
+
+def test_adr0005_over_citation_passes_the_generic_containment_check() -> None:
+    """ADR 0005 blind spot (audit B6), demonstrated. The generic containment
+    grammar accepts a claim if ANY cited record supports it — decorative extra
+    citations are unpenalized, so a claim can launder an irrelevant record into
+    its provenance trail. (Shape-specific grammars are stricter: an aggregate
+    must cite exactly its summands.) Named in the ADR 0005 addendum (spec 0110);
+    penalizing over-citation is future work, recorded, not silently changed."""
+    graph = KnowledgeGraph()
+    supporting = _doc("S", "The deploy failed with a timeout after 30 seconds.")
+    irrelevant = _doc("I", "Lunch menu: Tuesday is currywurst day.")
+    graph.add_node(Node(record=supporting, kind="document"))
+    graph.add_node(Node(record=irrelevant, kind="document"))
+    nodes = {n.id: n for n in graph.nodes}
+
+    over_cited = Claim(
+        text="The deploy failed with a timeout",
+        support=(supporting, irrelevant),  # one real support + one decorative
+    )
+    # Structurally faithful — SOME cited record contains the claim …
+    assert is_supported(over_cited, nodes, graph)
+    # … while a properly-cited version is equally faithful; the metric cannot
+    # tell them apart. The blind spot is one-directional: a claim with NO
+    # supporting citation still fails.
+    unsupported = Claim(text="The deploy failed with a timeout", support=(irrelevant,))
+    assert not is_supported(unsupported, nodes, graph)
+
+
+def test_adr0005_containment_matches_across_word_boundaries() -> None:
+    """ADR 0005 blind spot (audit B6), demonstrated. ``normalize()`` strips
+    spaces and punctuation before substring matching, so containment can match
+    across word boundaries — a claim fragment can be 'supported' by text where
+    the words run together differently. Inherent to the normalization that
+    absorbs umlaut/punctuation variance (its purpose); named, not fixed."""
+    graph = KnowledgeGraph()
+    record = _doc("W", "The rerun 42 failed check is pending.")
+    graph.add_node(Node(record=record, kind="document"))
+    nodes = {n.id: n for n in graph.nodes}
+
+    cross_boundary = Claim(text="run 42 failed", support=(record,))
+    assert is_supported(cross_boundary, nodes, graph)  # 'rerun42failed' ⊇ 'run42failed'
