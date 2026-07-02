@@ -17,7 +17,7 @@ path as documentation + tested code seams, not a provisioned footprint).
 | Tessera component | Local mode (default) | SAP target | Status |
 |---|---|---|---|
 | Narration model (rephrases verifier-checked claims; never generates facts — ADR 0006 trigger 2) | none — deterministic rendering | **Generative AI Hub** deployment on **AI Core** | Adapter implemented (`tessera/platform/providers.py`), exercised against fakes in CI; needs a provisioned deployment to go live |
-| Embedding / semantic retrieval | none — lexical BM25 (ADR 0003) | GenAI Hub embeddings + **HANA Cloud vector store** | **Deliberately not built.** ADR 0010 refreshed the trigger: embeddings arrive when a measured coverage miss exists that no declarable data can fix |
+| Embedding / semantic retrieval | opt-in, off by default — lexical BM25 (ADR 0003); `TESSERA_EMBEDDINGS=hana` enables the semantic path | **HANA Cloud** in-database `VECTOR_EMBEDDING` + vector store (GenAI Hub adapter as the documented alternative) | **Built and measured on SAP** (Milestones 6–7, ADR 0015–0017; embedding-assisted ER ADR 0016) — recorded online closes in `eval/history.jsonl`; CI stays offline/lexical/key-free |
 | Knowledge graph | in-process object model (ADR 0004) | **HANA Cloud** graph workload | Documented design target; the graph is rebuilt deterministically from data on each run, so persistence is an optimization, not a correctness need, at current scale |
 | Serving / runtime | `uv run …` or the repository Dockerfile | **AI Core** serving (or any BTP runtime) the container deploys to | The container is the deployable artifact |
 | Platform context | — | **SAP BTP** subaccount | Provisioning runbook below |

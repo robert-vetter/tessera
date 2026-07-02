@@ -1,6 +1,6 @@
 # Capabilities — Tessera
 
-This document describes **what the system can do, at the level of features and behaviors.** It stays above implementation: it says *what* each part is responsible for and *what it must guarantee*, not *how* it is coded. Read it as the functional contract the build has to satisfy.
+This document describes **what the system can do, at the level of features and behaviors.** It stays above implementation: it says *what* each part is responsible for and *what it must guarantee*, not *how* it is coded. Read it as the functional contract the build has to satisfy. Where the contract is ahead of the build, the item is marked ***(future work)*** — the current state lives in [`STATUS.md`](STATUS.md) and the [write-up](WRITEUP.md).
 
 ---
 
@@ -10,10 +10,10 @@ This document describes **what the system can do, at the level of features and b
 
 Capabilities:
 - Accept **structured sources**: relational tables, spreadsheet exports, CSV/TSV, and structured API payloads.
-- Accept **unstructured sources**: documents (PDF, office formats, markdown), plain-text runbooks, log files, ticket exports, and chat/thread transcripts.
+- Accept **unstructured sources**: documents (Markdown/plain text today; PDF and office formats are *future work*), plain-text runbooks, log files, ticket exports, and chat/thread transcripts *(chat transcripts: future work)*.
 - Normalize every incoming source into a common internal representation so that downstream components never need to care where a fact originated.
 - Preserve, for every ingested unit of information, **enough origin metadata to reconstruct provenance later** (which source, which row/page/line, when it was ingested).
-- Be incremental: re-ingesting an updated source should update the graph, not duplicate it.
+- Be incremental: re-ingesting an updated source should update the graph, not duplicate it. *(Future work — today the graph is rebuilt deterministically from the data on each run, which is a correctness-equivalent posture at current scale.)*
 
 Guarantees:
 - No information enters the system without an attached, retrievable origin.
@@ -45,7 +45,7 @@ Capabilities:
 - **Evidence assembly:** gather the relevant subgraph and source records before composing an answer, so the answer is built *from* evidence rather than decorated with citations after the fact.
 - **Claim-level provenance:** attach to **each individual claim** in the answer a traceable path back to the specific records that justify it — visible to the user, not buried.
 - **Principled refusal:** when the graph does not contain enough evidence, say so clearly instead of guessing. The ability to decline is a feature, not a failure.
-- **Conversational continuity:** support follow-up questions that refine or build on the previous answer while keeping provenance intact.
+- **Conversational continuity:** support follow-up questions that refine or build on the previous answer while keeping provenance intact. *(Future work — sessions are stateless today; named as a limitation in the write-up.)*
 
 Guarantees:
 - No claim appears in an answer without a provenance path.

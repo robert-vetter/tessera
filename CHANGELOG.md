@@ -11,7 +11,31 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-*(nothing yet)*
+### Added
+
+- **Best-effort idempotency on the real execution path** (Milestone 15 Unit 2,
+  ADR 0026, #115): a deterministic `sha256` idempotency key over the grounded
+  request, a three-surface marker (HTML comment + visible footer + `idem-` label),
+  a paging pre-send existence check on the primary endpoint, new
+  `exists`/`inconclusive` receipt outcomes, and `idempotency_key` on the receipt.
+- **Real-execution recorder, scrubber, and runbook** (Milestone 15 Unit 3, #116):
+  `scripts/record_real_execution.py` (maintainer-only one-shot, never CI),
+  `tessera.agent.recording.redact_receipt` (response allow-list + token-like-key
+  redaction), the `docs/DEPLOYMENT.md` one-shot runbook, `.env.example`, and the
+  `data/execution/` layout.
+- **Act 2 planning corpus** (#118, #119): the 2026-07-02 repository audit
+  (`docs/AUDIT_2026-07-02.md`), the sourced market snapshot (`docs/MARKET.md`),
+  the Act 2 roadmap (`docs/ROADMAP2.md`), and the Milestone 16 plan (spec 0107).
+
+### Changed
+
+- The real-execution recorder records **only an approved send** — a rehearsal
+  writes nothing (Milestone 15, #117).
+- Audit drift repaired (Milestone 16 Unit 1, spec 0108): STATUS backfill for the
+  Milestone-15 sessions, WRITEUP idempotency limitation rewritten to match ADR
+  0026, DEPLOYMENT embeddings row corrected to "built and measured on SAP",
+  README milestone count + Act-2 pointers + M15-in-flight wording, CAPABILITIES
+  future-work markers, and the `specs/README.md` numbering ledger.
 
 ## [milestone-14] — 2026-07-01
 
