@@ -120,3 +120,32 @@ stays the opt-in `agent` extra and the default import graph stays free of `mcp`.
 - **Binding `{owner}`/`{repo}` from config and asserting them grounded.** Rejected: the
   target is a deployment choice, not evidence; binding it would assert as grounded something
   Tessera cannot trace. The placeholders stay unbound and are declared scaffolding.
+
+## Addendum (2026-07-02, spec 0109 — audit B4/B5): content-proof fences, path allowlist
+
+The 2026-07-02 audit found two rendering hardening gaps, both fixed:
+
+- **B4 — fence injection.** Fenced sections (`log`, `code_change`) used a fixed
+  three-backtick fence, so a log/diff line containing ``` ``` ``` could close the fence
+  early and inject markdown (headings, links, fake sections) into the rendered — and,
+  since Milestone 15, actually *creatable* — issue. The fence length is now computed
+  per value (strictly longer than any backtick run inside it, minimum 3). Still a pure
+  function of the value, so the body remains byte-reconstructable; both *independent*
+  reconstructions (`tests/test_payloads.py` and the CI-gated, data-derived
+  `tests/test_payloads_boundary.py`) implement the same declared rule. Faithfulness is
+  untouched (values stay verbatim). Byte-stability, stated precisely: the raw
+  `github_actions` logs *do* contain single-backtick runs (the punycode deprecation
+  lines), but no value the renderer currently **fences** carries a backtick — the
+  error-focused excerpting drops those lines — so every fence degenerates to the old
+  three-backtick form and every recorded number and committed artifact is unchanged
+  (verified empirically over all 14 data-derived payloads and `data/mcp_session/`).
+- **Review M2 — multiline values in non-fenced roles (follow-on, same review).** The
+  fence fix covers fenced roles only; a multiline value in a *non-fenced* role would be
+  placed verbatim into the markdown body — the same injection through a different
+  door. A payload whose non-fenced body-field value contains a newline is now
+  **withheld**, not rendered. No current non-fenced value is multiline, so recorded
+  bytes are unchanged.
+- **B5 — the `{pr}` path segment.** Validation admitted `?`, `#`, `..`,
+  percent-encoding into the URL path. The segment now passes an allowlist
+  (`[A-Za-z0-9._-]+`, dots-only rejected) or the payload is withheld — a grounded id
+  is never spliced into a URL as anything but one clean path segment.

@@ -23,12 +23,21 @@ Environment:
     TESSERA_EXEC_ACTION / _DOMAIN / _QUESTION  optional overrides (default: a real
                           github_actions incident over a real failed Tessera CI run)
 
-Without owner/repo/token it prints instructions and sends nothing. With them but WITHOUT
-``TESSERA_EXEC_APPROVE=true`` the real actuator returns ``outcome="blocked"`` (nothing
-sent, nothing written) — a safe rehearsal. Only an approved send scrubs the receipt
-(``recording.redact_receipt``) and writes it to ``data/execution/``. Re-running is
-best-effort idempotent (ADR 0026): a re-run returns ``outcome="exists"`` (marker
-embedded), creating no duplicate.
+Without owner/repo/token it prints instructions and sends nothing (and exits non-zero
+if approval was explicitly set — an approved attempt that consummates nothing never
+reports success). With credentials but WITHOUT ``TESSERA_EXEC_APPROVE=true`` the real
+actuator returns ``outcome="blocked"`` (nothing sent, nothing written) — a safe
+rehearsal. Only an approved, **consummated** attempt (``created`` or ``exists``)
+scrubs the receipt (``recording.redact_receipt``) and writes it to
+``data/execution/``; an approved attempt ending in any other outcome (``withheld`` /
+``inconclusive`` / ``error`` — and defensively ``blocked``) is printed for inspection
+and exits non-zero, persisting nothing, so a failed attempt neither blocks a retry
+nor overwrites anything (audit B1). An already-recorded receipt is never clobbered:
+an approved re-run refuses *before any network* (``recording.guard_no_clobber``).
+Re-running before the record exists is best-effort idempotent (ADR 0026): the
+pre-check finds the embedded marker and returns ``outcome="exists"``, creating no
+duplicate — recorded then only as the crash-recovery case (a send whose receipt was
+lost); verify the printed ``html_url`` is your own issue before committing.
 """
 
 from __future__ import annotations
@@ -39,7 +48,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from tessera.agent.execution import ExecutionReceipt, GithubActuator, execute_action
-from tessera.agent.recording import redact_receipt
+from tessera.agent.recording import guard_no_clobber, redact_receipt, should_persist
 from tessera.devex.knowledge import build_github_actions_graph
 
 OUT_DIR = Path(__file__).resolve().parents[1] / "data" / "execution"
@@ -82,9 +91,10 @@ def _write(
     question: str,
 ) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    (OUT_DIR / "receipt.json").write_text(
-        json.dumps(scrubbed, indent=2, ensure_ascii=False) + "\n", "utf-8"
-    )
+    # Exclusive create ("x"): the historic artifact is never truncated even if two
+    # approved runs raced past the guard (review F6) — the second write fails loudly.
+    with (OUT_DIR / "receipt.json").open("x", encoding="utf-8") as fh:
+        fh.write(json.dumps(scrubbed, indent=2, ensure_ascii=False) + "\n")
     manifest = {
         "dataset": "execution",
         "synthetic": False,
@@ -95,10 +105,12 @@ def _write(
         "domain": domain,
         "question": question,
         "note": (
-            "One real, maintainer-approved GitHub execution (Milestone 15, spec 0106). "
+            "One real, maintainer-approved GitHub execution (Milestone 15). "
             "The credential is never committed (the receipt carries no token by "
             "construction); GitHub's echoed response is scrubbed to number/html_url/"
-            "state/title. Best-effort idempotent (ADR 0026): a re-run returns 'exists'."
+            "state/title. Best-effort idempotent (ADR 0026): the embedded marker "
+            "deduped any re-run made before this record existed; once this record "
+            "exists, the recorder refuses to re-run (recording.guard_no_clobber)."
         ),
     }
     (OUT_DIR / "MANIFEST.json").write_text(
@@ -136,7 +148,19 @@ def main() -> None:
 
     if not (owner and repo and token):
         print(_INSTRUCTIONS)
+        if approve:
+            # Explicit approval with nothing to send: report failure to the shell
+            # (an approved attempt never exits 0 without a consummated outcome).
+            raise SystemExit(
+                "TESSERA_EXEC_APPROVE=true was set but the credentials above are "
+                "missing — nothing sent."
+            )
         return
+
+    # An approved run may write — so refuse a clobber BEFORE any network activity
+    # (audit B1): if the one-shot is already recorded, nothing is sent or touched.
+    if approve:
+        guard_no_clobber(OUT_DIR)
 
     actuator = GithubActuator(owner=owner, repo=repo, token=token)
     receipt = execute_action(
@@ -154,6 +178,16 @@ def main() -> None:
         )
         return
     scrubbed = redact_receipt(receipt.to_dict())
+    # Persist only a consummated outcome (created/exists). Any other approved ending
+    # (withheld/inconclusive/error — and defensively blocked) is printed for
+    # inspection and exits non-zero — nothing written, so the failed attempt neither
+    # blocks the retry nor overwrites history (B1).
+    if not should_persist(receipt.outcome):
+        print(json.dumps(scrubbed, indent=2, ensure_ascii=False))
+        raise SystemExit(
+            f"approved attempt ended outcome={receipt.outcome!r} — nothing persisted. "
+            "Inspect the receipt above, fix the cause, and re-run."
+        )
     _write(
         scrubbed,
         owner=owner,

@@ -72,7 +72,8 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
-from typing import Protocol
+from http.client import HTTPMessage
+from typing import IO, Protocol
 
 from tessera.agent.payloads import PayloadSlot, RenderedPayload, preview_payload
 
@@ -282,17 +283,52 @@ class Transport(Protocol):
     def get(self, url: str, *, headers: dict[str, str]) -> tuple[int, object]: ...
 
 
+class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
+    """The real transport never follows a redirect (review M1, spec 0109). urllib's
+    default handler copies **every** request header — including ``Authorization`` —
+    onto the redirect target with no same-host check, and rewrites POST→GET on
+    301/302/303: a moved/renamed repo would turn the create-POST into a silent GET of
+    the issues listing, whose 200 would be misrecorded as ``outcome="created"``. Any
+    3xx therefore raises and surfaces as an explicit ``error`` (POST) or
+    ``inconclusive`` (pre-check GET) — never a false success, never a forwarded
+    credential."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            f"redirect refused ({code} toward {newurl}): the real actuator never "
+            "follows redirects (it would forward the credential and could misreport "
+            "a moved repo's listing as a created resource).",
+            headers,
+            fp,
+        )
+
+
+# One opener for the real transport, with redirect-following disabled.
+_OPENER = urllib.request.build_opener(_RefuseRedirects())
+
+
 @dataclass(frozen=True)
 class _UrllibTransport:
-    """The real HTTP transport: a JSON ``POST`` via stdlib ``urllib`` (no dependency).
-    Constructed only by an opt-in :class:`GithubActuator`; never used in CI."""
+    """The real HTTP transport: a JSON ``POST`` via stdlib ``urllib`` (no dependency),
+    redirect-refusing (:class:`_RefuseRedirects`). Constructed only by an opt-in
+    :class:`GithubActuator`; never used in CI."""
 
     def post(
         self, url: str, *, headers: dict[str, str], body: dict[str, object]
     ) -> tuple[int, dict[str, object]]:  # pragma: no cover - real network, never in CI
         data = json.dumps(body).encode("utf-8")
         request = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(request) as response:
+        with _OPENER.open(request) as response:
             status = int(response.status)
             payload = response.read().decode("utf-8")
         parsed = json.loads(payload) if payload else {}
@@ -302,7 +338,7 @@ class _UrllibTransport:
         self, url: str, *, headers: dict[str, str]
     ) -> tuple[int, object]:  # pragma: no cover - real network, never in CI
         request = urllib.request.Request(url, headers=headers, method="GET")
-        with urllib.request.urlopen(request) as response:
+        with _OPENER.open(request) as response:
             status = int(response.status)
             payload = response.read().decode("utf-8")
         return status, (json.loads(payload) if payload else [])
@@ -312,9 +348,12 @@ class _UrllibTransport:
 
 _MARKER_PREFIX = "tessera-idempotency-key"
 
-# The pre-check pages through the primary list endpoint (issues filtered by the unique
-# ``idem-`` label collapse to ~0-1 results; a PR's comments are the whole thread). The
-# page cap bounds the worst case: if the marker is not found within it, the pre-check
+# The pre-check pages through the primary list endpoint — the repo's issues
+# (``state=all``, unfiltered; NOTE the listing also returns pull requests, which
+# consume the cap) or a PR's whole comment thread. It is deliberately
+# label-independent (audit B2): a dropped, deleted, or never-attached ``idem-`` label
+# must not defeat the dedup, so the scan trusts only the exact body marker. The page
+# cap bounds the worst case: if the marker is not found within it, the pre-check
 # REFUSES (``inconclusive``) rather than risk a duplicate over an un-scanned page.
 _PRECHECK_PER_PAGE = 100
 _MAX_PRECHECK_PAGES = 20
@@ -350,9 +389,11 @@ def idempotency_marker(key: str) -> str:
 
 
 def _idempotency_label(key: str) -> str:
-    """A short, deterministic, index-independent label handle for the key — the filter
-    on the primary (immediately-consistent) issues-list endpoint. Issues only; a comment
-    carries no label, so its pre-check lists the PR's comments for the marker."""
+    """A short, deterministic label handle for the key — a *visible* marker on the
+    created issue for humans and dashboards. Deliberately **not load-bearing** for the
+    pre-check (audit B2): the dedup scan is label-independent and trusts only the exact
+    body marker, so a label GitHub drops or a user deletes cannot cause a duplicate.
+    Issues only; a comment carries no label."""
     digest = key.split(":", 1)[1]
     return f"idem-{digest[:16]}"
 
@@ -399,7 +440,11 @@ class GithubActuator:
 
     owner: str
     repo: str
-    token: str | None = None
+    # repr=False: the credential must never surface in repr()/str() — a traceback or
+    # debug print of the actuator would otherwise leak the PAT (audit B3). NOTE:
+    # dataclasses.asdict()/astuple() ignore repr=False and WOULD expose it — nothing
+    # in this codebase calls them on an actuator; keep it that way.
+    token: str | None = field(default=None, repr=False)
     base_url: str = "https://api.github.com"
     transport: Transport = field(default_factory=_UrllibTransport)
     name: str = "github"
@@ -536,25 +581,32 @@ class GithubActuator:
         headers: dict[str, str],
     ) -> tuple[str, dict[str, object] | None]:
         """Best-effort pre-check on the target's **primary** (immediately-consistent)
-        list endpoint — the issues list filtered by the ``idem-`` label, or the PR's
-        comments list — **paging** until the exact marker is found in a candidate's
-        body, the thread is exhausted (a short page), or the page cap is hit. Returns
-        ``("exists", issue)`` on a verified hit, ``("inconclusive", detail)`` when a
-        page read errors / is non-2xx **or** the cap is reached before the thread is
-        fully scanned (refuse, never duplicate), or ``("create", None)`` when the target
-        is free of a prior identical action. A label-filtered issues list collapses to
-        ~0-1 results (one short page); a busy PR's comment thread can span pages, which
-        is why the pre-check pages rather than reading only the first. The eventually-
-        consistent search index is deliberately not used, so the residual is a genuine
-        concurrent create, not a minute of search lag."""
+        list endpoint — the repo's issues list (``state=all``, **unfiltered**) or the
+        PR's comments list — **paging** until the exact marker is found in a
+        candidate's body, the listing is exhausted (a short page), or the page cap is
+        hit. Returns ``("exists", issue)`` on a verified hit, ``("inconclusive",
+        detail)`` when a page read errors / is non-2xx **or** the cap is reached before
+        the listing is fully scanned (refuse, never duplicate), or ``("create", None)``
+        when the target is free of a prior identical action.
+
+        The scan is deliberately **label-independent** (audit B2): an earlier design
+        filtered the issues list by the ``idem-`` label, which made dedup silently
+        depend on that label surviving — dropped at create (a PAT that cannot create
+        labels), deleted later, or stripped by GitHub, the filter would return empty
+        and a re-run would duplicate despite the body marker. Scanning the unfiltered
+        listing costs more pages on a busy repo (the cap then yields an honest
+        ``inconclusive``) and buys correctness on the only signal that is verified
+        anyway: the exact marker substring. (The issues listing includes pull
+        requests, which consume the cap; a listed item's ``body`` can be ``null``,
+        which the scan skips.) The eventually-consistent search index is deliberately
+        not used, so the residual is a genuine concurrent create, not a minute of
+        search lag."""
         marker = idempotency_marker(key)
         if payload.path.rstrip("/").endswith("/comments"):
             base = f"{self.base_url}{bound_path}?per_page={_PRECHECK_PER_PAGE}"
         else:
-            label = _idempotency_label(key)
             base = (
-                f"{self.base_url}{bound_path}"
-                f"?state=all&per_page={_PRECHECK_PER_PAGE}&labels={label}"
+                f"{self.base_url}{bound_path}?state=all&per_page={_PRECHECK_PER_PAGE}"
             )
         for page in range(1, _MAX_PRECHECK_PAGES + 1):
             try:
