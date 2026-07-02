@@ -172,14 +172,21 @@ simulated one and **nothing is sent**.
 The credential **never enters the agent's environment** — the maintainer supplies it via a
 gitignored `.env` and runs the one-shot themselves. The runbook:
 
-1. **Create a throwaway sandbox repo**, e.g. `<you>/tessera-exec-oneshot`. The real side
-   effect is irreversible, so a disposable repo contains the blast radius.
-2. **Mint a fine-grained PAT** scoped to **`Issues: Read and write`** on **that one repo**
-   only (Read is needed for the idempotency pre-check's list call; Write to create).
-3. **Fill `.env`** (gitignored; see `.env.example`) and load it:
+1. **Create a throwaway sandbox repo.** The concrete one exists:
+   [`robert-vetter/tessera-exec-oneshot`](https://github.com/robert-vetter/tessera-exec-oneshot)
+   (public, so the created issue is publicly verifiable). The real side effect is
+   irreversible, so a disposable repo contains the blast radius.
+2. **Mint a fine-grained PAT** at
+   <https://github.com/settings/personal-access-tokens/new>, scoped to **`Issues:
+   Read and write`** on **that one repo** only (Read powers the idempotency
+   pre-check's list call; Write creates the issue). Note: without push access GitHub
+   *silently drops* labels on create — harmless here, since spec 0109 the dedup is
+   label-independent; the visible `idem-` label may simply not appear.
+3. **Fill `.env`** (gitignored; see `.env.example` — `TESSERA_EXEC_OWNER`/`_REPO` are
+   prefilled, the PAT line is a commented placeholder) and run:
 
    ```bash
-   set -a; source .env; set +a          # TESSERA_EXEC_OWNER/_REPO/_GITHUB_TOKEN
+   set -a; source .env; set +a
    uv run python scripts/record_real_execution.py            # rehearsal: outcome="blocked", nothing sent
    TESSERA_EXEC_APPROVE=true uv run python scripts/record_real_execution.py   # the real send
    ```
@@ -188,15 +195,26 @@ gitignored `.env` and runs the one-shot themselves. The runbook:
    double-gated on approval **and** the credential, so it returns `outcome="blocked"` and
    touches no network. Setting `TESSERA_EXEC_APPROVE=true` supplies the explicit approval,
    and the actuator creates one issue — grounded in a real Tessera CI failed run, with the
-   idempotency marker embedded.
-4. **The receipt is scrubbed and committed.** The script writes
+   idempotency marker embedded. An approved attempt that ends in any non-consummated
+   outcome (`withheld`/`inconclusive`/`error`) prints the scrubbed receipt, **persists
+   nothing**, and exits non-zero — fix the cause and re-run; nothing blocks the retry.
+4. **Verify, then commit the receipt.** On `created` the script writes
    `data/execution/receipt.json` (via `recording.redact_receipt`: the credential is absent
    by construction, GitHub's echoed response reduced to `number`/`html_url`/`state`/`title`)
-   and `MANIFEST.json`. `gitleaks` (pre-commit + CI) is the final secret-scan gate.
-5. **Re-running is best-effort idempotent (ADR 0026).** A second run returns
-   `outcome="exists"` (the marker embedded on the first create is found on the primary,
-   immediately-consistent issues list) and creates no duplicate. It is best-effort, **not**
-   exactly-once: a genuine concurrent create can still duplicate — named, not asserted away.
+   and `MANIFEST.json`, and prints the created issue's URL — **open it and confirm it is
+   your issue in your sandbox repo before committing** (ADR 0026 addendum: a pre-embedded
+   marker by a third party could otherwise steer an `exists` record at foreign content).
+   `gitleaks` (pre-commit + CI) is the final secret-scan gate on the committed artifact.
+5. **Once recorded, the recorder refuses to re-run.** `recording.guard_no_clobber`
+   rejects any approved re-run *before any network* while `receipt.json` exists — the
+   historic artifact is never overwritten. The actuator-level idempotency (ADR 0026) is
+   contract-tested in CI and covers the window *before* the record exists: a re-run made
+   then finds the embedded marker on the primary, immediately-consistent issues list and
+   returns `outcome="exists"` — persisted only as the crash-recovery case (a send whose
+   receipt was lost between POST and write). It is best-effort, **not** exactly-once: a
+   genuine concurrent create can still duplicate — named, not asserted away. One more
+   stability note: the idempotency key derives from the rendered payload, so do not
+   change the renderer between a failed attempt and its retry.
 
 ## What is verified, and what is not — honestly
 
