@@ -766,10 +766,14 @@ Named with the same prominence as the results:
   the named next posture step, deliberately not taken (credentialed and irreversible, ADR
   0025). The agent calls the production **router**, which Milestone 12 aligned with
   `compose` on the one bare-ambiguous-term divergence (`"Logistik"`) Milestone 11 recorded.
-- **A real create-issue is not idempotent.** On the opt-in real path a re-run would create
-  a duplicate issue; Tessera records this as a caller responsibility (the receipt makes the
-  intended request auditable before approval) rather than engineering a dedup key — the
-  real path is opt-in and out of CI (ADR 0025).
+- **Idempotency on the real path is best-effort, not exactly-once** (Milestone 15, ADR
+  0026). GitHub offers no server-side idempotency key for a create-issue, so the opt-in
+  real actuator engineers a client-side one: a deterministic `sha256` key over the
+  grounded request, a marker embedded in the created issue, and a pre-send existence
+  check that returns `exists`/`inconclusive` — refusing rather than silently
+  duplicating. The honest residuals (a genuine concurrent create; a pre-check that
+  depends on scanning the target's listing) are recorded in ADR 0026, not asserted
+  away.
 
 ## Deliberately deferred (future work, not gaps missed)
 
@@ -785,9 +789,10 @@ executable-payload preview** that renders the exact GitHub request but sends not
 (Milestone 13, ADR 0024), *and* **effectful execution behind approval** — a simulated
 default actuator that sends nothing plus an opt-in real GitHub path, both gated on a
 fully-grounded payload, with an execution receipt as the trust record (Milestone 14, ADR
-0025). What is deliberately *not* taken: **actually sending from this repository** — a
-maintainer-authorized real one-shot (a credentialed, irreversible external side effect)
-and engineered idempotency on the real path are the named next posture steps · a second
+0025). In flight as **Milestone 15**: actually sending from this repository — best-effort
+idempotency on the real path is engineered (ADR 0026) and the maintainer-authorized real
+one-shot (a credentialed, irreversible external side effect) is prepared; **as of this
+writing nothing has been sent**. Still deliberately deferred: a second
 payload target (Jira create-issue) · a second real connector (Jira / PR-and-issue export)
 · LLM-judged faithfulness alongside the deterministic floor · persistence, multi-tenancy,
 access governance.

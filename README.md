@@ -343,8 +343,10 @@ client↔server session — grounded answers, the ER trail, a drafted incident a
 summary, a rendered create-issue and PR-comment payload, a simulated execution of each,
 and carried refusals — is committed at
 [`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Actually sending from
-this repository (a credentialed, irreversible real one-shot) remains deliberately out of
-scope.
+this repository (a credentialed, irreversible real one-shot) is **Milestone 15, in
+flight**: the real path is now best-effort idempotent
+([ADR 0026](docs/adr/0026-best-effort-idempotency.md)) and the one-shot is a prepared
+maintainer command — **nothing has been sent yet**.
 
 ### Data
 
@@ -381,7 +383,10 @@ miss is named in the data's README rather than hidden.
 | [`docs/PROJECT_BRIEF.md`](docs/PROJECT_BRIEF.md) | The deep brief: motivation, the gap, vision, principles, scope, success criteria |
 | [`docs/CAPABILITIES.md`](docs/CAPABILITIES.md) | Feature-level breakdown of what each pillar can do |
 | [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md) | Location-by-location mapping + SAP systems + how to talk about it |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | The phased build plan across ~3–4 months |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | The phased build plan across ~3–4 months (Act 1, complete) |
+| [`docs/ROADMAP2.md`](docs/ROADMAP2.md) | **Act 2** (Jul 2026 →): from measured prototype to product — thesis, milestones, decisions |
+| [`docs/MARKET.md`](docs/MARKET.md) | Dated market/regulatory/program snapshot grounding Act 2 |
+| [`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md) | The full drift/bug audit Act 2's first milestone acts on |
 | [`docs/WRITEUP.md`](docs/WRITEUP.md) | **The technical write-up**: approach, the recorded results trail, limitations, lessons |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | The SAP deployment path (AI Core / GenAI Hub / HANA Cloud) and the local-first posture |
 | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | How the project is run: workflow, tooling, quality gates, anti-drift |
@@ -390,7 +395,7 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus nine post-roadmap milestones**
+**Phases 0–4 complete, plus ten post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
@@ -423,7 +428,11 @@ both gated on a fully-grounded payload, with an execution receipt as the trust r
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
 (more connectors, the registry-only ER floor, **actually sending** — M11–14 draft,
 verify, render, and simulate over MCP but send nothing from this repository — and true
-million-record scale).
+million-record scale). **Milestone 15** (actually sending behind approval, best-effort
+idempotent — ADR 0026) is in flight, and the plan from here — productization for real
+users on SAP-aligned rails — is **Act 2**: [`docs/ROADMAP2.md`](docs/ROADMAP2.md),
+grounded in a full repository audit ([`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md))
+and a sourced market snapshot ([`docs/MARKET.md`](docs/MARKET.md)).
 
 ## License
 

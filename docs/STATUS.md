@@ -1696,6 +1696,49 @@ ADR 0005/0006 triggers remain live and unacted.
 
 ---
 
+## 2026-07-01 — Milestone 15 Units 2–3 + recorder refactor *(backfilled)*
+
+**Honesty note:** this entry was **reconstructed on 2026-07-02** (Milestone 16
+Unit 1, spec 0108) from PRs #115–#117 and ADR 0026. The sessions that merged
+them ended without `/wrap`, and their spec numbers (0104–0106) were consumed in
+commit messages without spec files — the audit's findings D1/D3; see the
+`specs/README.md` numbering ledger. Recorded so the journal stays resumable;
+the numbers below were re-verified live on 2026-07-02.
+
+**Done (PRs #115–#117, following the 0103 plan merged as #114)**
+- **Best-effort idempotency on the real execution path + ADR 0026** ("0104",
+  PR #115): `idempotency_key` (sha256 over the canonical grounded
+  method/path/body), a three-surface marker (HTML comment + visible footer +
+  `idem-<hex16>` label), `Transport.get`, a paging pre-send existence check on
+  the primary issues/comments endpoint, and the new `exists`/`inconclusive`
+  outcomes — refuse, never silently duplicate. The implemented pre-check
+  deliberately dropped the 0103-planned search-API leg (eventual consistency)
+  for primary-endpoint paging; ADR 0026 records the implemented design.
+  Adversarial review ran (pagination finding fixed).
+- **Recorder + scrubber + runbook** ("0105", PR #116):
+  `scripts/record_real_execution.py` (maintainer-only, never CI),
+  `tessera.agent.recording.redact_receipt` (response allow-list
+  `number`/`html_url`/`state`/`title` + token-like-key redaction), the
+  DEPLOYMENT one-shot runbook, `.env.example`, `data/execution/` layout, and a
+  regenerated `data/mcp_session/` for the receipt-field ripple.
+- **Recorder records only an approved send** ("0106", PR #117): a rehearsal
+  (no `TESSERA_EXEC_APPROVE=true`) writes nothing, so it can never be mistaken
+  for, or committed as, the one-shot.
+
+**Current eval numbers** — unchanged (the idempotency work is real-path-only;
+no battery number moved; faithfulness floors 1.0).
+
+**Next**
+- M15 Units 4–5 — the maintainer-triggered real send + the milestone close —
+  **gated behind Milestone 16 Unit 2** (audit findings B1–B4 touch the
+  one-shot's artifact and safety and must land first).
+
+**State of the tree**
+- `main` green and in sync; no open branches. PRs #114–#117 merged. Not tagged
+  (M15 stays in flight until its Units 4–5 close).
+
+---
+
 ## 2026-07-02 — Act 2 kickoff: audit, market research, and the productization roadmap
 
 **Mode note:** a maintainer-directed **re-orientation session** after ~10
