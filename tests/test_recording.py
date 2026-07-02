@@ -1,20 +1,25 @@
-"""Tests for the real-execution receipt scrubber (Milestone 15 Unit 3, spec 0105).
+"""Tests for the real-execution receipt scrubber (Milestone 15 Unit 3, spec 0105) and
+the recorder's persistence policy (Milestone 16 Unit 2, spec 0109, audit B1).
 
 These pin that :func:`tessera.agent.recording.redact_receipt` produces a committable
 receipt: GitHub's echoed response is reduced to the honest allow-list, any token-like
 value anywhere is replaced with ``"***"``, the input is never mutated, and the
 non-response results (withheld / exists / simulated) pass through unchanged. The
 end-to-end case drives the real ``GithubActuator`` against a fake transport returning a
-realistic GitHub issue body — the network is never touched.
+realistic GitHub issue body — the network is never touched. The persistence policy pins
+that only a consummated outcome is written and an existing receipt is never clobbered.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from pathlib import Path
+
+import pytest
 
 from tessera.agent.execution import GithubActuator, execute_action
-from tessera.agent.recording import redact_receipt
+from tessera.agent.recording import guard_no_clobber, redact_receipt, should_persist
 
 # A grounded incident (a run is named, so it grounds as an incident, not a lookup).
 _INCIDENT = ("incident", "devex", "Why did run R-1042 fail?")
@@ -134,3 +139,43 @@ def test_end_to_end_a_real_send_receipt_scrubs_clean() -> None:
     blob = json.dumps(scrubbed)
     for leak in ("octocat", "avatar_url", "node_id", "ghs_", "Bearer", '"token"'):
         assert leak not in blob
+
+
+# --- the recorder's persistence policy (Milestone 16 Unit 2, audit B1) ---------
+
+
+def test_should_persist_only_consummated_outcomes() -> None:
+    """Only the one-shot itself (``created``) or the on-record idempotency
+    demonstration (``exists``) is written; a blocked/inconclusive/error/withheld/
+    simulated attempt is printed, never persisted — so a failed approved attempt can
+    neither block a retry nor overwrite history."""
+    assert should_persist("created") and should_persist("exists")
+    for outcome in ("blocked", "inconclusive", "error", "withheld", "simulated"):
+        assert not should_persist(outcome), outcome
+
+
+def test_guard_no_clobber_passes_on_a_fresh_dir_and_refuses_on_a_receipt(
+    tmp_path: Path,
+) -> None:
+    """The one-shot artifact is historic: any existing ``receipt*.json`` in the output
+    dir makes the recorder refuse — with instructions — before any network activity.
+    An empty (or missing-receipt) dir passes silently."""
+    guard_no_clobber(tmp_path)  # empty: no receipt yet → fine
+
+    (tmp_path / "MANIFEST.json").write_text("{}", "utf-8")
+    guard_no_clobber(tmp_path)  # a manifest alone is not a receipt
+
+    (tmp_path / "receipt.json").write_text("{}", "utf-8")
+    with pytest.raises(SystemExit) as excinfo:
+        guard_no_clobber(tmp_path)
+    message = str(excinfo.value)
+    assert "never overwritten" in message and "receipt.json" in message
+
+
+def test_guard_no_clobber_is_case_insensitive(tmp_path: Path) -> None:
+    """Review F5: on a case-insensitive filesystem ``ReCeIpT.json`` names the very
+    file a later write would truncate — the guard must match receipts regardless of
+    case (and does so on case-sensitive filesystems too)."""
+    (tmp_path / "ReCeIpT.json").write_text("{}", "utf-8")
+    with pytest.raises(SystemExit):
+        guard_no_clobber(tmp_path)
