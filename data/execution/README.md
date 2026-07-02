@@ -1,12 +1,15 @@
 # `data/execution/` — the recorded real execution one-shot
 
 This directory holds the **one real, maintainer-approved GitHub execution** Tessera
-performs (Milestone 15, spec 0106) — the "ran on X" record for the execution boundary,
-the analogue of the Milestone 6/7 "ran on SAP HANA" online run.
+performs (Milestone 15, specs 0103/0111) — the "ran on X" record for the execution
+boundary, the analogue of the Milestone 6/7 "ran on SAP HANA" online run.
 
 It is written by `scripts/record_real_execution.py` (a maintainer-run, credentialed
-one-shot, **never run in CI**), which executes one grounded action through the opt-in real
-`GithubActuator` and writes:
+one-shot, **never run in CI**), which executes one grounded action through the opt-in
+real `GithubActuator` and — only for a **consummated** outcome (`created`, or `exists`
+as the crash-recovery case; any other approved ending is printed, never persisted) —
+writes, exactly once (`recording.guard_no_clobber` refuses any approved re-run before
+network once a receipt exists; nothing here is ever overwritten — spec 0109):
 
 - `receipt.json` — the **scrubbed** `ExecutionReceipt` (`recording.redact_receipt`): the
   credential is absent by construction, and GitHub's echoed response is reduced to
