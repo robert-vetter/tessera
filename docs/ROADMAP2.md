@@ -17,8 +17,13 @@ the provenance contract, the measured floor).
 Act 2 serves two concrete audiences on one build (evidence:
 [MARKET.md](MARKET.md)):
 
-- **Z Fellows** (one-week cohort; the month before it is the runway): a live,
-  undeniable demo + visible velocity + first design partners.
+- **Z Fellows** (applicant in final selection: a one-month build period with
+  **weekly ship-updates**, closing in a **check-in presentation**; the cohort
+  week itself comes later). The maintainer has publicly committed, in writing,
+  to shipping within the month: an open-source tool where every answer traces
+  to its source, **a live demo anyone can try**, documented, with a push for
+  **first real external users and feedback**. M17 (hosted demo) and M19
+  (launch + users) are that promise, scheduled.
 - **SAP internship**: the same system, told in SAP's own 2026 vocabulary and
   run on SAP primitives (HANA KG, SALT, BTP).
 
@@ -53,6 +58,8 @@ Discipline unchanged (CLAUDE.md): every unit spec → branch → gate → PR →
 CI-green → merge; ADRs for hard-to-reverse choices (UI stack, BYO-connector
 boundary, benchmark definition); pre-merge adversarial review for trust-bearing
 changes; `/wrap` every session — the audit showed what happens when that slips.
+Standing cadence on top: a short **weekly ship-update to Z Fellows** — each
+milestone close doubles as update material.
 
 ### Milestone 16 — Close & clean (≈2–3 days)
 
@@ -154,9 +161,10 @@ under the maintainer's identity — his call on timing.
    calls, **≥2 design-partner pilots** with a written 2-week success
    definition. Opportunistic: AI Tinkerers Berlin/Munich demo slot; DSAG
    Jahreskongress (Oct 6–8) and data2day CfPs.
-5. **Z Fellows kit**: the 5-minute in-cohort presentation — problem (Replit
-   story) → live demo → what happened in 30 days (velocity) → 3/6/12-month
-   plan → asks (design-partner intros, enterprise-AI mentors).
+5. **Z Fellows kit**: the check-in presentation — problem (Replit story) →
+   live demo → what shipped in 30 days (velocity, receipts) → 3/6/12-month
+   plan → asks (design-partner intros, enterprise-AI mentors). The same
+   5-minute arc serves the later in-cohort presentation.
 
 *Done when:* launched, benchmark published, outreach sent, ≥2 pilots agreed
 (or the honest miss recorded), presentation rehearsed.
@@ -198,8 +206,9 @@ CLAUDE.md):
 4. **Anthropic API key** for narration + the M17 agent demo (small spend).
 5. **Hosting** for the read-only demo (~€0–20/month) and optionally a domain.
 6. **BTP trial/free tier** account for S2/S3.
-7. **Z Fellows logistics**: confirm cohort dates and SF/NYC attendance — the
-   month plans backwards from that date.
+7. **Z Fellows logistics**: confirm the check-in date (and, if accepted, the
+   later cohort week / SF-NYC attendance) — the month plans backwards from
+   the check-in.
 8. **Launch consent**: Show HN / X / outreach go out under your name and
    timing.
 
@@ -239,5 +248,5 @@ CLAUDE.md):
   on-real-schema remains the honest fallback and is documented as such.
 - **UI scope creep** — the UI renders existing trust objects only; any feature
   that would need a new answer path is out.
-- **Cohort date unknown** — decision #7 above; until known, M16→M17 order is
+- **Check-in date unknown** — decision #7 above; until known, M16→M17 order is
   robust either way.
