@@ -1693,3 +1693,71 @@ ADR 0005/0006 triggers remain live and unacted.
 **State of the tree**
 - `main` green and in sync; no open branches. PRs #109–#112 merged. Tagged
   `milestone-14`.
+
+---
+
+## 2026-07-02 — Act 2 kickoff: audit, market research, and the productization roadmap
+
+**Mode note:** a maintainer-directed **re-orientation session** after ~10
+autonomous milestones — no feature code. The maintainer asked for: an honest
+state-of-the-project audit ("does it work, is it reliable, what drifted?"), and
+a researched plan pointing the next month at two goals at once — the SAP
+internship and the Z Fellows cohort (customer-ready MVP + visible traction).
+
+**Done this session**
+- **Full drift audit + trust-path bug hunt + clean-room run verification** →
+  [`docs/AUDIT_2026-07-02.md`](AUDIT_2026-07-02.md). Headline: everything runs
+  exactly as documented (gate green, 443/443 tests, live eval numbers match
+  badge/history/README digit-for-digit; all seven demo doors + MCP boot
+  verified). Drift is real but shallow: STATUS/CHANGELOG lag the four merged
+  M15 PRs, seven phantom spec numbers (incl. 0104–0106), WRITEUP/DEPLOYMENT
+  staleness, and **eight code findings (B1–B8)** — none in the core engine; the
+  serious ones sit in the new M15 real-execution path (receipt clobbering,
+  label-dependent idempotency, PAT in `repr`, markdown-fence injection).
+- **Market/program research** (agent-assisted, three strategy-critical claims
+  independently re-verified) → [`docs/MARKET.md`](MARKET.md). The gap is
+  confirmed: nobody credibly combines per-claim provenance + evidence-gated
+  actions with receipts + a self-shipped deterministic faithfulness benchmark +
+  on-prem determinism (closest: Palantir AIP, the AWS Bedrock stack, Quantexa).
+  SAP standardized on MCP and wired Claude in via MCP (Sapphire, May 2026);
+  SAP's trust story is asserted (Agent Hub "verification badges"), not
+  measured — Tessera's exact wedge. Z Fellows verified as a one-week,
+  mostly-virtual cohort (no investor demo day; in-cohort presentation;
+  the $100k follow-on + network are the prize). EU AI Act Annex-III
+  obligations deferred to Dec 2027 (Digital Omnibus) — deadline-panic
+  positioning is stale; "audit-ready by design" stays a tailwind.
+- **The Act 2 roadmap** → [`docs/ROADMAP2.md`](ROADMAP2.md): M16 close & clean
+  (audit fixes + finish M15 with the maintainer one-shot) → M17 demoable to
+  humans (narration, web UI over the existing trust objects, hosted demo,
+  "agent through Tessera" demo) → M18 usable on your data (BYO GitHub repo +
+  CSV/docs dir — the design-partner pilot vehicle) → M19 launch & traction
+  (registries, the "Faithfulness Floor" benchmark, Show HN, 100–150 DACH
+  outreach, Z Fellows kit) + a parallel SAP track (SALT real-data eval, HANA
+  KG persistence, BTP serving, application kit). Positioning fixed: *"The
+  agent can only say what it can prove — and only do what you approve."*
+
+**Current eval numbers (re-verified live this session, unchanged)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+
+**Next**
+- **M16 Unit 1** (drift repair) via `/spec`, then Units 2–3 (audit fixes B1–B7),
+  then the **maintainer decisions** blocking M15's close and Act 2's cadence —
+  see the checklist in [`ROADMAP2.md`](ROADMAP2.md): the real one-shot
+  (PAT + sandbox repo), HANA instance health check, SALT access request,
+  Anthropic key, hosting, BTP account, Z Fellows cohort dates, launch consent.
+
+**Open questions / risks**
+- The eight maintainer decisions above are the only blockers; everything else
+  proceeds autonomously per CLAUDE.md.
+- Audit B1–B4 must land **before** the M15 real one-shot (they affect the
+  one-shot's artifact and safety).
+- MARKET.md is a dated snapshot (2026-07-02); re-verify load-bearing claims
+  before quoting externally.
+
+**State of the tree**
+- `main` green and in sync. This session adds three docs
+  (`AUDIT_2026-07-02.md`, `MARKET.md`, `ROADMAP2.md`), this entry, and their
+  mkdocs nav wiring — via branch → PR per branch protection. No code changes.
+  Not tagged (M15 remains in flight until its Units 4–5 close).

@@ -44,12 +44,15 @@ nav:
   - Project Brief: PROJECT_BRIEF.md
   - Capabilities: CAPABILITIES.md
   - Roadmap: ROADMAP.md
+  - Roadmap — Act 2: ROADMAP2.md
+  - Market Snapshot (2026-07): MARKET.md
   - SAP Alignment: SAP_ALIGNMENT.md
   - Deployment (SAP): DEPLOYMENT.md
   - Technical Write-up: WRITEUP.md
   - Engineering: ENGINEERING.md
   - Setup: SETUP.md
   - Status: STATUS.md
+  - Audit (2026-07-02): AUDIT_2026-07-02.md
   - Architecture Decisions:
       - Overview: adr/README.md
       - 0001 Record architecture decisions: adr/0001-record-architecture-decisions.md
