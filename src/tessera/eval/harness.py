@@ -139,17 +139,21 @@ def _score(
     for case in cases:
         answer = battery.answer(case, graph, kb, index)
 
-        if case.kind == "refuse":
-            if not answer.is_grounded:
-                correct += 1
-            continue
-
-        # Answerable case: faithfulness, coverage, quality.
+        # Faithfulness is scored over every emitted claim regardless of case kind
+        # (spec 0110, audit B7): a refuse-kind case that wrongly ANSWERS — or a
+        # partial answer that carries claims alongside its refusal — must not
+        # escape the verifier. Before this, refuse-kind claims were never checked.
         for claim in answer.claims:
             total_claims += 1
             if is_supported(claim, nodes, graph, battery.claim_shapes):
                 supported_claims += 1
 
+        if case.kind == "refuse":
+            if not answer.is_grounded:
+                correct += 1
+            continue
+
+        # Answerable case: coverage, quality.
         cited = {rec.id for claim in answer.claims for rec in claim.support}
         for support_id in case.expected_support:
             expected_total += 1

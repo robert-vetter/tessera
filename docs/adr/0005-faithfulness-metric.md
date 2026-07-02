@@ -60,3 +60,31 @@ history over time (all Phase 2+), with the same measured revisit trigger as ADR
 - **Gate all three metrics with floors.** Rejected: coverage/quality floors are
   arbitrary at this baseline and would block honest, incremental work; faithfulness
   is the only invariant that must always hold.
+
+## Addendum (2026-07-02, spec 0110 — audit B6/B7): blind spots named; refuse-kind claims now scored
+
+The 2026-07-02 audit re-examined what the structural verifier does and does not
+measure. Three findings, two of them *named* here as standing blind spots (with
+committed specimens in `tests/test_trigger_specimens.py`), one *fixed* as a
+transparent accounting change:
+
+- **Over-citation is unpenalized (B6a, named).** The generic containment grammar
+  accepts a claim if **any** cited record supports it, so decorative extra citations
+  pass — a claim can launder an irrelevant record into its provenance trail. The
+  shape-specific grammars are stricter (an aggregate must recompute from exactly the
+  cited rows). Penalizing over-citation (e.g. an "every citation used" strictness
+  metric, reported not gated) is recorded future work; changing the gated metric
+  silently would violate the transparency rule.
+- **Containment matches across word boundaries (B6b, named).** `normalize()` strips
+  spaces/punctuation before substring matching — the same folding that absorbs
+  umlaut/punctuation variance can match `"run 42 failed"` inside
+  `"rerun 42 failed…"`. Inherent to the normalization's purpose; a specimen pins it.
+- **Refuse-kind claims are now faithfulness-scored (B7, fixed).** The harness
+  previously skipped faithfulness accounting entirely for refuse-kind cases, so a
+  wrongly-answering engine's claims — or a partial answer's claims carried alongside
+  a refusal (the mixed-currency case) — escaped the verifier. `_score` now runs the
+  same per-claim check for every case kind. **Measured effect on every battery:
+  zero** — all six lines byte-identical (correct refusals emit either no claims or
+  claims that verify; the change widens what is *counted*, not what passes) — while
+  the previously-unreachable failure mode (an unfaithful claim on a refuse case) can
+  now fail the floor.
