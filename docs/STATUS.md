@@ -1892,3 +1892,78 @@ presentation — ROADMAP2 updated), and the Anthropic API key is now in `.env`
 - `main` green and in sync; no open unit branches. PRs #118–#123 merged this
   day. Not tagged (M15/M16 tag together after the send, per spec 0107
   decision 6).
+
+---
+
+## 2026-07-03 — Milestones 15 + 16 COMPLETE (Tessera actually sent — once, on the record)
+
+**Mode note:** the maintainer executed the one-shot himself (spec 0103
+decision 3: the credential never enters the agent's environment; the agent
+prepared, verified, and closed). This entry is the close per the spec 0111
+checklist.
+
+**THE RECORDED REAL SEND (2026-07-03, ~12:00 CET)**
+- **[`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1)**
+  — a grounded incident for the **real** CI failure of run 27014662820 (the
+  Phase-1 format-check break), `outcome="created"`, `sent=true`, status 201,
+  idempotency key `sha256:08dc3d0c…`, marker + `incident`/`idem-` labels
+  attached. Verified post-send: author `robert-vetter`, exact marker present in
+  the issue body.
+- The scrubbed `ExecutionReceipt` + `MANIFEST` are **committed** at
+  `data/execution/` — credential absent by construction, GitHub's echo reduced
+  to `number`/`html_url`/`state`/`title`, gitleaks green.
+- **The failure path proved itself in the wild first:** the maintainer's first
+  attempt ran against a wrong (read-only) token in `.env` — GitHub answered
+  403, and the freshly-hardened recorder printed the full scrubbed receipt,
+  **persisted nothing**, exited non-zero, and left the retry unblocked (the
+  0109/B1 policy, on its first real use). A second `.env` mishap (a manual
+  paste overwrote the file, including the HANA and Anthropic entries) was
+  repaired without the token ever entering the session; the lost `HANA_*` /
+  `ANTHROPIC_API_KEY` values must be re-added by the maintainer.
+- Diagnosis trail for the 403 (all side-effect-free): token valid & owned by
+  the maintainer, public reads 200, PATCH-nonexistent 404, label-create probe
+  403 "Resource not accessible by personal access token" → the `.env` held an
+  older read-only PAT; the freshly-minted Issues-RW token fixed it.
+
+**Milestone 15 check (spec 0103/0111):** engineered best-effort idempotency,
+contract-tested offline (Unit 2, ADR 0026 + addendum) ✓; recorder + scrubber +
+runbook (Unit 3) ✓; **one recorded real send** with committed scrubbed receipt
+(Unit 4) ✓; close: WRITEUP M15–16 section + limitations flip, README
+(twelve milestones; "sent exactly once, on the record"), CHANGELOG
+`[milestone-15]` + `[milestone-16]`, `data/execution/README` updated, the ADR
+0008 **empty-diff frozen-core audit over `milestone-14..HEAD` CLEAN** (only
+sanctioned deltas: `agent/execution.py`, `agent/payloads.py`,
+`agent/recording.py` — ADR 0026/0024 + spec 0109 — and `eval/harness.py` —
+ADR 0005 addendum / spec 0110) ✓. **Met. Tagged `milestone-15`.**
+
+**Milestone 16 check (spec 0107):** audit findings fixed or ADR-accepted
+(D1–D7 in 0108; B1–B5 in 0109 with the 5-lens review; B6–B7 in 0110; B8
+noted) ✓; `milestone-15` tagged ✓; STATUS current ✓; gate green throughout ✓.
+**Met. Tagged `milestone-16`.**
+
+**Current eval numbers (unchanged; verified at the close gate)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- 461 tests; the real send is a timestamped recorded measurement (the M6/M7
+  "ran on X" pattern), not a CI gate; CI stays offline and key-free.
+
+**Next — Milestone 17 (ROADMAP2): demoable to humans.** Narration on the demo
+surface (ADR 0013; the Anthropic key needs re-adding to `.env` first), the web
+UI over the existing trust objects (`ui` extra; stack choice is an ADR), the
+hosted read-only demo + 2–3-minute video, and the "agent through Tessera over
+MCP" scripted demo — the Z Fellows commitment ("a live demo anyone can try"),
+scheduled. Kickoff prompt handed back in the session summary.
+
+**Open questions / risks**
+- Maintainer to re-add `HANA_*` + `ANTHROPIC_API_KEY` to `.env` (overwritten
+  2026-07-03; placeholders + notes are in the file).
+- Remaining ROADMAP2 decisions: HANA instance health, SALT HF access request,
+  hosting choice, BTP account, the Z Fellows check-in date, launch consent.
+- Dependabot #59/#60 still open.
+- The sandbox issue is public and open — leave it open (it *is* the record);
+  closing it later does not invalidate the receipt.
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #118–#125 merged.
+  **Tagged `milestone-15` + `milestone-16`.**
