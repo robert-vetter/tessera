@@ -118,10 +118,12 @@ uv run tessera ask data/ingest_demo "Tell me about Portland"   # → ambiguous, 
   and reproduce commands), measured on two public repos — `astral-sh/uv` (large)
   and `simonw/llm` (small), both smoke-clean. Generality is claimed for what was
   measured, not beyond it; `smoke` is exactly the tool for a third repo.
-- **Recurrence is only as specific as the error line.** A "recurring failure"
-  built on a generic `exit code N` trailer is a weak signal; `smoke` flags it,
-  and a sharper signature (plus a fix for a rarer recurrence-anchor edge that
-  `smoke` also catches) is planned work.
+- **Recurrence is only as specific as the error line.** When a log carries a
+  sharper, verifiable error line, that line is the recurrence signature and
+  the claim cites the chunk it was extracted from (spec 0126); a log whose
+  only usable error line is a generic `exit code N` trailer still yields that
+  weak signal, and `smoke` flags it; a log with no verifiable error line gets
+  no recurrence claim at all — never one the verifier would reject.
 - **No LLM in the trust path.** An optional model may *narrate* answers into
   prose, but the verifier and the receipts are deterministic — the LLM never
   attests. Nothing here says "hallucination-free"; it says *here is the

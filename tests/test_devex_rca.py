@@ -12,8 +12,8 @@ import pytest
 from tessera.devex.knowledge import build_devex_graph
 from tessera.devex.rca import NO_RUN_REFUSAL, explain_failure
 from tessera.eval.metrics import is_supported
-from tessera.graph import KnowledgeGraph, Node
-from tessera.grounding import Answer, Claim
+from tessera.graph import Edge, KnowledgeGraph, Node
+from tessera.grounding import Answer, Claim, EvidenceRecord, Locator, Origin
 
 
 @pytest.fixture(scope="module")
@@ -178,3 +178,233 @@ def test_unknown_run_is_refused_by_name(graph: KnowledgeGraph) -> None:
 def test_question_without_a_run_is_refused(graph: KnowledgeGraph) -> None:
     answer = explain_failure("Why did the pipeline fail?", graph)
     assert answer.refusal == NO_RUN_REFUSAL
+
+
+# --- foreign-log shapes: signature sharpness + anchor correctness (spec 0126) --------
+#
+# The M18 `smoke` run on mkdocs/mkdocs surfaced a real claims-supported FAIL:
+# the recurrence claim anchored `error_chunks[0]`, which on that log is an
+# error-marked chunk carrying no parseable error line — the shared-fragment
+# verifier rightly rejected the citation. These fixtures pin that foreign
+# shape (and the generic-trailer preference) WITHOUT committing foreign data
+# (ADR 0028): synthetic graphs, same code path, verified by the eval's own
+# `is_supported`.
+
+
+def _log_record(run: str, chunk: int, text: str) -> EvidenceRecord:
+    return EvidenceRecord(
+        id=f"Chunk:{run}/{chunk}",
+        origin=Origin(
+            source=f"logs/run_{run}.log",
+            locator=Locator(
+                kind="log-span",
+                parts=(("lines", "1-3"), ("chunk", str(chunk))),
+            ),
+            ingested_at="2026-07-03",
+        ),
+        text=text,
+    )
+
+
+def _run_record(run: str) -> EvidenceRecord:
+    return EvidenceRecord(
+        id=f"Run:{run}",
+        origin=Origin(
+            source="runs.csv",
+            locator=Locator.table_row("runs", 1),
+            ingested_at="2026-07-03",
+        ),
+        text=f"Run {run}: workflow ci, status failed.",
+    )
+
+
+def _foreign_graph(
+    current_chunks: list[str], prior_chunks: list[str]
+) -> KnowledgeGraph:
+    """Two failed runs (R-9001 now, R-9000 earlier) with the given log texts."""
+    graph = KnowledgeGraph()
+    for run, started, texts in (
+        ("R-9000", "2026-07-01T10:00:00Z", prior_chunks),
+        ("R-9001", "2026-07-02T10:00:00Z", current_chunks),
+    ):
+        graph.add_node(
+            Node(
+                record=_run_record(run),
+                kind="Run",
+                attributes=(("status", "failed"), ("started", started)),
+            )
+        )
+        for index, text in enumerate(texts):
+            record = _log_record(run, index, text)
+            graph.add_node(Node(record=record, kind="document"))
+            graph.add_edge(Edge(src=record.id, dst=f"Run:{run}", relation="log_of"))
+    return graph
+
+
+_TRAILER = "##[error]Process completed with exit code 1."
+
+
+def test_anchor_is_the_signature_bearing_chunk_not_blindly_the_first() -> None:
+    """The mkdocs shape: chunk 0 is error-marked but unparseable (a plain
+    'ERROR - …' diagnostic); the only parseable line is the trailer in chunk
+    1. The recurrence claim must cite the chunk that CONTAINS the signature —
+    and must pass the very verifier that failed on the old anchor."""
+    graph = _foreign_graph(
+        current_chunks=[
+            "ERROR - Doc file 'a.md' contains an absolute link",
+            _TRAILER,
+        ],
+        prior_chunks=[_TRAILER],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    (claim,) = recurrences
+    cited = {record.id for record in claim.support}
+    assert "Chunk:R-9001/1" in cited  # the signature's own chunk
+    assert "Chunk:R-9001/0" not in cited  # the old, wrong anchor
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(claim, nodes, graph)
+
+
+def test_sharper_signature_beats_the_generic_trailer() -> None:
+    """When any non-generic error line exists, it is the signature — the
+    information-free exit-code trailer no longer wins just by coming first."""
+    sharper = "##[error]strict mode: 4 warnings raised"
+    graph = _foreign_graph(
+        current_chunks=[_TRAILER, sharper],
+        prior_chunks=[f"{_TRAILER}\n{sharper}"],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    (claim,) = recurrences
+    assert '"strict mode: 4 warnings raised"' in claim.text
+    assert "exit code" not in claim.text
+    cited = {record.id for record in claim.support}
+    assert "Chunk:R-9001/1" in cited
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(claim, nodes, graph)
+
+
+def test_trailer_only_log_keeps_the_trailer_signature() -> None:
+    """A log with nothing sharper still yields the (weak) trailer signature —
+    the recurrence claim is true and verified; flagging its weakness stays
+    `tessera smoke`'s job (spec 0119), unchanged."""
+    graph = _foreign_graph(current_chunks=[_TRAILER], prior_chunks=[_TRAILER])
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    (claim,) = recurrences
+    assert '"Process completed with exit code 1."' in claim.text
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(claim, nodes, graph)
+
+
+def test_unverifiable_sharp_line_never_displaces_a_verifiable_signature() -> None:
+    """Review finding (MAJOR): a sharper line the shared-fragment grammar
+    cannot check — here one containing a double quote — must not be selected;
+    the verifiable (generic) trailer stays the signature and the claim still
+    passes the verifier. The old preference picked the quoted line and the
+    claim failed our own check."""
+    quoted = '##[error]Missing config key "docs_dir"'
+    graph = _foreign_graph(
+        current_chunks=[_TRAILER, quoted],
+        prior_chunks=[f"{_TRAILER}\n{quoted}"],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    (claim,) = recurrences
+    assert '"Process completed with exit code 1."' in claim.text
+    assert "docs_dir" not in claim.text
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(claim, nodes, graph)
+
+
+def test_no_verifiable_candidate_means_no_recurrence_claim() -> None:
+    """A log whose only error lines normalize to nothing (non-Latin or
+    punctuation-only) yields NO recurrence/incident claim — never a claim our
+    own verifier would reject (ADR 0005 / spec 0029). The verbatim error
+    chunks still speak for themselves."""
+    graph = _foreign_graph(
+        current_chunks=["##[error]テストが失敗しました", "##[error]!!!"],
+        prior_chunks=["##[error]テストが失敗しました"],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    assert answer.is_grounded  # run row + verbatim error chunks
+    texts = _claim_texts(answer)
+    assert not any(t.startswith("Recurring failure:") for t in texts)
+    assert any("テストが失敗しました" in t for t in texts)  # still quoted verbatim
+    nodes = {node.id: node for node in graph.nodes}
+    assert all(is_supported(c, nodes, graph) for c in answer.claims)
+
+
+def test_whitespace_only_error_marker_is_not_a_candidate() -> None:
+    """Review finding: a bare '##[error]   ' remainder must not become the
+    (empty) signature — empty "appears" everywhere and verifies nowhere."""
+    graph = _foreign_graph(
+        current_chunks=["##[error]   ", _TRAILER],
+        prior_chunks=[_TRAILER],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    assert '"Process completed with exit code 1."' in recurrences[0].text
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(recurrences[0], nodes, graph)
+
+
+def test_negative_exit_code_trailer_counts_as_generic() -> None:
+    """Windows runners produce negative exit codes; a negative trailer is the
+    same weak signal and must not displace a sharper line (review finding)."""
+    negative = "##[error]Process completed with exit code -1073741819."
+    sharper = "##[error]Access violation in worker"
+    graph = _foreign_graph(
+        current_chunks=[negative, sharper],
+        prior_chunks=[f"{negative}\n{sharper}"],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    assert '"Access violation in worker"' in recurrences[0].text
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(recurrences[0], nodes, graph)
+
+
+def test_anchor_is_the_extraction_chunk_not_an_incidental_earlier_match() -> None:
+    """An earlier error-marked chunk that merely QUOTES the signature text
+    (e.g. a diagnostic echoing the message) must not become the citation; the
+    anchor is the chunk the line was parsed from."""
+    graph = _foreign_graph(
+        current_chunks=[
+            # Error-marked (contains 'ERROR'), unparseable, and incidentally
+            # containing the trailer text as prose.
+            "ERROR - context: the previous attempt ended with "
+            "Process completed with exit code 1. earlier today",
+            _TRAILER,
+        ],
+        prior_chunks=[_TRAILER],
+    )
+    answer = explain_failure("Why did run R-9001 fail?", graph)
+    recurrences = [
+        claim for claim in answer.claims if claim.text.startswith("Recurring failure:")
+    ]
+    assert len(recurrences) == 1
+    cited = {record.id for record in recurrences[0].support}
+    assert "Chunk:R-9001/1" in cited  # the extraction chunk
+    assert "Chunk:R-9001/0" not in cited  # the incidental earlier match
+    nodes = {node.id: node for node in graph.nodes}
+    assert is_supported(recurrences[0], nodes, graph)
