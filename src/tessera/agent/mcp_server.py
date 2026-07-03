@@ -184,9 +184,16 @@ def build_server() -> FastMCP:
     graph stays SDK-free. Registers the MCP-free handlers above as MCP tools; the
     server holds no grounding or drafting logic.
     """
+    from importlib.metadata import version
+
     from mcp.server.fastmcp import FastMCP
 
     server: FastMCP = FastMCP(SERVER_NAME, instructions=SERVER_INSTRUCTIONS)
+    # serverInfo.version should report THIS project, not the MCP SDK (audit
+    # cosmetic). FastMCP exposes no public version parameter (signature
+    # checked), so set it on the underlying low-level server; cosmetic only —
+    # if the SDK ever renames the attribute, the contract test catches it.
+    server._mcp_server.version = version("tessera")
 
     @server.tool(name="list_domains", description=_LIST_DOMAINS_DESC)
     def _list_domains() -> dict[str, object]:

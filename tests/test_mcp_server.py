@@ -177,6 +177,20 @@ def test_importing_mcp_server_does_not_pull_the_sdk() -> None:
 # --- the SDK wiring contract (skipped in CI; runs with `--extra agent`) --------
 
 
+def test_server_info_reports_the_project_version() -> None:
+    """Cosmetic contract (spec 0113, audit nit): `serverInfo.version` must report
+    THIS project's version, not the MCP SDK's — FastMCP exposes no public version
+    parameter, so build_server() sets it on the underlying low-level server; this
+    pins the attribute so an SDK rename surfaces here instead of silently
+    reverting the fix."""
+    pytest.importorskip("mcp")
+    from importlib.metadata import version
+
+    from tessera.agent.mcp_server import build_server
+
+    assert build_server()._mcp_server.version == version("tessera")
+
+
 def test_build_server_registers_the_tools() -> None:
     """Contract: build_server() exposes the three read-only tools with descriptions
     and the expected input schemas, and dispatching `ground` through the server
