@@ -83,6 +83,7 @@ nav:
       - 0025 The execution boundary, simulated by default: adr/0025-execution-behind-approval.md
       - 0026 Best-effort idempotency on the real path: adr/0026-best-effort-idempotency.md
       - 0027 The stdlib web surface: adr/0027-stdlib-web-ui.md
+      - 0028 The BYO connector workspace boundary: adr/0028-byo-connector-workspace-boundary.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
