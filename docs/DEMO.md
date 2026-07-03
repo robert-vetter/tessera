@@ -87,7 +87,7 @@ Open `tessera-ui`. Each beat is one URL, so the whole thing is clickable.
    approve."**
 
 **Optional coda (for a technical audience):** show
-[`data/agent_session/TRANSCRIPT.md`](../data/agent_session/TRANSCRIPT.md) — a
+[`data/agent_session/TRANSCRIPT.md`](https://github.com/robert-vetter/tessera/blob/main/data/agent_session/TRANSCRIPT.md) — a
 real Claude agent doing exactly beats 1–3 through the MCP tools, unedited.
 
 Recording tips: a screen capture at 1280×800, no cuts (every beat is a click),
