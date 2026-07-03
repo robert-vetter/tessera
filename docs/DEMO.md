@@ -25,23 +25,35 @@ send anything nor leak anything (ADR 0027). Optional narration turns on only if
 a key is present (`TESSERA_NARRATOR=anthropic`, ADR 0013); a hosted instance
 runs without one.
 
-### Host it (pick one; all have a usable free/hobby tier)
+### Host it (pick one; all have a usable free tier)
 
-The image already carries the `tessera-ui` entry point. Bind to `0.0.0.0` and
-expose the port; **set no secrets** — a public instance should be key-free by
-design (no narration, no HANA, no GitHub token).
+**Set no secrets** on a public instance — it is key-free by design (no
+narration, no HANA, no GitHub token). Bind to `0.0.0.0`.
 
-```bash
-# From the repo's existing image (docs/ENGINEERING.md builds it):
-docker build -t tessera .
-docker run --rm -p 8033:8033 tessera tessera-ui --host 0.0.0.0 --port 8033
-```
+**Fastest free & card-free: a Hugging Face Docker Space.** The
+[`deploy/hf-space/`](../deploy/hf-space/) directory holds the two files a Space
+needs — a `Dockerfile` that builds this repo's `main` and serves the UI on port
+7860, and a `README.md` with the Space front matter (`sdk: docker`,
+`app_port: 7860`). Create a Docker Space, add those two files, done — no credit
+card, a generous CPU tier, and a long idle window. Full click-by-click steps
+are in the repo's deploy guide; update a live Space with *Settings → Factory
+rebuild*.
+
+Other options (each has a real free/hobby tier):
 
 | Option | Shape | Notes |
 |---|---|---|
-| **Fly.io** | `fly launch` → `fly deploy` on the Dockerfile; `internal_port = 8033` | Smallest shared-cpu VM is ample; scale-to-zero keeps it free-ish. The honest default. |
-| **Railway / Render** | point at the repo, start command `tessera-ui --host 0.0.0.0 --port $PORT` | Zero-config Docker or Nixpacks; free hobby tier. Read `$PORT` from the platform (pass `--port`). |
-| **A small VM** (Hetzner/Fly Machine/EC2 micro) | run the `docker run` above behind a reverse proxy (Caddy for automatic TLS) | Most control; ~€4/month. Add the reverse proxy's rate limiting (the app has none — it is a demo). |
+| **Hugging Face Space** | [`deploy/hf-space/`](../deploy/hf-space/) (Docker SDK, port 7860) | No card, long idle window, AI-community-visible. The recommended default. |
+| **Render** | New Web Service → connect the repo → Runtime Docker → Docker Command `tessera-ui --host 0.0.0.0 --port $PORT` | 750 free hours/month, no card; sleeps after 15 min idle with a ~1-min cold start. |
+| **Fly.io** | `fly launch` → `fly deploy` on the root Dockerfile; `internal_port = 8033` | Smallest shared-cpu VM is ample; scale-to-zero. Needs a card on file even for the free allowance. |
+| **A small VM** (Hetzner/EC2 micro) | `docker run -p 8033:8033 tessera tessera-ui --host 0.0.0.0 --port 8033` behind Caddy (auto-TLS) | Most control; ~€4/month; add the proxy's rate limiting (the app has none). |
+
+From the repo's own image directly:
+
+```bash
+docker build -t tessera .
+docker run --rm -p 8033:8033 tessera tessera-ui --host 0.0.0.0 --port 8033
+```
 
 **Operational honesty for a public host:** the app builds an answer per request
 (cheap, but not free) and ships no auth or rate limiting — it is a read-only
