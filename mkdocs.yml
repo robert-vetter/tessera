@@ -87,6 +87,7 @@ nav:
       - 0027 The stdlib web surface: adr/0027-stdlib-web-ui.md
       - 0028 The BYO connector workspace boundary: adr/0028-byo-connector-workspace-boundary.md
       - 0029 The declared ingest config: adr/0029-declared-ingest-config.md
+      - 0030 HANA KG persistence boundary: adr/0030-hana-kg-persistence-boundary.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

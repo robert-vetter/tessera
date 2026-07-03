@@ -160,6 +160,45 @@ github_actions gold coverage 0.833 → 1.000 and quality 0.800 → 1.000; faithf
 CI-reproducible — CI stays offline on the deterministic/lexical path, where the
 two misses honestly remain.
 
+## Knowledge-graph persistence on HANA Cloud — the KG engine (spec 0129, ADR 0030)
+
+Tessera's knowledge graph can be mirrored into HANA Cloud's **knowledge
+graph engine** (GA QRC1 2025; RDF + SPARQL 1.1 via `SYS.SPARQL_EXECUTE`) —
+one named RDF graph per corpus (`urn:tessera:graph:<name>`), with the
+reversible resolution/mention assertion trail reified so SAP tooling can
+query *why* two records were merged. It is a **mirror, never a source of
+truth**: no answer path reads from HANA, the in-process graph stays
+canonical, and dropping the mirror loses nothing (ADR 0030). Losslessness
+is a tested contract (`tests/test_kg.py`: the serializer→parser→rebuild
+round trip is tuple-exact on all three committed graphs).
+
+**Enable the triple store (account owner, ~2 minutes + possible restart).**
+Measured 2026-07-03: the instance is alive (cloud version 2026.14.7) and
+`SYS.SPARQL_EXECUTE` exists, but answers *"No active TripleStore found in
+landscape"* until the feature is on:
+
+1. SAP HANA Cloud Central → your instance → **Manage Configuration** →
+   **Advanced Settings** → check **Triple Store** → save. Note: applying
+   instance configuration may restart the database — do it away from live
+   demos.
+2. Then the one-shot (mirrors all three graphs + runs three recorded
+   SPARQL queries; paste its record block back into this section with the
+   run date):
+
+```bash
+set -a; source .env; set +a
+uv sync --extra cloud
+uv run python scripts/persist_knowledge_graph.py
+```
+
+Least-privilege note: `.env` currently carries **DBADMIN**; for anything
+beyond the one-shot, create a dedicated user with only the KG privileges
+(the `TESSERA_APP` pattern of the section above) and rotate.
+
+*Recorded run: — pending the Triple Store toggle (the seam, the procedure
+signature, and instance liveness are verified; the store itself is not
+yet).*
+
 ## The real execution one-shot — actually sending behind approval (Milestone 15)
 
 Through Milestone 14 Tessera could *render* and *simulate* a grounded GitHub action but
