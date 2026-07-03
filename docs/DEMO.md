@@ -7,7 +7,8 @@ Milestone 17 packages that into a one-page web surface (`tessera-ui`, ADR 0027)
 and this runbook to put it online.
 
 Three things ship here: **how to run/host it**, the **3-minute demo script**,
-and the **one-pager** copy.
+and the **one-pager** copy. To run it on *your own* data instead of the demo
+corpus, see [**Pilot in a day**](PILOT.md) (Milestone 18).
 
 ---
 
