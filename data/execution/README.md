@@ -17,6 +17,8 @@ network once a receipt exists; nothing here is ever overwritten — spec 0109):
 - `MANIFEST.json` — provenance (`"synthetic": false`, the target repo, the grounded
   question, the recorded date).
 
-Until the maintainer runs the one-shot (per `docs/DEPLOYMENT.md`), only this README is
-present. Everywhere else — CI, clone-and-run, the MCP surface — the default actuator is
-the simulated one and **nothing is sent**.
+**The record exists** (2026-07-03): the one-shot created
+[`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1)
+— a grounded incident over the real CI failure of run 27014662820, `outcome="created"`,
+status 201, idempotency key `sha256:08dc3d0c…`. Everywhere else — CI, clone-and-run, the
+MCP surface — the default actuator remains the simulated one and **nothing is sent**.

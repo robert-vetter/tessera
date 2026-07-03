@@ -11,31 +11,82 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
+*(nothing yet)*
+
+## [milestone-16] — 2026-07-03
+
+Close & clean — the Act 2 opener: a full self-audit acted on **before** the first real
+side effect. Drift repaired, the side-effect-capable surface hardened (with a 5-lens
+adversarial review that found and fixed three majors in the fixes themselves), the
+verifier's blind spots named and its accounting widened, and the Milestone-15 one-shot
+prepared down to two maintainer commands.
+
 ### Added
 
-- **Best-effort idempotency on the real execution path** (Milestone 15 Unit 2,
-  ADR 0026, #115): a deterministic `sha256` idempotency key over the grounded
-  request, a three-surface marker (HTML comment + visible footer + `idem-` label),
-  a paging pre-send existence check on the primary endpoint, new
-  `exists`/`inconclusive` receipt outcomes, and `idempotency_key` on the receipt.
-- **Real-execution recorder, scrubber, and runbook** (Milestone 15 Unit 3, #116):
+- **Act 2 planning corpus** (#118, #119): the 2026-07-02 repository audit
+  (`docs/AUDIT_2026-07-02.md`), the sourced market snapshot (`docs/MARKET.md`),
+  the Act 2 roadmap (`docs/ROADMAP2.md`), and the Milestone 16 plan (spec 0107).
+- **Verifier-blind-spot specimens** (spec 0110, #122): over-citation passes generic
+  containment; containment matches across word boundaries — committed beside the
+  existing trigger specimens; ADR 0005 addendum.
+- **One-shot preparation** (spec 0111, #123): the public sandbox repo
+  (`robert-vetter/tessera-exec-oneshot`), the rewritten DEPLOYMENT runbook
+  (verify-the-issue-URL step, labels-silently-dropped note), and the recorded
+  Milestone-15 close checklist.
+
+### Changed
+
+- Audit drift repaired (spec 0108, #120): STATUS backfill for the Milestone-15
+  sessions, WRITEUP idempotency truth, DEPLOYMENT embeddings row ("built and
+  measured on SAP"), README count/pointers, CAPABILITIES future-work markers,
+  the `specs/README.md` numbering ledger — plus 68 stale merged remote branches
+  pruned.
+- **Refuse-kind eval cases are now inside the faithfulness accounting**
+  (spec 0110, #122; audit B7) — measured effect on every battery: zero; the
+  floor's reach is wider.
+
+### Fixed
+
+- **Trust-path hardening B1–B5 + review findings** (spec 0109, #121): the
+  recorder never clobbers the historic receipt (persist only `created`/`exists`,
+  refuse-before-network, exclusive-create, case-insensitive guard); the
+  idempotency pre-check is **label-independent** (ADR 0026 addendum); the PAT can
+  no longer leak via `repr`; fenced log/diff content cannot break out of its
+  fence into a real issue and multiline non-fenced values withhold the payload
+  (ADR 0024 addendum); `{pr}` path segments pass an allowlist; the real transport
+  **refuses redirects** (urllib would forward `Authorization` cross-origin and
+  rewrite POST→GET, risking a false `created`).
+
+## [milestone-15] — 2026-07-03
+
+Cross the last honest edge of the execution arc: **actually send** one grounded action —
+exactly once, behind approval, best-effort idempotent — and commit the receipt.
+
+### Added
+
+- **Best-effort idempotency on the real execution path** (Unit 2, ADR 0026, #115):
+  a deterministic `sha256` idempotency key over the grounded request, a
+  three-surface marker (HTML comment + visible footer + `idem-` label), a paging
+  pre-send existence check on the primary endpoint, new `exists`/`inconclusive`
+  receipt outcomes, and `idempotency_key` on the receipt.
+- **Real-execution recorder, scrubber, and runbook** (Unit 3, #116):
   `scripts/record_real_execution.py` (maintainer-only one-shot, never CI),
   `tessera.agent.recording.redact_receipt` (response allow-list + token-like-key
   redaction), the `docs/DEPLOYMENT.md` one-shot runbook, `.env.example`, and the
   `data/execution/` layout.
-- **Act 2 planning corpus** (#118, #119): the 2026-07-02 repository audit
-  (`docs/AUDIT_2026-07-02.md`), the sourced market snapshot (`docs/MARKET.md`),
-  the Act 2 roadmap (`docs/ROADMAP2.md`), and the Milestone 16 plan (spec 0107).
+- **The real send, recorded** (Units 4–5 per spec 0111): the maintainer-approved
+  one-shot created
+  [`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1)
+  from a grounded incident over a real CI failure (run 27014662820) —
+  `outcome="created"`, `sent=true`, status 201; the scrubbed `ExecutionReceipt` +
+  `MANIFEST` committed under `data/execution/`. The first attempt's 403 (a
+  read-only token) exercised the hardened failure path in the wild: receipt
+  printed, nothing persisted, non-zero exit, retry unblocked.
 
 ### Changed
 
 - The real-execution recorder records **only an approved send** — a rehearsal
-  writes nothing (Milestone 15, #117).
-- Audit drift repaired (Milestone 16 Unit 1, spec 0108): STATUS backfill for the
-  Milestone-15 sessions, WRITEUP idempotency limitation rewritten to match ADR
-  0026, DEPLOYMENT embeddings row corrected to "built and measured on SAP",
-  README milestone count + Act-2 pointers + M15-in-flight wording, CAPABILITIES
-  future-work markers, and the `specs/README.md` numbering ledger.
+  writes nothing (#117).
 
 ## [milestone-14] — 2026-07-01
 
@@ -735,7 +786,9 @@ with **un-planted** difficulty, holding faithfulness gated at 1.0 throughout.
   to GitHub Pages via GitHub Actions, with strict builds so broken links fail.
 - **This changelog.**
 
-[Unreleased]: https://github.com/robert-vetter/tessera/compare/phase-4...HEAD
+[Unreleased]: https://github.com/robert-vetter/tessera/compare/milestone-16...HEAD
+[milestone-16]: https://github.com/robert-vetter/tessera/compare/milestone-15...milestone-16
+[milestone-15]: https://github.com/robert-vetter/tessera/compare/milestone-14...milestone-15
 [phase-4]: https://github.com/robert-vetter/tessera/compare/phase-3...phase-4
 [phase-3]: https://github.com/robert-vetter/tessera/compare/phase-2...phase-3
 [phase-2]: https://github.com/robert-vetter/tessera/compare/phase-1...phase-2
