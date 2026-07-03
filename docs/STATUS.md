@@ -1967,3 +1967,80 @@ scheduled. Kickoff prompt handed back in the session summary.
 **State of the tree**
 - `main` green and in sync; no open unit branches. PRs #118–#125 merged.
   **Tagged `milestone-15` + `milestone-16`.**
+
+---
+
+## 2026-07-03 — Milestone 17 Units 2–5 COMPLETE (demoable to humans; tag pends the maintainer's deploy)
+
+**Mode note:** ran autonomously from the maintainer's "starte M17" (Anthropic
+key + HANA re-added to `.env`). Presentation layer only — a strict consumer of
+the existing trust objects; no engine/verifier/boundary change. Units per
+discipline: spec → branch → gate → PR → CI-green → squash-merge (PRs #126–#131).
+
+**Done this session**
+- **Plan** (spec 0112, #126): six recorded decisions — stdlib UI (ADR 0027 at
+  Unit 3), no credential in the UI by construction, evidence text stays
+  verbatim (presentation via narration/UI, never munging), the agent demo over
+  the real MCP server, asset split (agent builds; maintainer deploys/records),
+  cosmetics in passing.
+- **Unit 2 — narration live + cosmetics** (spec 0113, #127): the ADR 0013
+  narration boundary **exercised live for the first time** (Anthropic, default
+  Haiku) — narration rendered under its label below the canonical claims,
+  trust line 8/8; refusals stay un-narrated. `:trust` float precision + MCP
+  `serverInfo` project version, both test-pinned.
+- **Unit 3 — the web surface** (spec 0114, ADR 0027, #128): `uv run tessera-ui`
+  — one page, pure stdlib, zero JS, strict CSP, escape-everything: ask → routed
+  answer with per-claim verifier chips → provenance drill-down (records,
+  locators, ER trail) → refusal cards → action draft → dry-run payload →
+  explicit approve → **simulated** receipt. Holds no credential; no code path
+  to the real actuator. Verified visually via local preview. **Three focused
+  adversarial reviews (security ×2 + trust-honesty): 0 majors** — surface
+  holds (escaping complete, CSP truthful, no egress); all confirmed minors
+  fixed (POST-body cap, URL-encoded query values, CSP hardening, offer/preview
+  gating on `all_verified`/`all_grounded`, cached history read, count-accurate
+  copy), each pinned. 16 UI tests.
+- **Unit 4 — a real Claude agent grounded only through the MCP tools**
+  (spec 0115, #129): `scripts/record_agent_session.py` ran a real Sonnet-5
+  agent over the real `tessera-mcp` stdio server with **only** Tessera's seven
+  tools. Recorded to `data/agent_session/`: turn 1 grounded RCA with cited
+  evidence; turn 2 R-1041 *passed* → the agent reports the refusal, no
+  fabrication; turn 3 draft → preview → **simulated** receipt (`sent: false`).
+  The headline demo of the thesis, on the record.
+- **Unit 5 — hosted packaging + assets** (spec 0116, #130 + docfix #131):
+  `docs/DEMO.md` — the key-free hosting runbook (Fly.io / Railway / VM+Caddy;
+  verified the UI binds `0.0.0.0`), the 3-minute demo script (the post-Replit
+  arc as four clickable beats), and the EN+DE one-pager. README leads the demo
+  section with `tessera-ui`.
+
+**Current eval numbers (unchanged — the whole milestone is a consumer)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- 479 tests (+18 across the UI/narration units); gate green on every PR.
+
+**Milestone 17 status: engineering COMPLETE; NOT yet tagged.** Per spec 0112
+decision 5, M17 tags only once the hosted demo is **live** — picking a host,
+deploying, and recording the 2–3-minute video are the maintainer's (spend/
+account). Everything not gated on hosting is landed and green.
+
+**Next**
+- **Maintainer (to close M17):** deploy `tessera-ui` (runbook in
+  [`docs/DEMO.md`](DEMO.md)) and record the video; then any session tags
+  `milestone-17` and hands back the **M18 kickoff** (BYO data — the
+  design-partner vehicle).
+- **Maintainer (unblocks the docs site):** re-enable **GitHub Pages → Source:
+  GitHub Actions** in repo settings — the docs *build* is green, but the Pages
+  *deploy* step 404s (`Ensure GitHub Pages has been enabled`); the setting
+  lapsed. Content is fine; this is one toggle.
+
+**Open questions / risks**
+- The docs-site deploy is red on a **settings** issue (Pages source), not
+  content — flagged above; does not affect the product, the gate, or any tag.
+- Remaining ROADMAP2 decisions: HANA instance health, SALT HF access request,
+  hosting choice (now also gates the M17 tag), BTP account, the Z Fellows
+  check-in date, launch consent. Dependabot #59/#60 still open.
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #126–#131 merged.
+  Tagged `milestone-15` + `milestone-16`; **`milestone-17` pends the hosted
+  deploy.**
