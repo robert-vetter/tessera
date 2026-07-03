@@ -2291,3 +2291,87 @@ met, not when the code is).
 **State of the tree**
 - `main` green and in sync; no open unit branches. PRs #144–#148 merged.
   Tagged through `milestone-18`; **`milestone-19` pends launch**.
+
+## 2026-07-03 — SAP track: S4 + S2 shipped (the post-M19 build surface)
+
+**Mode note:** ran autonomously from the maintainer's "keep building —
+continue with the plan" after the M19 build share. The remaining ROADMAP2
+surface is the SAP track; scope fixed on measured facts in the plan spec
+(0127, PR #150) before any unit code. Discipline unchanged: spec → branch
+→ gate → PR → CI-green → squash-merge; the trust-adjacent unit carried a
+pre-merge adversarial review.
+
+**Done this session (3 units, PRs #150–#152, specs 0127–0129, ADR 0030):**
+- **Plan** (spec 0127, #150): probed the M6/M7 HANA instance with the
+  existing `.env` keys (the ROADMAP2 maintainer checklist itself asks for
+  the health check): **alive**, cloud version 2026.14.7 — but the KG
+  **triple store is not enabled** (`SYS.SPARQL_EXECUTE` answers "No
+  active TripleStore found in landscape"); enablement is the account
+  owner's HANA Cloud Central → Advanced Settings → **Triple Store**
+  checkbox. Decisions: S2 ships the full seam now with the online run
+  one toggle away (the M17 Pages-toggle pattern); persistence is a
+  mirror, never a source of truth; S4 in `launch/sap/`; S1 stays blocked
+  on the SALT/HF access request; S3 stays a spend decision.
+- **S4 — the application kit** (spec 0128, #151):
+  `launch/sap/APPLICATION.md` — both German tracks (EN iXp + DE
+  Werkstudent letters, opening on the SAP-sponsored
+  scholarship), the Sapphire-2026 mapping table (Agent Hub
+  "verification badges" ↔ a *measured* faithfulness score; Claude-via-MCP
+  ↔ the recorded agent session; DSAG 3% hook), target teams (BTP AI
+  Core/GenAI Hub, Joule Studio, Business AI research, Prior Labs),
+  artifact links, CV bullets, submission checklist. `SAP_ALIGNMENT.md`
+  gained a dated addendum fixing its one stale beat honestly: the
+  agentic/MCP mode it *recommends* shipped months ago (ADR 0022–0025).
+- **S2 — HANA KG persistence** (spec 0129, ADR 0030, #152):
+  `tessera/platform/kg.py` — the graph as RDF over `SPARQL_EXECUTE`
+  (structure as triples incl. reified reversible resolutions/mentions;
+  provenance as byte-exact literals; untyped repr floats), one named
+  graph per corpus, DROP+batched-INSERT idempotent mirror.
+  **Losslessness tested**: serializer → subset parser → rebuild
+  tuple-exact on all three committed graphs; duplicate edges fail
+  loudly; injection-safe escaping. Adversarial review found 1 MAJOR
+  (`splitlines()` splits on U+2028/U+2029/U+0085 the escaper left raw —
+  fixed twice over: escaped AND \n-only split) + 1 MINOR (the SPARQL
+  §19.2 pre-parse hazard — no clean in-band escape exists, so the staged
+  one-shot now opens with an **escape-fidelity canary** whose verdict is
+  recorded verbatim) + 3 NITs (password-bearing config out of repr;
+  robust COUNT alias; mentions query joins through resolutions), all
+  fixed and pinned. `HanaTripleStore` fake-contract-tested; hdbcli stays
+  the lazy `cloud` extra (import-guard); CI key-free.
+
+**Current eval numbers (unchanged — byte-identical throughout):**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- 567 tests (+10); frozen core untouched (the milestone's source diff:
+  `platform/kg.py` new, plus the M19-session files).
+
+**Next — the maintainer's items:**
+1. **NEW — the Triple Store toggle** (~2 min, may restart the instance:
+   HANA Cloud Central → instance → Manage Configuration → Advanced
+   Settings → Triple Store), then
+   `uv run python scripts/persist_knowledge_graph.py` and paste its
+   record block (incl. the canary verdict) into DEPLOYMENT.md — that
+   turns "designed for SAP Knowledge Graph" into "ran on", beside the
+   recorded `VECTOR_EMBEDDING` closes.
+2. **M19 go-list unchanged:** registries runbook (2 decisions), launch
+   posts, outreach wave, Z Fellows date + rehearse (the first weekly
+   ship-update email is drafted in the session transcript), then tag
+   `milestone-19` + roll the CHANGELOG.
+3. Standing: SALT HF access request (gates S1 — the highest-credibility
+   remaining S-track item), demo video, Pages source toggle, BTP
+   (gates S3), dependabot #59/#133 (#60 closed).
+
+**Open questions / risks**
+- `result[2]` as `SPARQL_EXECUTE`'s response OUT parameter is
+  tutorial-verified, not yet live-verified (the probe errored before OUT
+  extraction, correctly — no TripleStore); the one-shot is the honest
+  first check and records whatever happens.
+- The KG engine is young (GA QRC1 2025); the escape-fidelity canary
+  exists precisely because store-side literal handling may diverge from
+  the spec reading.
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #150–#152 merged.
+  Tags unchanged (through `milestone-18`; `milestone-19` pends launch;
+  the SAP track carries no tag).

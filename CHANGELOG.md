@@ -11,6 +11,40 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
+**SAP track (post-M19, specs 0127–0129, PRs #150–#152):** the remaining
+Act 2 build surface, scoped on measured facts (spec 0127: instance alive
+at cloud version 2026.14.7; the KG triple store awaits the account
+owner's HANA Cloud Central toggle; S1 blocked on the SALT/HF access
+request; S3 is a spend decision).
+
+### Added (SAP track)
+
+- **HANA Knowledge Graph persistence** (spec 0129, ADR 0030, #152):
+  `tessera/platform/kg.py` mirrors the in-process graph to HANA Cloud's
+  KG engine as RDF over `SYS.SPARQL_EXECUTE` — structure as triples
+  (kinds, names, structural edges, **reified reversible
+  resolutions/mentions** with confidences and reasons), provenance as
+  byte-exact literals. A **mirror, never a source of truth**: no answer
+  path reads HANA. Losslessness is the tested contract (serializer →
+  subset parser → rebuild, tuple-exact on all three committed graphs;
+  duplicate edges fail loudly; injection-safe escaping). Adversarial
+  review: 1 MAJOR (Unicode line-separator handling — fixed twice over)
+  + the SPARQL §19.2 pre-parse hazard answered with an escape-fidelity
+  canary the staged one-shot records verbatim. The online
+  "ran on SAP Knowledge Graph" measurement pends the Triple Store
+  toggle (runbook: DEPLOYMENT.md; one-shot:
+  `scripts/persist_knowledge_graph.py`). CI stays key-free; hdbcli
+  stays the lazy `cloud` extra.
+- **SAP application kit** (spec 0128, #151): `launch/sap/APPLICATION.md`
+  — Sapphire-2026 mapping table, target teams, artifact links, CV
+  bullets, EN iXp + DE Werkstudent cover letters (opening on the
+  SAP-sponsored scholarship), submission checklist; plus a
+  dated `SAP_ALIGNMENT.md` addendum fixing its one stale beat (the
+  agentic/MCP mode it recommended shipped in M11–M15). Nothing
+  submitted.
+- **SAP track plan** (spec 0127, #150): scope + decisions on measured
+  facts.
+
 Milestone 19 (launch & traction), **the autonomous build share — complete**:
 the measured engine made findable and credible without touching the trust
 model. The ADR 0008 frozen-core empty-diff audit over `milestone-18..HEAD`
