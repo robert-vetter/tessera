@@ -44,3 +44,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0027](0027-stdlib-web-ui.md) — The web surface: pure stdlib, zero JavaScript, no credential (Milestone 17)
 - [0028](0028-byo-connector-workspace-boundary.md) — BYO connect: fetch-to-local-workspace, offline answers, optional no-scope token (Milestone 18)
 - [0029](0029-declared-ingest-config.md) — `tessera ingest <dir>` driven by a declared stdlib-TOML config (Milestone 18)
+- [0030](0030-hana-kg-persistence-boundary.md) — Knowledge-graph persistence: a mirror on HANA's KG engine, never a source of truth (SAP track S2)
