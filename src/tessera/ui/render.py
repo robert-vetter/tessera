@@ -1,11 +1,14 @@
 """Pure HTML rendering over the trust objects — escape everything (ADR 0027).
 
-Every function here is a pure ``object -> str``: no I/O, no network, no state,
-so the whole presentation is unit-testable with hostile content. The one
-security rule is the web analogue of the payload-renderer's fence rule
-(spec 0109 B4): **evidence text is attacker-shaped in principle** (real CI logs
-flow through it), so every dynamic string passes :func:`_e` (``html.escape``)
-before it touches markup — values are *displayed*, never interpreted.
+Every function here is a pure ``object -> str`` — no network, no state, and no
+I/O except the one named, cached exception (:func:`_trust_rows`, which reads
+the committed eval history once per process) — so the whole presentation is
+unit-testable with hostile content. The one security rule is the web analogue
+of the payload-renderer's fence rule (spec 0109 B4): **evidence text is
+attacker-shaped in principle** (real CI logs flow through it), so every dynamic
+string passes :func:`_e` (``html.escape``) before it touches markup — values
+are *displayed*, never interpreted; query-string values additionally pass
+:func:`_q` (URL-encoding) so links can neither split nor truncate.
 
 The UI asserts nothing of its own: verdict chips mirror ``verified`` flags the
 verifier computed, refusals render as refusals, narration (when configured)
@@ -18,7 +21,9 @@ from __future__ import annotations
 
 import html
 import json
+from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote
 
 from tessera.agent.actions import ActionField, ActionProposal
 from tessera.agent.execution import ExecutionReceipt
@@ -98,6 +103,13 @@ def _e(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
+def _q(value: str) -> str:
+    """A query-string VALUE: URL-encoded (so `&`/`#`/`"` in record ids or
+    questions cannot split or truncate the link — review S2), producing plain
+    %-ASCII that is inert in an attribute context too."""
+    return quote(value, safe="")
+
+
 def page(title: str, body: str) -> str:
     """The shell. Inline CSS only, zero JavaScript — the strict CSP the server
     sends (``default-src 'none'; style-src 'unsafe-inline'``) stays truthful."""
@@ -124,7 +136,7 @@ def _verdict_chip(verified: bool) -> str:
 def _evidence_html(domain: str, record: GroundedEvidence) -> str:
     locator = ", ".join(f"{k} {v}" for k, v in record.locator_parts)
     trail = (
-        f"/assertions?domain={_e(domain)}&record_id={_e(record.id)}" if domain else ""
+        f"/assertions?domain={_q(domain)}&record_id={_q(record.id)}" if domain else ""
     )
     trail_link = f' · <a href="{trail}">entity-resolution trail</a>' if trail else ""
     return (
@@ -155,11 +167,13 @@ def _offered(action: dict[str, object], result: GroundedResult) -> bool:
 
 def _action_offers(result: GroundedResult, actions: list[dict[str, object]]) -> str:
     offers = [action for action in actions if _offered(action, result)]
-    if not result.grounded or not offers:
+    all_verified = bool(result.claims) and all(c.verified for c in result.claims)
+    if not result.grounded or not all_verified or not offers:
         return ""
     buttons = "".join(
-        f'<a href="/action?action={_e(action["name"])}&domain={_e(result.domain)}'
-        f'&q={_e(result.question)}"><button>draft '
+        f'<a href="/action?action={_q(str(action["name"]))}'
+        f"&domain={_q(result.domain)}"
+        f'&q={_q(result.question)}"><button>draft '
         f"{_e(action['name'])} →</button></a> "
         for action in offers
     )
@@ -202,7 +216,7 @@ def answer_page(
     trust_line = (
         f'<p><span class="chip ok">✓ trust: {checked}/{len(result.claims)} '
         "claims verifier-checked</span></p>"
-        if checked == len(result.claims)
+        if result.claims and checked == len(result.claims)
         else (
             f'<p><span class="chip bad">✗ only {checked}/{len(result.claims)} '
             "claims passed the verifier</span></p>"
@@ -258,10 +272,18 @@ def action_page(proposal: ActionProposal) -> str:
             "no payload will render</span>"
         )
     )
+    # The preview affordance only when a payload WILL render (review H3): a
+    # "preview the request" button beside "no payload will render" would
+    # contradict itself, even though the target correctly withholds.
     next_link = (
-        f'<p><a href="/payload?action={_e(proposal.kind)}&domain={_e(proposal.domain)}'
-        f'&q={_e(proposal.question)}"><button class="primary">preview the exact '
-        "GitHub request →</button></a></p>"
+        (
+            f'<p><a href="/payload?action={_q(proposal.kind)}'
+            f"&domain={_q(proposal.domain)}"
+            f'&q={_q(proposal.question)}"><button class="primary">preview the '
+            "exact GitHub request →</button></a></p>"
+        )
+        if proposal.all_grounded
+        else ""
     )
     return page(
         "Tessera — action draft",
@@ -394,7 +416,11 @@ def assertions_page(domain: str, record_id: str, items: list[GroundedAssertion])
     )
 
 
+@lru_cache(maxsize=1)
 def _trust_rows() -> str:
+    """The one deliberate exception to this module's no-I/O rule (review S3):
+    the measured-floor panel reads the committed ``eval/history.jsonl`` once
+    per process (cached — the file only changes with a redeploy)."""
     if not _HISTORY_PATH.is_file():
         return ""
     last = json.loads(_HISTORY_PATH.read_text("utf-8").strip().splitlines()[-1])
@@ -414,8 +440,8 @@ def _trust_rows() -> str:
         f"({recorded}) — faithfulness &lt; 1.0 fails the build, in CI:</p>"
         "<table><tr><th>battery (gold)</th><th>cases</th><th>faithfulness</th>"
         f"<th>coverage</th><th>quality</th></tr>{''.join(rows)}</table>"
-        '<p class="small">The two sub-1.0 numbers are deliberate: offline '
-        "lexical misses kept visible in CI, closed online on SAP HANA — the "
+        '<p class="small">The sub-1.0 numbers are deliberate: offline lexical '
+        "misses kept visible in CI, closed online on SAP HANA — the "
         "trail is in <code>eval/history.jsonl</code>.</p>"
     )
 

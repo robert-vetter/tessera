@@ -131,7 +131,12 @@ class TesseraUIHandler(BaseHTTPRequestHandler):
             if split.path != "/execute":
                 self._send(404, render.error_page(404, "no such page."))
                 return
-            length = int(self.headers.get("Content-Length") or 0)
+            # Cap the read (review S1): the real form is a few hundred bytes;
+            # an attacker-declared Content-Length must not pin a thread on a
+            # blocking read for bytes that never arrive.
+            length = min(int(self.headers.get("Content-Length") or 0), 64 * 1024)
+            if length < 0:
+                raise ValueError("negative Content-Length")
             body = self.rfile.read(length).decode("utf-8") if length else ""
             action, domain_name, question = self._params(body, "action", "domain", "q")
             # The explicit form submit IS the approval; the actuator is the

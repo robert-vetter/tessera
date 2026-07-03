@@ -192,3 +192,58 @@ def test_server_bad_requests_are_4xx_not_crashes() -> None:
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_action_offer_suppressed_when_any_claim_is_unverified() -> None:
+    """Review H2: a red trust line and a green 'act on it' affordance must not
+    coexist — offers require every claim verified (latent branch; grounded demo
+    answers are always fully verified)."""
+    good = GroundedClaim(text="t", verified=True, support=(_evidence("t"),))
+    bad = GroundedClaim(text="t", verified=False, support=(_evidence("t"),))
+    actions = [{"name": "incident", "domains": ["devex"], "from_route": "rca"}]
+    partially = render.answer_page(
+        _result(grounded=True, claims=(good, bad)), actions, None, None
+    )
+    assert "Act on it" not in partially
+    fully = render.answer_page(
+        _result(grounded=True, claims=(good,)), actions, None, None
+    )
+    assert "Act on it" in fully
+
+
+def test_ungrounded_draft_page_offers_no_payload_preview() -> None:
+    """Review H3: 'preview the exact GitHub request' must not render beside
+    '✗ … no payload will render' (latent branch)."""
+    from tessera.agent.actions import ActionField, ActionProposal
+
+    unverified = ActionField("log", "value", False, (_evidence("value"),))
+    proposal = ActionProposal(
+        kind="incident",
+        domain="devex",
+        question="q",
+        route_kind="rca",
+        route_reason="r",
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=(unverified,),
+    )
+    html = render.action_page(proposal)
+    assert "no payload will render" in html
+    assert "/payload?" not in html
+
+
+def test_query_values_are_url_encoded_in_links() -> None:
+    """Review S2: `&`/`#` in a record id or question must not split or truncate
+    the link's query string."""
+    record = GroundedEvidence(
+        id="REC&x=1#frag",
+        source="s",
+        locator_kind="table-row",
+        locator_parts=(),
+        ingested_at="t",
+        text="t",
+    )
+    claim = GroundedClaim(text="t", verified=True, support=(record,))
+    html = render.answer_page(_result(grounded=True, claims=(claim,)), [], None, None)
+    assert "record_id=REC%26x%3D1%23frag" in html
