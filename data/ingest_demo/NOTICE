@@ -1,0 +1,14 @@
+Tessera BYO ingest demo corpus (Milestone 18, spec 0120 / ADR 0029).
+
+A small, self-assembled corpus of PUBLIC-DOMAIN factual data about five U.S.
+cities and four regions — city name, state, approximate population, founding
+year, and region — plus a short Markdown note. The facts (populations rounded,
+founding dates, state capitals) are commonly published public information; this
+assembly carries no third-party copyright and is distributed under the same MIT
+license as the rest of the repository.
+
+Its purpose is to demonstrate `tessera ingest <dir>` on committed, reproducible
+data: two CSV tables joined by a foreign key, a Markdown document linked by
+mention, multi-field entity resolution, and — deliberately — an ambiguous name
+("Portland" refers to two distinct cities, Oregon and Maine), so the
+"ambiguous names refuse" contract can be shown end to end.

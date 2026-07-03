@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Callable, Mapping
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tessera.connect.github import ConnectError, FetchCaps, fetch_snapshot
 from tessera.connect.workspace import (
@@ -26,6 +28,9 @@ from tessera.connect.workspace import (
     load_workspace,
 )
 from tessera.devex.rca import RUN_ID
+
+if TYPE_CHECKING:
+    from tessera.graph import KnowledgeGraph
 
 
 def _positive(minimum: int, maximum: int | None = None) -> Callable[[str], int]:
@@ -90,11 +95,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     smoke.add_argument("target", help="<owner>/<repo> of a connected repository")
 
+    ingest = sub.add_parser(
+        "ingest", help="ingest a local CSV + Markdown directory (tessera.toml)"
+    )
+    ingest.add_argument("directory", help="a directory containing a tessera.toml")
+    ingest.add_argument(
+        "question", nargs="?", help="optional: also answer this over the corpus"
+    )
+
     args = parser.parse_args(argv)
     if args.command == "connect":
         return _connect(args)
     if args.command == "smoke":
         return _smoke(args)
+    if args.command == "ingest":
+        return _ingest(args)
     return _ask(args)
 
 
@@ -144,12 +159,15 @@ def _connect(args: argparse.Namespace) -> int:
 
 
 def _ask(args: argparse.Namespace) -> int:
+    # A target that is a local directory with a tessera.toml is an ingested
+    # corpus (Unit 4); anything else is a connected GitHub workspace. This is
+    # unambiguous — an <owner>/<repo> is not a local directory.
+    if _is_ingest_dir(args.target):
+        return _ask_dir(args.target, args.question)
+
     try:
         workspace = load_workspace(args.target)
-    except InvalidTarget as error:
-        print(f"ask: {error}", file=sys.stderr)
-        return 2
-    except WorkspaceNotConnected as error:
+    except (InvalidTarget, WorkspaceNotConnected) as error:
         print(f"ask: {error}", file=sys.stderr)
         return 2
     graph = build_workspace_graph(workspace)
@@ -166,6 +184,89 @@ def _ask(args: argparse.Namespace) -> int:
         if pointer:
             print(f"\n{pointer}")
     return 0
+
+
+def _is_ingest_dir(target: str) -> bool:
+    from tessera.ingest.config import CONFIG_NAME
+
+    return (Path(target) / CONFIG_NAME).is_file()
+
+
+def _ingest(args: argparse.Namespace) -> int:
+    from tessera.ingest.config import IngestConfigError, load_config
+    from tessera.ingest.source import DirSource, build_dir_graph
+
+    try:
+        config = load_config(Path(args.directory))
+        source = DirSource(config)
+        records = source.ingest()
+        graph = build_dir_graph(config)
+    except IngestConfigError as error:
+        print(f"ingest: {error}", file=sys.stderr)
+        return 1
+
+    table_records = [r for r in records if r.origin.locator.kind != "doc-span"]
+    doc_records = [r for r in records if r.origin.locator.kind == "doc-span"]
+    clusters = graph.clusters()
+    merged = [c for c in clusters if len(c) > 1]
+    ambiguous = _ambiguous_names(graph, source.display_names())
+
+    print(f"Ingested {config.name} ({config.root}):")
+    print(
+        f"  {len(table_records)} table row(s) across {len(config.tables)} table(s); "
+        f"{len(doc_records)} document chunk(s)."
+    )
+    print(
+        f"  entity resolution: {len(clusters)} resolved entities "
+        f"({len(merged)} multi-node merge(s)); "
+        f"{len(graph.mentions)} document mention(s)."
+    )
+    if ambiguous:
+        for name, count in ambiguous:
+            print(
+                f"  ambiguous name: '{name}' → {count} distinct entities (asks refuse)"
+            )
+    if args.question:
+        print()
+        return _ask_dir(args.directory, args.question)
+    print(f'\nTry: uv run tessera ask {args.directory} "<question>"')
+    return 0
+
+
+def _ask_dir(directory: str, question: str | None) -> int:
+    from tessera.ingest.answer import answer_dir
+    from tessera.ingest.config import IngestConfigError, load_config
+    from tessera.ingest.source import DirSource, build_dir_graph, build_dir_kb
+
+    if not question:
+        print("ask: a question is required.", file=sys.stderr)
+        return 2
+    try:
+        config = load_config(Path(directory))
+        source = DirSource(config)
+        graph = build_dir_graph(config)
+        kb = build_dir_kb(config)
+    except IngestConfigError as error:
+        print(f"ask: {error}", file=sys.stderr)
+        return 1
+    route, answer = answer_dir(question, graph, kb, source.display_names())
+    print(f"[ingest:{config.name} · route: {route.kind} — {route.reason}]")
+    print(answer.render())
+    return 0
+
+
+def _ambiguous_names(
+    graph: KnowledgeGraph, display_names: set[str]
+) -> list[tuple[str, int]]:
+    from tessera.ingest.answer import name_nodes_for
+
+    out: list[tuple[str, int]] = []
+    for name in sorted(display_names):
+        nodes = name_nodes_for(graph, name)
+        components = {graph.entity_of(node.id) for node in nodes}
+        if len(components) > 1:
+            out.append((name, len(components)))
+    return out
 
 
 def _smoke(args: argparse.Namespace) -> int:
