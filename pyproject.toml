@@ -12,7 +12,10 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.scripts]
-tessera = "tessera.business.cli:main"
+# The front door: BYO subcommands (connect/ask/smoke/ingest, Milestone 18)
+# dispatch to their paths; anything else falls through to the business demo
+# door unchanged (spec 0117 decision 5).
+tessera = "tessera.cli:main"
 tessera-chat = "tessera.surface.cli:main"
 tessera-eval = "tessera.eval.cli:main"
 tessera-compose = "tessera.business.composition:main"
