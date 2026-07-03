@@ -423,7 +423,10 @@ def _trust_rows() -> str:
     per process (cached — the file only changes with a redeploy)."""
     if not _HISTORY_PATH.is_file():
         return ""
-    last = json.loads(_HISTORY_PATH.read_text("utf-8").strip().splitlines()[-1])
+    lines = _HISTORY_PATH.read_text("utf-8").strip().splitlines()
+    if not lines:  # a fresh/empty history file must not break the index page
+        return ""
+    last = json.loads(lines[-1])
     rows = []
     for battery in last.get("batteries", []):
         gold = battery.get("gold", {})

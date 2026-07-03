@@ -34,7 +34,13 @@ from tessera.surface.narration import narrate_texts
 from tessera.ui import render
 
 _SECURITY_HEADERS: tuple[tuple[str, str], ...] = (
-    ("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'"),
+    (
+        "Content-Security-Policy",
+        # default-src 'none' + one inline <style>; forms post only to us, the
+        # page can be nobody's frame and set no <base> (defense in depth).
+        "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
+        "base-uri 'none'; frame-ancestors 'none'",
+    ),
     ("X-Content-Type-Options", "nosniff"),
     ("Referrer-Policy", "no-referrer"),
 )

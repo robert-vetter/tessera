@@ -148,10 +148,9 @@ def test_server_smoke_ask_flow_and_security_headers() -> None:
     try:
         with urllib.request.urlopen(f"{base}/") as response:
             assert response.status == 200
-            assert (
-                response.headers["Content-Security-Policy"]
-                == "default-src 'none'; style-src 'unsafe-inline'"
-            )
+            csp = response.headers["Content-Security-Policy"]
+            assert "default-src 'none'" in csp and "style-src 'unsafe-inline'" in csp
+            assert "form-action 'self'" in csp and "frame-ancestors 'none'" in csp
             assert "ask with proof" in response.read().decode("utf-8")
 
         query = urllib.parse.urlencode(
@@ -194,13 +193,42 @@ def test_server_bad_requests_are_4xx_not_crashes() -> None:
         server.server_close()
 
 
+def test_server_rejects_a_lying_content_length_without_hanging() -> None:
+    """Review S1: a negative or oversized Content-Length must not pin the
+    handler thread on a blocking read — it is rejected/capped, not awaited."""
+    import socket
+
+    server, base = _serve()
+    host, port = str(server.server_address[0]), int(server.server_address[1])
+    try:
+        # A negative Content-Length with a short body: the server must respond
+        # (4xx) rather than block waiting for bytes that never come.
+        conn = socket.create_connection((host, port), timeout=5)
+        conn.sendall(
+            b"POST /execute HTTP/1.1\r\nHost: x\r\n"
+            b"Content-Type: application/x-www-form-urlencoded\r\n"
+            b"Content-Length: -1\r\n\r\naction=incident&domain=devex&q=x"
+        )
+        conn.settimeout(5)
+        status_line = conn.recv(64)
+        conn.close()
+        assert status_line.startswith(b"HTTP/1.0 4") or status_line.startswith(
+            b"HTTP/1.1 4"
+        ), status_line
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def test_action_offer_suppressed_when_any_claim_is_unverified() -> None:
     """Review H2: a red trust line and a green 'act on it' affordance must not
     coexist — offers require every claim verified (latent branch; grounded demo
     answers are always fully verified)."""
     good = GroundedClaim(text="t", verified=True, support=(_evidence("t"),))
     bad = GroundedClaim(text="t", verified=False, support=(_evidence("t"),))
-    actions = [{"name": "incident", "domains": ["devex"], "from_route": "rca"}]
+    actions: list[dict[str, object]] = [
+        {"name": "incident", "domains": ["devex"], "from_route": "rca"}
+    ]
     partially = render.answer_page(
         _result(grounded=True, claims=(good, bad)), actions, None, None
     )
@@ -247,3 +275,23 @@ def test_query_values_are_url_encoded_in_links() -> None:
     claim = GroundedClaim(text="t", verified=True, support=(record,))
     html = render.answer_page(_result(grounded=True, claims=(claim,)), [], None, None)
     assert "record_id=REC%26x%3D1%23frag" in html
+
+
+def test_action_offer_href_encodes_a_hostile_question() -> None:
+    """Review gap (a): the action-offer href carries the question — a hostile,
+    ampersand-bearing question must be URL-encoded (not split) and inert."""
+    claim = GroundedClaim(text="ok", verified=True, support=(_evidence("ok"),))
+    actions: list[dict[str, object]] = [
+        {"name": "incident", "domains": ["devex"], "from_route": "rca"}
+    ]
+    html = render.answer_page(
+        _result(grounded=True, claims=(claim,)), actions, None, None
+    )
+    # _XSS in the question is percent-encoded inside /action?...q=… — no live tag.
+    assert "<script>" not in html and "%3Cscript%3E" in html
+
+
+def test_assertions_page_escapes_hostile_record_id() -> None:
+    """Review gap (b): /assertions renders a hostile record_id/domain inert."""
+    html = render.assertions_page("devex", _XSS, [])
+    assert "<script>" not in html and "&lt;script&gt;" in html
