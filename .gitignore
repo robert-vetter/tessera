@@ -28,3 +28,7 @@ site/
 # BYO workspaces (Milestone 18, ADR 0028): local snapshots of foreign data —
 # fetched by `tessera connect`, read by `tessera ask`, NEVER committed.
 var/
+
+# Outreach working list: person-level data never enters the public repo
+# (spec 0124; the committed scaffold is targets.example.csv).
+launch/outreach/targets.csv
