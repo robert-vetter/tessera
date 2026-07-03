@@ -1,0 +1,11 @@
+{
+  "dataset": "execution",
+  "synthetic": false,
+  "recorded_by": "scripts/record_real_execution.py",
+  "recorded": "2026-07-03",
+  "target": "github.com/robert-vetter/tessera-exec-oneshot",
+  "action": "incident",
+  "domain": "github_actions",
+  "question": "Why did run 27014662820 fail?",
+  "note": "One real, maintainer-approved GitHub execution (Milestone 15). The credential is never committed (the receipt carries no token by construction); GitHub's echoed response is scrubbed to number/html_url/state/title. Best-effort idempotent (ADR 0026): the embedded marker deduped any re-run made before this record existed; once this record exists, the recorder refuses to re-run (recording.guard_no_clobber)."
+}

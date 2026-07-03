@@ -342,11 +342,14 @@ data-derived execution (`tests/test_boundary.py`, `tests/test_actions_boundary.p
 client↔server session — grounded answers, the ER trail, a drafted incident and PR
 summary, a rendered create-issue and PR-comment payload, a simulated execution of each,
 and carried refusals — is committed at
-[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). Actually sending from
-this repository (a credentialed, irreversible real one-shot) is **Milestone 15, in
-flight**: the real path is now best-effort idempotent
-([ADR 0026](docs/adr/0026-best-effort-idempotency.md)) and the one-shot is a prepared
-maintainer command — **nothing has been sent yet**.
+[`data/mcp_session/TRANSCRIPT.md`](data/mcp_session/TRANSCRIPT.md). And the last edge has
+been crossed — **exactly once, on the record** (Milestone 15): a maintainer-approved,
+best-effort-idempotent ([ADR 0026](docs/adr/0026-best-effort-idempotency.md)) real
+one-shot created [`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1)
+from a grounded incident over a real CI failure; the scrubbed `ExecutionReceipt` is
+committed at [`data/execution/`](data/execution/). The default actuator everywhere —
+tests, CI, the MCP surface — remains the **simulated** one; CI never touches the real
+network.
 
 ### Data
 
@@ -395,7 +398,7 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus ten post-roadmap milestones**
+**Phases 0–4 complete, plus twelve post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
@@ -426,13 +429,16 @@ simulated actuator that sends nothing (the CI-verifiable core) plus an opt-in re
 both gated on a fully-grounded payload, with an execution receipt as the trust record
 (ADR 0025). Each of the four boundaries is *measured* to preserve faithfulness 1.0. The
 [write-up](docs/WRITEUP.md) tells the story — including what is honestly not yet done
-(more connectors, the registry-only ER floor, **actually sending** — M11–14 draft,
-verify, render, and simulate over MCP but send nothing from this repository — and true
-million-record scale). **Milestone 15** (actually sending behind approval, best-effort
-idempotent — ADR 0026) is in flight, and the plan from here — productization for real
-users on SAP-aligned rails — is **Act 2**: [`docs/ROADMAP2.md`](docs/ROADMAP2.md),
-grounded in a full repository audit ([`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md))
-and a sourced market snapshot ([`docs/MARKET.md`](docs/MARKET.md)).
+(more connectors, the registry-only ER floor, and true million-record scale).
+**Milestone 15** crossed the last edge of the execution arc — **actually sending behind
+approval**, best-effort idempotent (ADR 0026), exactly once, recorded as a committed
+scrubbed receipt ([`data/execution/`](data/execution/) →
+[`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1))
+— and **Milestone 16** preceded it with a full self-audit and trust-path hardening
+([`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md)). The plan from here —
+productization for real users on SAP-aligned rails — is **Act 2**:
+[`docs/ROADMAP2.md`](docs/ROADMAP2.md), grounded in that audit and a sourced market
+snapshot ([`docs/MARKET.md`](docs/MARKET.md)).
 
 ## License
 

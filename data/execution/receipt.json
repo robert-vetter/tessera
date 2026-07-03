@@ -1,0 +1,148 @@
+{
+  "kind": "incident",
+  "domain": "github_actions",
+  "question": "Why did run 27014662820 fail?",
+  "target": "github",
+  "route": {
+    "kind": "rca",
+    "reason": "names pipeline run 27014662820 — root-cause analysis"
+  },
+  "request": {
+    "method": "POST",
+    "path": "/repos/robert-vetter/tessera-exec-oneshot/issues",
+    "body": {
+      "title": "Process completed with exit code 1.",
+      "body": "## Failing run\nRun 27014662820 of workflow \"CI\" (pull_request on feat/0010-structured-ingestion-salt): status failed (failing step \"Format check\" in job \"gate\"), commit 63a47dea541f67243d1277335f4d41012954220a, started 2026-06-05T12:24:22Z — \"feat(ingestion): structured ingestion of SALT-shaped data into a common origin-tagged representation (Phase 1, Unit 1)\".\n\n## Error log\n```\nWould reformat: scripts/generate_salt_synthetic.py\nWould reformat: src/tessera/sources/salt.py\n2 files would be reformatted, 11 files already formatted\n##[error]Process completed with exit code 1.\n```\n\n---\n<!-- tessera-idempotency-key: sha256:08dc3d0cc63ad980b1443358f2812aacdc19679deec891e3d1a44a6f363cfd4e -->\n_Idempotency key `sha256:08dc3d0cc63ad980b1443358f2812aacdc19679deec891e3d1a44a6f363cfd4e` — Tessera (best-effort deduplicated)._",
+      "labels": [
+        "incident",
+        "idem-08dc3d0cc63ad980"
+      ]
+    }
+  },
+  "slots": [
+    {
+      "part": "title",
+      "role": "title",
+      "label": "",
+      "value": "Process completed with exit code 1.",
+      "verified": true,
+      "support": [
+        {
+          "id": "27014662820.failed:error1",
+          "source": "github_actions/logs/27014662820.failed.log",
+          "locator": {
+            "kind": "log-span",
+            "parts": [
+              [
+                "lines",
+                "8-11"
+              ],
+              [
+                "job",
+                "gate"
+              ],
+              [
+                "step",
+                "Format check"
+              ],
+              [
+                "section",
+                "error1"
+              ]
+            ],
+            "render": "lines 8-11, job gate, step Format check, section error1"
+          },
+          "ingested_at": "2026-06-16",
+          "text": "Would reformat: scripts/generate_salt_synthetic.py\nWould reformat: src/tessera/sources/salt.py\n2 files would be reformatted, 11 files already formatted\n##[error]Process completed with exit code 1."
+        }
+      ]
+    },
+    {
+      "part": "body",
+      "role": "failing_run",
+      "label": "Failing run",
+      "value": "Run 27014662820 of workflow \"CI\" (pull_request on feat/0010-structured-ingestion-salt): status failed (failing step \"Format check\" in job \"gate\"), commit 63a47dea541f67243d1277335f4d41012954220a, started 2026-06-05T12:24:22Z — \"feat(ingestion): structured ingestion of SALT-shaped data into a common origin-tagged representation (Phase 1, Unit 1)\".",
+      "verified": true,
+      "support": [
+        {
+          "id": "Run:27014662820",
+          "source": "github_actions/runs/27014662820.json",
+          "locator": {
+            "kind": "table-row",
+            "parts": [
+              [
+                "table",
+                "Run"
+              ],
+              [
+                "row",
+                "1"
+              ]
+            ],
+            "render": "table Run, row 1"
+          },
+          "ingested_at": "2026-06-16",
+          "text": "Run 27014662820 of workflow \"CI\" (pull_request on feat/0010-structured-ingestion-salt): status failed (failing step \"Format check\" in job \"gate\"), commit 63a47dea541f67243d1277335f4d41012954220a, started 2026-06-05T12:24:22Z — \"feat(ingestion): structured ingestion of SALT-shaped data into a common origin-tagged representation (Phase 1, Unit 1)\"."
+        }
+      ]
+    },
+    {
+      "part": "body",
+      "role": "log",
+      "label": "Error log",
+      "value": "Would reformat: scripts/generate_salt_synthetic.py\nWould reformat: src/tessera/sources/salt.py\n2 files would be reformatted, 11 files already formatted\n##[error]Process completed with exit code 1.",
+      "verified": true,
+      "support": [
+        {
+          "id": "27014662820.failed:error1",
+          "source": "github_actions/logs/27014662820.failed.log",
+          "locator": {
+            "kind": "log-span",
+            "parts": [
+              [
+                "lines",
+                "8-11"
+              ],
+              [
+                "job",
+                "gate"
+              ],
+              [
+                "step",
+                "Format check"
+              ],
+              [
+                "section",
+                "error1"
+              ]
+            ],
+            "render": "lines 8-11, job gate, step Format check, section error1"
+          },
+          "ingested_at": "2026-06-16",
+          "text": "Would reformat: scripts/generate_salt_synthetic.py\nWould reformat: src/tessera/sources/salt.py\n2 files would be reformatted, 11 files already formatted\n##[error]Process completed with exit code 1."
+        }
+      ]
+    }
+  ],
+  "actuator": "github",
+  "payload_grounded": true,
+  "all_grounded": true,
+  "executed": true,
+  "simulated": false,
+  "sent": true,
+  "withheld": false,
+  "withheld_reason": null,
+  "outcome": "created",
+  "result": {
+    "status": 201,
+    "response": {
+      "number": 1,
+      "html_url": "https://github.com/robert-vetter/tessera-exec-oneshot/issues/1",
+      "state": "open",
+      "title": "Process completed with exit code 1."
+    }
+  },
+  "idempotency_key": "sha256:08dc3d0cc63ad980b1443358f2812aacdc19679deec891e3d1a44a6f363cfd4e",
+  "approved": true,
+  "requires_approval": true
+}

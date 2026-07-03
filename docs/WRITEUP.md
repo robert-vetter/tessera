@@ -641,6 +641,55 @@ specs. The frozen core (`grounding`/`graph`/`resolution`/`ingestion`/the verifie
 vertical answer layers are **empty-diff** `milestone-13..HEAD`; the whole milestone is the
 additive execution layer plus the thin MCP tool.
 
+### Milestones 15–16: actually sending — once, hardened, on the record
+
+Milestone 14 stopped one step short of the wire on purpose. Milestone 15 takes the step,
+and Milestone 16 is the reason it could be taken responsibly: before the first real side
+effect, the project audited itself.
+
+**The hardening first (M15 Units 2–3 + the M16 audit).** GitHub offers no server-side
+idempotency for a create-issue, so the real path gained **best-effort client-side
+idempotency** (ADR 0026): a deterministic `sha256` key over the canonical grounded
+request, a marker embedded in the created issue, and a pre-send existence check that
+returns `exists`/`inconclusive` rather than ever silently duplicating. A full repository
+audit ([`AUDIT_2026-07-02.md`](AUDIT_2026-07-02.md)) then found eight findings —
+concentrated, tellingly, in this newest layer — and Milestone 16 fixed them before the
+send was allowed: the recorder can never clobber the historic receipt (persist only
+`created`/`exists`, refuse-before-network, exclusive-create), the idempotency pre-check
+became **label-independent** (GitHub silently drops labels for tokens without push
+access — dedup now rests only on the verified body marker), the credential can no longer
+leak through `repr`, fenced log/diff content cannot break out of its fence into a real
+issue, and the real transport **refuses redirects** (stdlib `urllib` would otherwise
+forward `Authorization` cross-origin and rewrite POST→GET — a moved repo could have
+minted a *false* `created` receipt). The mandated **5-lens adversarial review found three
+confirmed majors in these very fixes** — a boundary reconstruction still pinning the old
+fence rule, a MANIFEST note promising superseded behavior, and an ADR addendum that
+misstated its own ADR's history — all fixed before merge. The verifier's blind spots were
+named the same way (ADR 0005 addendum): over-citation is unpenalized, containment matches
+across word boundaries — both pinned by committed specimens — and refuse-kind cases are
+now inside the faithfulness accounting (measured effect: zero; reach: wider).
+
+**Then the send (2026-07-03).** The maintainer minted a least-privilege fine-grained PAT
+(Issues RW on one sandbox repo), and the one-shot ran. The first attempt failed — a
+read-only token answered 403 — and the recorder did exactly what the week's hardening
+says it must: printed the full scrubbed receipt for inspection, **persisted nothing**,
+exited non-zero, and left the retry unblocked. The second attempt, with the corrected
+token, created
+[`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1):
+a grounded incident for a **real** Tessera CI failure (run 27014662820, the Phase-1
+format-check break), every field traced to a verifier-passing claim, the idempotency
+marker and labels attached, `outcome="created"`, `sent=true`, status 201. The scrubbed
+`ExecutionReceipt` and its `MANIFEST` are committed at [`data/execution/`](../data/execution/)
+— the credential absent by construction, GitHub's echo reduced to
+`number`/`html_url`/`state`/`title`, gitleaks green. The ADR 0008 frozen-core audit over
+`milestone-14..HEAD` is clean: the only engine-adjacent deltas are the four sanctioned
+files (`agent/execution.py`, `agent/payloads.py`, `agent/recording.py`,
+`eval/harness.py`), each carried by its ADR or addendum.
+
+The arc that began at Milestone 11 is now closed end-to-end and *recorded*: an agent asks,
+Tessera grounds → drafts → renders → and has, exactly once, **acted** — with a receipt
+that proves what was sent, why it was allowed, and where every value came from.
+
 ## The generality proof
 
 Phase 3's milestone was not "a second vertical works" but "the **same,
@@ -789,10 +838,13 @@ executable-payload preview** that renders the exact GitHub request but sends not
 (Milestone 13, ADR 0024), *and* **effectful execution behind approval** — a simulated
 default actuator that sends nothing plus an opt-in real GitHub path, both gated on a
 fully-grounded payload, with an execution receipt as the trust record (Milestone 14, ADR
-0025). In flight as **Milestone 15**: actually sending from this repository — best-effort
-idempotency on the real path is engineered (ADR 0026) and the maintainer-authorized real
-one-shot (a credentialed, irreversible external side effect) is prepared; **as of this
-writing nothing has been sent**. Still deliberately deferred: a second
+0025). **Milestone 15 closed the arc: Tessera has actually sent — exactly once, on the
+record.** Best-effort idempotency on the real path is engineered (ADR 0026), and the
+maintainer-authorized one-shot created
+[`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1)
+on 2026-07-03; the scrubbed receipt is committed under `data/execution/`. The default
+everywhere remains the simulated actuator; CI still never touches the real network.
+Still deliberately deferred: a second
 payload target (Jira create-issue) · a second real connector (Jira / PR-and-issue export)
 · LLM-judged faithfulness alongside the deterministic floor · persistence, multi-tenancy,
 access governance.
