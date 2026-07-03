@@ -1,0 +1,8 @@
+{
+  "dataset": "agent_session",
+  "synthetic": false,
+  "recorded_by": "scripts/record_agent_session.py",
+  "recorded": "2026-07-03",
+  "agent_model": "claude-sonnet-5",
+  "note": "A real Claude agent driving Tessera over the tessera-mcp stdio server, given ONLY Tessera's seven MCP tools. Turn 1: a grounded RCA with cited evidence. Turn 2: run R-1041 PASSED, so ground() refuses and the agent reports the refusal instead of confabulating. Turn 3: draft -> preview -> execute ends at a SIMULATED receipt (sent=false). Tool results are deterministic (the engine is); the agent's phrasing is not, so this is a captured real run. Not run in CI (needs an Anthropic key + the agent extra)."
+}
