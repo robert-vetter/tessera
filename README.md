@@ -124,11 +124,26 @@ the environment builds and syncs automatically.
 
 ### Try the demo
 
-`uv run tessera` is one routed door: a deterministic router decides whether your
-question is a simple lookup, a one-entity cross-source composition, or
-multi-step reasoning — and prints its route and reason above the answer. Every
-claim traces to the specific source behind it; what cannot be answered honestly
-is refused with the reason.
+The fastest way to *see* it is the one-page web surface — ask a question, get
+claims with per-claim verifier chips, click through to the exact evidence, watch
+a principled refusal, and run an action from draft → dry-run payload → approval →
+receipt (all simulated; it holds no credential):
+
+```bash
+uv run tessera-ui            # → http://127.0.0.1:8033  (stdlib-only, zero JS)
+```
+
+To host it (key-free, public read-only) and the 3-minute demo script + one-pager:
+[`docs/DEMO.md`](docs/DEMO.md). The surface is a strict consumer of the same
+trust objects the MCP server exposes ([ADR 0027](docs/adr/0027-stdlib-web-ui.md));
+a real Claude agent doing the same three things through those tools is recorded at
+[`data/agent_session/TRANSCRIPT.md`](data/agent_session/TRANSCRIPT.md).
+
+`uv run tessera` is the CLI equivalent — one routed door: a deterministic router
+decides whether your question is a simple lookup, a one-entity cross-source
+composition, or multi-step reasoning — and prints its route and reason above the
+answer. Every claim traces to the specific source behind it; what cannot be
+answered honestly is refused with the reason.
 
 ```bash
 uv run tessera
