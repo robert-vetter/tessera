@@ -143,6 +143,18 @@ trust objects the MCP server exposes ([ADR 0027](docs/adr/0027-stdlib-web-ui.md)
 a real Claude agent doing the same three things through those tools is recorded at
 [`data/agent_session/TRANSCRIPT.md`](data/agent_session/TRANSCRIPT.md).
 
+**On your own repository** (Milestone 18,
+[ADR 0028](docs/adr/0028-byo-connector-workspace-boundary.md)): point Tessera at
+any public GitHub repo's CI history and ask why a run failed — grounded RCA with
+the same claim-level provenance, over a local, gitignored, scrubbed snapshot
+(answers are offline; an optional no-scope `GITHUB_TOKEN` unlocks failed-run
+logs — see [`.env.example`](.env.example)):
+
+```bash
+uv run tessera connect github astral-sh/uv     # bounded snapshot → var/connect/
+uv run tessera ask astral-sh/uv "Why did run 28641345176 fail?"
+```
+
 `uv run tessera` is the CLI equivalent — one routed door: a deterministic router
 decides whether your question is a simple lookup, a one-entity cross-source
 composition, or multi-step reasoning — and prints its route and reason above the

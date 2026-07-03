@@ -24,3 +24,7 @@ site/
 
 # Editor
 .idea/
+
+# BYO workspaces (Milestone 18, ADR 0028): local snapshots of foreign data —
+# fetched by `tessera connect`, read by `tessera ask`, NEVER committed.
+var/
