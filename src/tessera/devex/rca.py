@@ -23,6 +23,7 @@ import re
 
 from tessera.graph import KnowledgeGraph, Node
 from tessera.grounding import Answer, Claim
+from tessera.resolution import normalize
 
 # A run is named by the synthetic 'R-####' id OR a real GitHub Actions run id
 # (8+ digits) — the same RCA path serves both the synthetic corpus and the real
@@ -36,6 +37,14 @@ _ERROR_LINE = re.compile(r"ERROR \S+: (.+)$", re.MULTILINE)
 # synthetic logs still match _ERROR_LINE first, so their numbers do not move.
 _GH_ERROR_MARKER = "##[error]"
 _GH_ERROR_LINE = re.compile(r"##\[error\](.+)$", re.MULTILINE)
+# The information-free runner trailer ('##[error]Process completed with exit
+# code 1.'): a valid failure marker but a weak recurrence signature — two
+# unrelated failures share it. Preferred AGAINST when any sharper error line
+# exists (spec 0126); when a log carries nothing else, it is still used, and
+# `tessera smoke` still warns on the resulting weak recurrence claim.
+# Negative codes are real on Windows runners (review finding: `-?`); this
+# regex and smoke's `_TRAILER` encode the same definition and move together.
+_GENERIC_TRAILER = re.compile(r"^Process completed with exit code -?\d+\.?$")
 
 NO_RUN_REFUSAL = (
     "I can't find a pipeline run in that question — name one, "
@@ -67,19 +76,49 @@ def _error_chunks(chunks: list[Node]) -> list[Node]:
     ]
 
 
-def _signature(chunks: list[Node]) -> str | None:
-    """The first error signature in the run's error chunks — the synthetic
-    'ERROR <svc>: …' shape, else the first real '##[error]' line. The most
-    specific line is taken (e.g. 'Creating Pages deployment failed'), not a
-    generic trailer like 'Process completed with exit code 1'."""
-    for chunk in chunks:
-        match = _ERROR_LINE.search(chunk.record.text)
-        if match:
-            return match.group(1)
-        gh_match = _GH_ERROR_LINE.search(chunk.record.text)
-        if gh_match:
-            return gh_match.group(1).strip()
-    return None
+def _error_lines(chunk: Node) -> list[str]:
+    """Every parseable error line in one chunk: the synthetic 'ERROR <svc>: …'
+    shape's lines first (the same per-chunk precedence the old single-line
+    scan had), then the real '##[error]' shape's, each in document order.
+    Whitespace-only remainders (a bare '##[error]   ' marker) are dropped —
+    an empty signature would "appear" in every record (review finding)."""
+    text = chunk.record.text
+    lines = [match.group(1) for match in _ERROR_LINE.finditer(text)]
+    lines.extend(match.group(1).strip() for match in _GH_ERROR_LINE.finditer(text))
+    return [line for line in lines if line.strip()]
+
+
+def _verifiable(line: str) -> bool:
+    """Only fragments the shared-fragment grammar can actually check.
+
+    The verifier parses '"FRAGMENT" appears in …' — a double quote inside the
+    fragment breaks or truncates that parse — and requires the normalized
+    fragment to be non-empty (a non-alphanumeric-only line normalizes to "").
+    A candidate failing either would yield a claim our OWN verifier rejects;
+    emitting one is forbidden (ADR 0005, spec 0029), so it is never selected
+    (review finding — the sharper-preference must not outrun the grammar)."""
+    return '"' not in line and bool(normalize(line))
+
+
+def _signature(chunks: list[Node]) -> tuple[str, Node] | None:
+    """The run's error signature and the chunk it was extracted from.
+
+    Selection (spec 0126): the first VERIFIABLE, NON-GENERIC error line
+    across the run's error chunks (e.g. 'Creating Pages deployment failed');
+    else the first verifiable line of any kind — so a trailer-only log still
+    yields the weak 'Process completed with exit code N.' signature, which
+    `tessera smoke` flags; else None, and the RCA answer simply carries no
+    recurrence/incident claims (verbatim error chunks still speak). Returning
+    the extraction chunk makes it the shared-fragment anchor — the old
+    `error_chunks[0]` broke on logs whose first error-marked chunk carries no
+    parseable error line (the M18 mkdocs smoke FAIL), and an
+    incidentally-matching earlier chunk must not displace the true source."""
+    candidates = [(line, chunk) for chunk in chunks for line in _error_lines(chunk)]
+    verifiable = [pair for pair in candidates if _verifiable(pair[0])]
+    for line, chunk in verifiable:
+        if not _GENERIC_TRAILER.match(line):
+            return line, chunk
+    return verifiable[0] if verifiable else None
 
 
 def _shared_fragment_claim(fragment: str, supports: list[Node], label: str) -> Claim:
@@ -121,9 +160,9 @@ def explain_failure(question: str, graph: KnowledgeGraph) -> Answer:
         Claim(text=chunk.record.text, support=(chunk.record,)) for chunk in error_chunks
     )
 
-    signature = _signature(error_chunks)
-    if signature is not None and error_chunks:
-        anchor = error_chunks[0]
+    found = _signature(error_chunks)
+    if found is not None:
+        signature, anchor = found
 
         # 3) Recurrence: the same signature in an EARLIER run's log.
         started = run.attr("started") or ""

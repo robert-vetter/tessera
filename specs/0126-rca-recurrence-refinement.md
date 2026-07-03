@@ -65,6 +65,34 @@ smoke battery on `mkdocs/mkdocs` (a real FAIL — the battery working):
    verifier-checked claims): one focused correctness/behavior review;
    findings fixed or recorded.
 
+**Review amendments (2026-07-03 — 1 MAJOR, 2 MINOR, 1 NIT, all fixed):**
+
+6. **Signature candidates are verifier-aware** (the MAJOR): the sharper
+   preference as first written could select fragments the shared-fragment
+   grammar structurally cannot check — a line containing `"` (breaks the
+   verifier's parse) or one normalizing to empty (non-Latin /
+   punctuation-only) — re-opening the claims-supported FAIL class on
+   realistic foreign logs (demonstrated: `Missing config key "docs_dir"`).
+   Now: prefer the first verifiable non-generic line, else the first
+   verifiable line; if **no** verifiable candidate exists, emit **no**
+   recurrence/incident claim at all (a claim our own verifier rejects is
+   forbidden — ADR 0005 / spec 0029; the verbatim error chunks still
+   speak). Whitespace-only `##[error]` remainders are dropped as
+   candidates (empty "appears" everywhere and verifies nowhere).
+7. **Negative exit codes are generic too** (`-?\d+`), and — a recorded
+   scope amendment — `smoke`'s `_TRAILER` regex gets the same one-token
+   change: the two regexes encode one definition of "generic trailer";
+   moving one without the other would let a negative-code trailer count
+   as "sharp" in rca yet escape the smoke WARN. (`The operation was
+   canceled.` was noted as another information-free runner line —
+   semantics, out of scope, recorded here.)
+8. **The anchor is the extraction chunk** — `_signature` returns
+   `(line, chunk)`, so an earlier error-marked chunk that merely quotes
+   the signature text incidentally can never displace the true source
+   (and the unreachable `ValueError` path is gone).
+   All four review shapes are pinned as fixtures; the committed-corpora
+   render diff was re-run after the fixes: still byte-identical.
+
 ## Acceptance criteria
 
 - [ ] Both fixes implemented in `tessera/devex/rca.py` (vertical layer
