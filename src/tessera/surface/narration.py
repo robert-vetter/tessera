@@ -12,6 +12,7 @@ degrades to plain deterministic rendering.
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 
 from tessera.grounding import Answer
 from tessera.platform.providers import ModelProvider, ProviderError
@@ -51,18 +52,21 @@ DISCARDED_NOTICE = (
 )
 
 
-def narrate(answer: Answer, provider: ModelProvider) -> tuple[str | None, str | None]:
-    """``(narration, notice)`` for a grounded answer.
+def narrate_texts(
+    question: str, claim_texts: Sequence[str], provider: ModelProvider
+) -> tuple[str | None, str | None]:
+    """``(narration, notice)`` for already-verified claim texts — the one
+    narration core every surface shares (the chat session narrates an engine
+    ``Answer``; the web UI narrates a boundary ``GroundedResult``; both reduce
+    to question + verified claim texts, so the ADR 0013 guard runs identically).
 
     Narration is ``None`` whenever deterministic rendering must stand alone:
-    refusals (already one honest sentence), provider failure (silent
-    degradation, ADR 0013), or a guard rejection — the only case that also
-    carries an honest ``notice`` for the user.
-    """
-    if not answer.is_grounded:
+    nothing to narrate, provider failure (silent degradation, ADR 0013), or a
+    guard rejection — the only case that also carries an honest ``notice``."""
+    if not claim_texts:
         return None, None
-    claims_text = "\n".join(f"- {claim.text}" for claim in answer.claims)
-    prompt = f"Question: {answer.question}\n\nVerified claims:\n{claims_text}"
+    claims_text = "\n".join(f"- {text}" for text in claim_texts)
+    prompt = f"Question: {question}\n\nVerified claims:\n{claims_text}"
     try:
         narration = provider.complete(SYSTEM_PROMPT, prompt).strip()
     except ProviderError:
@@ -72,3 +76,14 @@ def narrate(answer: Answer, provider: ModelProvider) -> tuple[str | None, str | 
     if introduces_new_facts(narration, prompt):
         return None, DISCARDED_NOTICE
     return narration, None
+
+
+def narrate(answer: Answer, provider: ModelProvider) -> tuple[str | None, str | None]:
+    """``(narration, notice)`` for a grounded engine answer — refusals are never
+    narrated (already one honest sentence); everything else delegates to
+    :func:`narrate_texts`."""
+    if not answer.is_grounded:
+        return None, None
+    return narrate_texts(
+        answer.question, [claim.text for claim in answer.claims], provider
+    )

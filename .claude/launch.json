@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tessera-ui",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "tessera-ui", "--port", "8033"],
+      "port": 8033
+    }
+  ]
+}
