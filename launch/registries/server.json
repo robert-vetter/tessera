@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.robert-vetter/tessera",
+  "title": "Tessera — the evidence layer for AI agents",
+  "description": "Grounded answers with claim-level provenance over your data (CI runs, CSVs, documents); refuses when evidence is insufficient; drafts actions only from verifier-passing claims, previews the exact request, and executes behind approval with an auditable receipt (the public server's actuator is simulated: sent=false, no credential). Deterministic — no LLM in the trust path.",
+  "version": "0.1.0",
+  "websiteUrl": "https://robert-vetter-tessera.hf.space",
+  "repository": {
+    "url": "https://github.com/robert-vetter/tessera",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "tessera-trust",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

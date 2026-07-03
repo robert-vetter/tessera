@@ -13,6 +13,12 @@ Every answer traceable to its evidence — across structured *and* unstructured 
      It was deliberately withheld until the number was real and gated (Phase 1).
      A code-coverage badge remains deferred: no coverage tooling exists yet. -->
 
+<!-- MCP Registry ownership marker (spec 0123): the official registry
+     validates PyPI-package ownership by finding this name in the package
+     README. Must match launch/registries/server.json; pinned by
+     tests/test_registry_artifacts.py.
+     mcp-name: io.github.robert-vetter/tessera -->
+
 > *Working name. A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture. That is exactly what this system does with enterprise data. Rename freely.*
 
 ---
