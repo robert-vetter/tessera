@@ -43,3 +43,4 @@ An ADR captures a single decision that is **expensive to reverse**, the context 
 - [0026](0026-best-effort-idempotency.md) — Best-effort client-side idempotency on the real execution path (Milestone 15)
 - [0027](0027-stdlib-web-ui.md) — The web surface: pure stdlib, zero JavaScript, no credential (Milestone 17)
 - [0028](0028-byo-connector-workspace-boundary.md) — BYO connect: fetch-to-local-workspace, offline answers, optional no-scope token (Milestone 18)
+- [0029](0029-declared-ingest-config.md) — `tessera ingest <dir>` driven by a declared stdlib-TOML config (Milestone 18)

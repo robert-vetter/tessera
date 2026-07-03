@@ -1,0 +1,32 @@
+# Declared ingestion mapping for `tessera ingest data/ingest_demo` (ADR 0029).
+# A worked example of the BYO config: two CSV tables joined by a foreign key,
+# plus a Markdown document. The `state` match field keeps the two cities named
+# "Portland" (Oregon vs Maine) distinct, so asking about "Portland" by name
+# alone is ambiguous and refused rather than silently merged.
+
+name = "us-cities-demo"
+snapshot_date = "2026-07-03"
+
+[[tables]]
+name = "city"
+file = "cities.csv"
+id = "id"
+display_name = "name"            # the entity name → entity resolution
+match_fields = ["state"]         # corroborates a name match; splits the Portlands
+attributes = ["state"]           # attached to the node for match_fields
+text = "{name}, {state}: population {population}, founded {founded}."
+
+  [[tables.edges]]
+  column = "region_id"           # FK → the region table's id
+  to = "region"
+  relation = "in_region"
+
+[[tables]]
+name = "region"
+file = "regions.csv"
+id = "id"
+display_name = "region_name"
+text = "{region_name}: {summary}"
+
+[[documents]]
+file = "notes.md"
