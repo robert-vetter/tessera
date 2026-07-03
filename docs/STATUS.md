@@ -2089,3 +2089,88 @@ nothing.
 **State of the tree**
 - `main` green and in sync; no open unit branches. PRs #126–#135 merged.
   **Tagged `milestone-15` + `milestone-16` + `milestone-17`.**
+
+---
+
+## 2026-07-03 — Milestone 18 COMPLETE (usable on your data — the BYO doors)
+
+**Mode note:** ran autonomously from the maintainer's M18 kickoff, per CLAUDE.md
+discipline — one spec per unit (spec before code), branch first, gate → PR →
+CI-green → squash-merge per unit; pre-merge adversarial multi-agent review on
+the two trust-bearing units; decisions recorded in specs/ADRs, not asked. The
+engine stayed frozen throughout: the ADR 0008 empty-diff audit closes clean.
+
+**Done this session (PRs #138–#142, specs 0117–0121, ADR 0028 + 0029):**
+- **Plan** (spec 0117, #138): the three kickoff decision areas recorded, one
+  amended by measurement — GitHub 403s **log content** on public repos without a
+  token, so the optional no-scope `GITHUB_TOKEN` unlocks logs as well as raising
+  rate limits (never required, never in CI, never at answer time).
+- **Unit 2 — `tessera connect github` + `ask`** (spec 0118, ADR 0028, #139):
+  bounded scrubbed snapshot → gitignored `var/connect/` → offline grounded RCA
+  through the **unchanged** `GitHubActionsSource` + DevEx RCA, workspace-rebased
+  provenance; passed/unknown runs refuse. Three-lens pre-merge review; 2 MAJORs
+  + several MINORs fixed (control-sequence neutralization of all foreign text
+  incl. the manifest's own miss strings; network errors → clean `ConnectError`;
+  line-local scrub; TSV name/redirect hardening; more).
+- **Unit 3 — `tessera smoke`** (spec 0119, #140): auto-derived per-repo
+  trust-floor battery (runs-parse, failed-run-grounds, claims-supported via the
+  eval's own `is_supported`, provenance-resolves, refusals-fire) + a
+  recurrence-trailer WARN. Reported, never CI-gated.
+- **Unit 4 — `tessera ingest <dir>` + `ask`** (spec 0120, ADR 0029, #141):
+  declared `tessera.toml` (stdlib `tomllib`) → CSV + Markdown through the one
+  door, multi-field ER, document-mention linking; vertical-neutral answer layer
+  refuses on an **ambiguous name**. Committed public-domain demo corpus
+  (`data/ingest_demo/`, a deliberate Portland OR/ME ambiguity). Three-lens
+  review; 3 MAJORs fixed (template render crash, control-sequence injection,
+  id/table-name collisions) + path-confinement/glob-scoping guards.
+- **Unit 5 — `docs/PILOT.md`** (spec 0121, #142): the "pilot in a day" runbook
+  — both BYO paths, the audit artifact, first-class honest limits; success
+  criterion measured (<30 min from clone; ~20s mechanical).
+
+**Live proof (recorded; workspaces stay local per spec 0117 decision 2):**
+- `simonw/llm` (small): connect (17 req) → grounded RCA on run 28608226231
+  (cog-check failure) → `smoke` all hard checks PASS + recurrence WARN.
+- `astral-sh/uv` (large): connect (18 req) → grounded RCA on run 28641345176
+  (cargo-test failure) → `smoke` all hard checks PASS (no recurrence WARN).
+- `data/ingest_demo`: "Portland" refuses as ambiguous; "Santa Fe" returns its
+  row + region (FK) + note (mention), 3 verifier-passed claims; lexical + zero-
+  overlap refusal both work.
+- **Honest scope:** generality claimed for exactly these two repos + the
+  committed corpus. A third repo (`mkdocs/mkdocs`) had `smoke` surface a real
+  `claims-supported` FAIL — the smoke battery doing its job. Diagnosed: a frozen
+  `devex/rca.py` edge (the recurrence claim's anchor is `error_chunks[0]`, which
+  on some logs is an error-marked chunk lacking the extracted signature, so the
+  shared-fragment verifier rejects it). Deferred named future work (frozen file).
+
+**Milestone 18 check (spec 0117):** connect+ask ✓ (Unit 2, reviewed); smoke ✓
+(Unit 3, run on both corpora); ingest+ask with ambiguity refusal ✓ (Unit 4,
+reviewed); PILOT.md ✓ (Unit 5); **ADR 0008 frozen-core empty-diff audit
+`milestone-17..HEAD` CLEAN** (frozen list byte-identical; only new files +
+the one `pyproject.toml` entry-point line); six eval lines byte-identical;
+CHANGELOG `[milestone-18]`. **Met. Tagged `milestone-18`.**
+
+**Current eval numbers (unchanged — the engine is frozen)**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- 536 tests (+57 across the BYO units); gate green on every PR; CI offline/key-free.
+
+**Next — Milestone 19 (ROADMAP2): launch & traction.** Be findable (MCP
+registries), publish "The Faithfulness Floor" benchmark, Show HN + outreach to
+the DACH consultancy list offering the M18 pilot, the Z Fellows check-in kit.
+Kickoff prompt handed back in the session summary.
+
+**Open questions / risks**
+- **Maintainer decisions still open** (unchanged from M17): GitHub Pages source
+  toggle (docs build green, deploy 404s), SALT HF access request, HANA instance
+  health, BTP account, Z Fellows check-in date, launch consent. Dependabot
+  #59/#60.
+- The 2–3-minute demo video over the live HF Space (script `docs/DEMO.md` §2)
+  remains the one M17-adjacent asset; it gates nothing.
+- Named frozen-`rca.py` future work: recurrence signature (skip generic
+  trailers) + recurrence anchor (cite the signature's own chunk) — both to be
+  done openly in a later milestone with the batteries re-run.
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #138–#142 merged.
+  **Tagged `milestone-15` + `milestone-16` + `milestone-17` + `milestone-18`.**
