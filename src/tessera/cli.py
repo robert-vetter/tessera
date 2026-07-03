@@ -25,7 +25,8 @@ tessera — grounded answers with claim-level provenance.
 Bring-your-own-data (Milestone 18):
   tessera connect github <owner>/<repo>   fetch a bounded, scrubbed snapshot
   tessera ask <owner>/<repo> "<question>" answer over it, offline
-  (smoke, ingest — later Milestone 18 units)
+  tessera smoke <owner>/<repo>            check the trust contract holds on it
+  (ingest — a later Milestone 18 unit)
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
@@ -42,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         print(_TOP_HELP)
         return 0
     if args and args[0] in _BYO_COMMANDS:
-        if args[0] in ("connect", "ask"):
+        if args[0] in ("connect", "ask", "smoke"):
             from tessera.connect.cli import main as connect_main
 
             return connect_main(args)
