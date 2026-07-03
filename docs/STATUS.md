@@ -2044,3 +2044,48 @@ account). Everything not gated on hosting is landed and green.
 - `main` green and in sync; no open unit branches. PRs #126–#131 merged.
   Tagged `milestone-15` + `milestone-16`; **`milestone-17` pends the hosted
   deploy.**
+
+---
+
+## 2026-07-03 — Milestone 17 COMPLETE (the hosted demo is live; anyone can try it)
+
+**The close.** The maintainer deployed the two-file Hugging Face Docker Space
+(`deploy/hf-space/`, PRs #134/#135 — one YAML-limit fix hit and folded back
+into the template) under his own account, card-free on the free CPU tier.
+**Verified live from outside** (2026-07-03):
+<https://robert-vetter-tessera.hf.space> — Space `RUNNING` on `cpu-basic`;
+index 200 with the ask form + measured-floor table; the R-1042 RCA renders
+verifier-checked chips; the full CSP + nosniff survive HF's proxy;
+`POST /execute` returns the simulated receipt (`outcome: simulated`,
+`sent: false`). The Z Fellows commitment — "a live demo anyone can try" — is
+**live, working, documented**.
+
+- README + `docs/DEMO.md` now carry the live URL; CHANGELOG rolled
+  (`[milestone-17]`).
+- **Milestone 17 check (spec 0112):** narration live ✓ (Unit 2); the web
+  surface with 0-major reviews ✓ (Unit 3); the recorded real-agent session ✓
+  (Unit 4); hosting runbook + script + one-pager ✓ (Unit 5); hosted demo
+  **live** ✓ (the tag condition, decision 5). Eval byte-identical throughout;
+  479 tests. **Met. Tagged `milestone-17`.**
+
+**Next — Milestone 18 (ROADMAP2): usable on your data.**
+`tessera connect github <owner/repo>` (grounded RCA over a foreign repo's real
+CI failures; the design-partner pilot vehicle) + `tessera ingest <dir>`
+(CSV + Markdown with declared match fields) + the "pilot in a day" runbook —
+BYO paths with their own boundary tests, engine untouched. Then M19 (launch &
+traction). The maintainer's 2–3-minute video over the live demo
+(script: `docs/DEMO.md` §2) is the remaining M17-adjacent asset — it gates
+nothing.
+
+**Open questions / risks**
+- GitHub Pages settings lapse still open (docs build green, deploy 404s) —
+  one toggle: Settings → Pages → Source: GitHub Actions.
+- Remaining ROADMAP2 decisions: HANA instance health, SALT HF access request
+  (the maintainer now HAS the HF account — request it), BTP account, the
+  Z Fellows check-in date, launch consent. Dependabot #59/#60.
+- Free-tier note: the Space sleeps after ~48 h idle and wakes on visit; before
+  a live presentation, open it once.
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #126–#135 merged.
+  **Tagged `milestone-15` + `milestone-16` + `milestone-17`.**
