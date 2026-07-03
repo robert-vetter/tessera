@@ -697,9 +697,9 @@ def test_dispatcher_routes_subcommands_and_falls_through(
     assert front_door.main(["Which customers renew in Q3?"]) == 0
     assert seen["argv"] == ["Which customers renew in Q3?"]
 
-    # Reserved-but-not-yet-shipped subcommands say so and exit 2.
-    assert front_door.main(["smoke", "acme/widgets"]) == 2
-    assert front_door.main(["ingest", "./some-dir"]) == 2
+    # BYO subcommands route to the connect CLI and fail honestly on bad input.
+    assert front_door.main(["smoke", "acme/widgets"]) == 2  # not connected
+    assert front_door.main(["ingest", "./no-such-dir"]) == 1  # no tessera.toml
 
     # `ask` on an unconnected target routes to the connect CLI's honest error.
     assert front_door.main(["ask", "nobody/nothing", "Why did run 1 fail?"]) == 2

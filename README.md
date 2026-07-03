@@ -157,6 +157,19 @@ uv run tessera connect github astral-sh/uv     # bounded snapshot → var/connec
 uv run tessera ask astral-sh/uv "Why did run <run-id> fail?"
 ```
 
+**On your own CSV + Markdown** (Milestone 18,
+[ADR 0029](docs/adr/0029-declared-ingest-config.md)): describe a directory with a
+small [`tessera.toml`](data/ingest_demo/tessera.toml) and get the same grounded,
+provenance-carrying answers — with multi-field entity resolution and an honest
+refusal when a name is ambiguous. A committed public-domain demo corpus is
+included:
+
+```bash
+uv run tessera ingest data/ingest_demo
+uv run tessera ask data/ingest_demo "What do you know about Santa Fe?"
+uv run tessera ask data/ingest_demo "Tell me about Portland"   # → ambiguous, refused
+```
+
 `uv run tessera` is the CLI equivalent — one routed door: a deterministic router
 decides whether your question is a simple lookup, a one-entity cross-source
 composition, or multi-step reasoning — and prints its route and reason above the
