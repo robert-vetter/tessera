@@ -98,6 +98,14 @@ def _show_claim(session: ChatSession, number: int) -> str:
     return "\n".join(lines).rstrip()
 
 
+def _metric(value: object) -> str:
+    """A recorded metric, human-readable: floats to three decimals (the eval's
+    own reporting precision), everything else (ints, None → '?') as-is."""
+    if isinstance(value, float):
+        return f"{value:.3f}"
+    return "?" if value is None else str(value)
+
+
 def _trust_panel() -> str:
     """The recorded story: the latest eval history entry, made readable."""
     if not _HISTORY_PATH.is_file():
@@ -109,10 +117,11 @@ def _trust_panel() -> str:
         gold, synthetic = battery.get("gold", {}), battery.get("synthetic", {})
         lines.append(
             f"  [{battery.get('name')}] gold {gold.get('cases')} cases: "
-            f"faithfulness {gold.get('faithfulness')}, coverage "
-            f"{gold.get('coverage')}, quality {gold.get('quality')} · "
+            f"faithfulness {_metric(gold.get('faithfulness'))}, coverage "
+            f"{_metric(gold.get('coverage'))}, quality "
+            f"{_metric(gold.get('quality'))} · "
             f"synthetic {synthetic.get('cases')} cases: faithfulness "
-            f"{synthetic.get('faithfulness')}"
+            f"{_metric(synthetic.get('faithfulness'))}"
         )
     lines.append("  floor: any faithfulness < 1.0 fails the build (tessera-eval, CI).")
     return "\n".join(lines)
