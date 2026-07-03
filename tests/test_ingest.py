@@ -176,6 +176,44 @@ text = "{id.__class__}"
         DirSource(config).ingest()
 
 
+def test_template_nested_format_spec_field_is_rejected(tmp_path: Path) -> None:
+    # A replacement field hidden in a format spec must not bypass the allowlist
+    # (str.format's own recursion would otherwise reach attribute traversal).
+    toml = """
+name = "x"
+[[tables]]
+name = "a"
+file = "a.csv"
+id = "id"
+text = "{id:{id.__class__}}"
+"""
+    _write(tmp_path, toml, a__csv="id\n1\n")
+    config = load_config(tmp_path)
+    with pytest.raises(IngestConfigError, match="unsupported field"):
+        DirSource(config).ingest()
+
+
+def test_file_outside_the_dir_is_refused(tmp_path: Path) -> None:
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    (tmp_path / "secret.csv").write_text("k,v\nx,leaked\n", "utf-8")
+    (corpus / "tessera.toml").write_text(
+        'name="t"\n[[tables]]\nname="a"\nfile="../secret.csv"\nid="k"\ntext="{k}"\n',
+        "utf-8",
+    )
+    config = load_config(corpus)
+    with pytest.raises(IngestConfigError, match="outside the ingested directory"):
+        DirSource(config).ingest()
+
+
+def test_duplicate_id_is_refused(tmp_path: Path) -> None:
+    toml = 'name="t"\n[[tables]]\nname="a"\nfile="a.csv"\nid="k"\ntext="{k}"\n'
+    _write(tmp_path, toml, a__csv="k,v\ndup,1\ndup,2\n")
+    config = load_config(tmp_path)
+    with pytest.raises(IngestConfigError, match="duplicate id"):
+        DirSource(config).ingest()
+
+
 def test_missing_template_column_is_named(tmp_path: Path) -> None:
     toml = """
 name = "x"
@@ -189,3 +227,97 @@ text = "{id} in {city}"
     config = load_config(tmp_path)
     with pytest.raises(IngestConfigError, match="city"):
         DirSource(config).ingest()
+
+
+def test_nested_spec_render_failure_is_a_clean_error(tmp_path: Path) -> None:
+    # A nested-format-spec field whose runtime value is not a valid spec must
+    # yield IngestConfigError, not a raw ValueError traceback (review M1).
+    toml = """
+name = "x"
+[[tables]]
+name = "a"
+file = "a.csv"
+id = "id"
+text = "{id:{width}}"
+"""
+    _write(tmp_path, toml, a__csv="id,width\n1,notaspec\n")
+    config = load_config(tmp_path)
+    with pytest.raises(IngestConfigError, match="could not render"):
+        DirSource(config).ingest()
+
+
+def test_control_sequences_in_content_are_neutralized(tmp_path: Path) -> None:
+    # ANSI/OSC escapes in a CSV cell or Markdown line must not reach a claim
+    # verbatim (review M2 — the connect door scrubs the same hazard).
+    toml = """
+name = "x"
+[[tables]]
+name = "a"
+file = "a.csv"
+id = "id"
+text = "{id}: {label}"
+[[documents]]
+file = "d.md"
+"""
+    _write(
+        tmp_path,
+        toml,
+        a__csv="id,label\n1,\x1b[31mred\x1b[0m\x07\n",
+        d__md="# Doc\n\nline \x1b[2Jwith escape\n",
+    )
+    config = load_config(tmp_path)
+    for record in DirSource(config).ingest():
+        assert "\x1b" not in record.text and "\x07" not in record.text
+
+
+def test_duplicate_table_name_is_refused(tmp_path: Path) -> None:
+    toml = """
+name = "x"
+[[tables]]
+name = "a"
+file = "a.csv"
+id = "id"
+text = "{id}"
+[[tables]]
+name = "a"
+file = "b.csv"
+id = "id"
+text = "{id}"
+"""
+    _write(tmp_path, toml, a__csv="id\n1\n", b__csv="id\n2\n")
+    with pytest.raises(IngestConfigError, match="duplicate table name"):
+        load_config(tmp_path)
+
+
+def test_reserved_table_name_document_is_refused(tmp_path: Path) -> None:
+    toml = """
+name = "x"
+[[tables]]
+name = "document"
+file = "a.csv"
+id = "id"
+text = "{id}"
+"""
+    _write(tmp_path, toml, a__csv="id\n1\n")
+    with pytest.raises(IngestConfigError, match="reserved name"):
+        load_config(tmp_path)
+
+
+def test_glob_does_not_ingest_config_or_table_files(tmp_path: Path) -> None:
+    toml = """
+name = "x"
+[[tables]]
+name = "a"
+file = "a.csv"
+id = "id"
+text = "{id}"
+[[documents]]
+glob = "*"
+"""
+    _write(tmp_path, toml, a__csv="id\n1\n", notes__md="# real doc\n\nbody\n")
+    config = load_config(tmp_path)
+    docs = [
+        r for r in DirSource(config).ingest() if r.origin.locator.kind == "doc-span"
+    ]
+    sources = {r.origin.source for r in docs}
+    assert sources == {"x/notes.md"}  # not tessera.toml, not a.csv

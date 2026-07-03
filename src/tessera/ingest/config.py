@@ -67,28 +67,47 @@ class IngestConfig:
         return next((t for t in self.tables if t.name == name), None)
 
 
+def _valid_field(name: str) -> bool:
+    """A plain ``{column}`` field: non-empty, not positional (all-digit), and
+    only alphanumerics/underscores — so no attribute (``{x.y}``), index
+    (``{x[y]}``), or positional (``{0}``/``{}``) access reaches ``str.format``."""
+    return bool(name) and not name.isdigit() and name.replace("_", "").isalnum()
+
+
 def template_fields(template: str) -> list[str]:
-    """The plain field names referenced by a row-text template.
+    """The plain field names a row-text template references, recursing into
+    format specs.
+
+    Nested replacement fields inside a format spec (``{a:>{b}}``) are NOT
+    surfaced by a single ``Formatter.parse`` pass, so a naive check would let
+    ``{name:{state.__class__}}`` slip through and reach ``str.format`` as an
+    attribute traversal / raw ``ValueError``. Recursing closes that.
 
     Raises :class:`IngestConfigError` on a malformed template or on any field
-    that uses attribute/index access (disallowed — see module docstring).
+    that is not a plain ``{column}`` name.
     """
     fields: list[str] = []
-    try:
-        parsed = list(_FORMATTER.parse(template))
-    except ValueError as error:
-        raise IngestConfigError(
-            f"malformed text template {template!r}: {error}"
-        ) from error
-    for _literal, field_name, _spec, _conv in parsed:
-        if field_name is None:
-            continue
-        if field_name == "" or not field_name.replace("_", "").isalnum():
+
+    def walk(fragment: str) -> None:
+        try:
+            parsed = list(_FORMATTER.parse(fragment))
+        except ValueError as error:
             raise IngestConfigError(
-                f"text template {template!r} uses an unsupported field "
-                f"{field_name!r} — only plain {{column}} names are allowed."
-            )
-        fields.append(field_name)
+                f"malformed text template {template!r}: {error}"
+            ) from error
+        for _literal, field_name, spec, _conv in parsed:
+            if field_name is None:
+                continue
+            if not _valid_field(field_name):
+                raise IngestConfigError(
+                    f"text template {template!r} uses an unsupported field "
+                    f"{field_name!r} — only plain {{column}} names are allowed."
+                )
+            fields.append(field_name)
+            if spec:  # a format spec may itself carry replacement fields
+                walk(spec)
+
+    walk(template)
     return fields
 
 
@@ -109,6 +128,7 @@ def load_config(directory: Path) -> IngestConfig:
     tables = tuple(_table(raw_table, path) for raw_table in _list(raw, "tables", path))
     if not tables:
         raise IngestConfigError(f"{path}: at least one [[tables]] entry is required.")
+    _validate_table_names(tables, path)
     _validate_edges(tables, path)
     documents = tuple(_doc(raw_doc, path) for raw_doc in _list(raw, "documents", path))
 
@@ -193,6 +213,33 @@ def _doc(raw: dict[str, object], path: Path) -> DocSpec:
     if glob is not None and not isinstance(glob, str):
         raise IngestConfigError(f"{path}: [[documents]] 'glob' must be a string.")
     return DocSpec(file=file, glob=glob)
+
+
+# Node kinds derived from a table name must never collide with a reserved kind:
+# document chunks are ``kind="document"``, and the mention-linker treats every
+# such node as a document — a table named ``document`` would make its rows
+# masquerade as documents.
+_RESERVED_TABLE_NAMES = frozenset({"document"})
+
+
+def _validate_table_names(tables: tuple[TableSpec, ...], path: Path) -> None:
+    seen: set[str] = set()
+    for table in tables:
+        if table.name in _RESERVED_TABLE_NAMES:
+            raise IngestConfigError(
+                f"{path}: '{table.name}' is a reserved name and cannot be a table."
+            )
+        if ":" in table.name:
+            raise IngestConfigError(
+                f"{path}: table name '{table.name}' must not contain ':' "
+                "(it prefixes record ids)."
+            )
+        if table.name in seen:
+            raise IngestConfigError(
+                f"{path}: duplicate table name '{table.name}' — names must be "
+                "unique (they prefix record ids and edge targets)."
+            )
+        seen.add(table.name)
 
 
 def _validate_edges(tables: tuple[TableSpec, ...], path: Path) -> None:

@@ -127,3 +127,17 @@ public-domain, so this runs clone-and-run offline).
   declared display-names; a name that is a substring of the question routes to
   entity lookup. Over-matching falls back to lexical; the refusal is the
   safe default.
+- **The refusal fires only when a match field DISAGREES** (adversarial review,
+  finding 6). Two genuinely-distinct entities that share a name *and* every
+  declared `match_field` value will silently merge into one entity — this is
+  inherent to entity-resolution-as-corroboration (ADR 0019/0020): the system
+  splits same-named entities only when it has a *distinguishing* signal. So the
+  contract is "a name whose declared distinguishing fields differ is refused as
+  ambiguous," not a blanket "same name ⇒ ask which one." Choosing `match_fields`
+  that actually distinguish the entities is the user's job; the demo's `state`
+  field is exactly such a field for the two Portlands.
+- **Foreign files, not remote fetch.** `ingest` reads the user's own local
+  files; control sequences in a CSV cell / Markdown line are neutralized in the
+  rendered claim (the connect door's decision, ADR 0028), but the files
+  themselves are trusted-as-chosen. Paths are confined to the corpus dir; a
+  duplicate id or table name is a refused config error.

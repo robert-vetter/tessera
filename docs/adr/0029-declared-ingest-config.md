@@ -84,6 +84,15 @@ contract.
   addition in `tessera/ingest/`, not the rich per-vertical routing of business
   or DevEx; a generic directory has no known question shapes, so lexical
   retrieval + entity lookup + honest refusal is the principled floor.
+- **Accepted cost / stated limit:** the ambiguity refusal fires only when a
+  declared `match_field` *disagrees* between same-named rows (ER-as-
+  corroboration, ADR 0019/0020). Two distinct entities sharing a name AND every
+  match-field value merge silently — so the user must choose `match_fields`
+  that actually distinguish their entities; the refusal is not a blanket
+  same-name detector. Foreign row/document text is neutralized of terminal
+  control sequences before it becomes a claim (ADR 0028's decision, applied
+  here too); files are confined to the corpus directory; duplicate ids and
+  duplicate/reserved table names are refused config errors.
 
 ## Alternatives considered
 
