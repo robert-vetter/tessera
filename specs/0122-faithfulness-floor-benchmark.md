@@ -33,7 +33,10 @@ comparison whose numbers can fail in CI.
    imported, not reimplemented, so benchmark semantics cannot drift from eval
    semantics), same verifier (`is_supported`) *including the vertical's own
    claim shapes* — the baseline is scored with every grammar the real system
-   gets (generous to the baseline, by design).
+   gets. *(Amended in review: for verbatim claims the vertical shapes return
+   no verdict and generic containment decides, so sharing them is parity,
+   not an advantage — the first wording here called it "generous", which
+   overstated it.)*
 3. **Offline pinned.** The benchmark forces the deterministic lexical path
    (no semantic index) for BOTH sides, so anyone can reproduce it
    byte-for-byte with no accounts. Tessera's side therefore equals the
@@ -46,9 +49,13 @@ comparison whose numbers can fail in CI.
    trustworthy-outcome rate.** Per case: an answer-kind case is trustworthy
    iff the answer is grounded, every emitted claim passes the verifier, all
    expected facts appear, and all expected support is cited; a refuse-kind
-   case is trustworthy iff the system refuses. Computed by running the same
-   `_score` on single-case lists (so each component keeps exact eval
-   semantics). Faithfulness/coverage/quality are also reported per side,
+   case is trustworthy iff the system refuses **and** every claim it still
+   emits passes the verifier (the harness scores claims on refuse-kind
+   cases too — audit B7; a refusal carrying an unverifiable partial claim
+   is not trustworthy). *(Amended in review: the implementation was
+   stricter than the first wording here; the stricter behavior is kept and
+   this wording now matches it.)* Computed by running the same `_score` on
+   single-case lists (so each component keeps exact eval semantics). Faithfulness/coverage/quality are also reported per side,
    unchanged.
 5. **Recitation's trivial faithfulness is reported, not hidden.** The
    baseline's per-claim faithfulness will be ≈1.0 by construction (verbatim

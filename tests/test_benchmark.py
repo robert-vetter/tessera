@@ -17,7 +17,6 @@ Four guarantees, each a build failure when broken:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -34,14 +33,17 @@ from tessera.eval.benchmark import (
 )
 from tessera.eval.registry import batteries, business_battery
 from tessera.grounding import KnowledgeBase
+from tessera.platform.config import EMBEDDINGS_NONE, load_config
 
-DOC_PATH = Path(__file__).resolve().parents[1] / "docs" / "BENCHMARK.md"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DOC_PATH = REPO_ROOT / "docs" / "BENCHMARK.md"
 
 # The benchmark is pinned offline (index=None on both sides); the eval-equality
 # pin additionally compares against run_eval(), which DOES honour a configured
 # embeddings environment. CI is key-free so the comparison is stable there;
-# skip only in a deliberately configured online environment.
-_ONLINE = os.environ.get("TESSERA_EMBEDDINGS", "none").lower() not in ("", "none")
+# skip only in a deliberately configured online environment. (Parsed by the
+# platform config itself, not re-implemented here.)
+_ONLINE = load_config().embeddings != EMBEDDINGS_NONE
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +54,11 @@ def report() -> BenchmarkReport:
 def test_published_tables_match_fresh_run(report: BenchmarkReport) -> None:
     """Doc pin: regenerate the block and compare byte-for-byte."""
     doc = DOC_PATH.read_text("utf-8")
-    assert DOC_BEGIN in doc and DOC_END in doc, "docs/BENCHMARK.md lost its markers"
+    # Exactly one marker pair: a second, stale pair pasted elsewhere in the
+    # doc would otherwise escape the pin entirely.
+    assert doc.count(DOC_BEGIN) == 1 and doc.count(DOC_END) == 1, (
+        "docs/BENCHMARK.md must contain exactly one generated block"
+    )
     start = doc.index(DOC_BEGIN)
     end = doc.index(DOC_END) + len(DOC_END)
     published = doc[start:end]
@@ -123,6 +129,7 @@ def test_ungated_variant_swaps_only_the_answerer() -> None:
     # Generous by design: the baseline is scored with the vertical's own
     # claim grammars, exactly like the real engine (spec 0122 decision 2).
     assert variant.claim_shapes == base.claim_shapes
+    assert variant.uses_semantic == base.uses_semantic
 
 
 def test_ungated_answer_ignores_engine_dispatch() -> None:
@@ -159,6 +166,43 @@ def test_case_outcome_marks_name_the_failed_checks() -> None:
 
 
 def test_benchmark_covers_every_registered_battery(report: BenchmarkReport) -> None:
-    """Nothing measured is silently missing from the artifact."""
-    assert {row.battery for row in report.rows} == {b.name for b in batteries()}
-    assert {row.case_set for row in report.rows} == {"gold", "synthetic"}
+    """Nothing measured is silently missing: the full battery × case-set
+    cross product is present (asserting the two sets independently would let
+    a battery missing one of its rows slip through)."""
+    assert {(row.battery, row.case_set) for row in report.rows} == {
+        (battery.name, case_set)
+        for battery in batteries()
+        for case_set in ("gold", "synthetic")
+    }
+
+
+def test_prose_numbers_match_fresh_run(report: BenchmarkReport) -> None:
+    """The doc pin covers only the generated block; these are the numbers the
+    surrounding prose (and the README) quote. If a corpus change moves them,
+    this fails until the prose is updated too — no silent drift anywhere."""
+    by_key = {(row.battery, row.case_set): row for row in report.rows}
+    doc = DOC_PATH.read_text("utf-8")
+
+    # "How to read this honestly" quotes the gated side's own gold misses.
+    devex = by_key[("devex", "gold")].tessera.trustworthy
+    gha = by_key[("github_actions", "gold")].tessera.trustworthy
+    assert f"`devex` gold shows {devex:.3f} trustworthy" in doc
+    assert f"`github_actions` gold shows {gha:.3f}" in doc
+
+    # "Limitations" states the case totals.
+    total = sum(row.case_count for row in report.rows)
+    gold = sum(row.case_count for row in report.rows if row.case_set == "gold")
+    synthetic = total - gold
+    assert f"{total} cases ({gold} gold, {synthetic} synthetic)" in doc
+
+    # The README quotes the six gold trustworthy rates in battery order.
+    readme = (REPO_ROOT / "README.md").read_text("utf-8")
+    gated = " / ".join(
+        f"{by_key[(name, 'gold')].tessera.trustworthy:.3f}"
+        for name in ("business", "devex", "github_actions")
+    )
+    ungated = " / ".join(
+        f"{by_key[(name, 'gold')].ungated.trustworthy:.3f}"
+        for name in ("business", "devex", "github_actions")
+    )
+    assert f"{gated} gated vs {ungated}" in readme.replace("**", "").replace("\n", " ")

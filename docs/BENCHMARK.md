@@ -2,8 +2,9 @@
 
 What does an agent *without* an evidence gate do on the same corpus, the same
 questions, judged by the same verifier? This benchmark answers that with a
-deterministic, reproducible measurement — **no LLM anywhere, no LLM judge,
-no accounts** — comparing Tessera's evidence-gated answer engine against its
+deterministic, reproducible measurement — **no LLM anywhere in the
+measurement, no LLM judge, no accounts** — comparing Tessera's
+evidence-gated answer engine against its
 own retrieval layer run ungated. Anyone can reproduce every number below from
 a clone:
 
@@ -15,7 +16,9 @@ uv run tessera-benchmark --cases     # every case (gold + synthetic), both sides
 ```
 
 A CI test regenerates the tables below on every build and fails on any byte
-difference, so this page cannot silently drift from the measured truth.
+difference, so the tables on this page cannot silently drift from the
+measured truth (a second test pins the headline numbers this page and the
+README quote in prose).
 Spec: [`specs/0122`](https://github.com/robert-vetter/tessera/blob/main/specs/0122-faithfulness-floor-benchmark.md).
 
 ## What is being compared
@@ -62,9 +65,13 @@ All scoring semantics are the eval's own
   where *nothing went wrong*: an answer-kind case counts only if the answer
   is grounded, **every** claim passes the verifier, **all** expected facts
   appear, and **all** expected evidence is cited; a refuse-kind case counts
-  only if the system refuses. Each component is computed by the harness's
-  own scoring function run per-case, so the composite introduces no new
-  semantics.
+  only if the system refuses — and any claim it still emits alongside the
+  refusal must pass the verifier too (claims on refuse-kind cases are
+  scored, not exempt). Each component is computed by the harness's own
+  scoring function run per-case, so the composite introduces no new
+  semantics. (Weighting differs by design: faithfulness/coverage/quality
+  are pooled over claims / expected ids / cases exactly as the eval pools
+  them; trustworthy outcomes are per-case, unweighted.)
 
 ## The numbers
 
@@ -95,6 +102,15 @@ All scoring semantics are the eval's own
 - devex · synthetic: 1.000 vs 0.125 (+0.875)
 - github_actions · gold: 0.800 vs 0.000 (+0.800)
 - github_actions · synthetic: 1.000 vs 0.250 (+0.750)
+
+**Structural notes (computed — properties of the cases and corpus, independent of answerer).** *reachable Q*: answer-kind cases whose expected facts all occur verbatim in some record, i.e. where recitation could in principle pass the quality check — on the rest, the expected phrasing is the gated engine's own composed output, so the quality gap there measures whether composition happened at all, not retrieval quality. *>k support*: cases expecting more evidence ids than the baseline's retrieval depth (k=5) — full coverage is structurally out of reach there. *vacuous*: answer-kind cases declaring no expected support / no expected facts (those components auto-pass, per the harness's own convention).
+
+- business · gold: 6 answer / 5 refuse · reachable Q 1/6 · >k support 1 · vacuous 1 support, 0 facts
+- business · synthetic: 45 answer / 8 refuse · reachable Q 0/45 · >k support 18 · vacuous 0 support, 0 facts
+- devex · gold: 6 answer / 3 refuse · reachable Q 3/6 · >k support 1 · vacuous 0 support, 0 facts
+- devex · synthetic: 11 answer / 13 refuse · reachable Q 10/10 · >k support 0 · vacuous 0 support, 1 facts
+- github_actions · gold: 3 answer / 2 refuse · reachable Q 2/3 · >k support 0 · vacuous 0 support, 0 facts
+- github_actions · synthetic: 3 answer / 5 refuse · reachable Q 0/0 · >k support 0 · vacuous 0 support, 3 facts
 
 Per-case outcomes on the curated gold sets (`✓` trustworthy; `✗` with the failed checks — F: a claim failed the verifier, C: expected evidence not cited, Q: wrong disposition or expected facts missing):
 
@@ -141,7 +157,25 @@ appear. The floor is cheap if you never assert anything beyond quotes.
 **Tessera holds the same floor while actually asserting things** — sourced
 aggregates, entity-resolved cross-source links, multi-hop conclusions — and
 that combination, not faithfulness alone, is what "trustworthy outcomes"
-measures. The gap column is the price of running an agent without a gate.
+measures. On these corpora, the gap column is what removing the gate costs.
+
+**Part of the quality gap is definitional — and the artifact computes how
+much.** The expected facts on compose/RCA cases are exact strings in the
+gated engine's own phrasing ("Recurring failure", "Total net order value
+across …"), because the gold sets double as that engine's regression suite.
+An answerer that does not compose — or composes in different words — cannot
+satisfy those facts regardless of retrieval quality. The worked example is
+in the per-case table: on `github_actions/02_pages_deploy_recurrence` the
+baseline cited **every** expected record and fails only the engine-phrased
+recurrence fact. The *structural notes* inside the generated block count
+exactly where this line falls ("reachable Q"): on business synthetic, the
+baseline's published 0.038 **is** its structural ceiling — those rows
+measure the value of composing at all, under our phrasing, not retrieval
+ranking. Where the expected phrasing is plain record text (devex synthetic:
+10/10 reachable), the baseline is credited — quality 0.583 — which is how
+you can tell the harness credits whatever recitation can legitimately earn.
+The refusal and coverage columns are phrasing-independent throughout
+(disposition and evidence ids, not wording).
 
 **Tessera's own misses are in the table.** The gated side is not decorated
 to 1.000: offline, `devex` gold shows 0.889 trustworthy (a named semantic
@@ -155,13 +189,18 @@ offline artifact). Both sides fail those two cases for the same lexical
 reason. A benchmark where our own side shows its misses is the kind you can
 trust.
 
-**The gap is a lower bound on the real thing.** The deterministic baseline
-never paraphrases, never blends sources, never invents a number — failure
-modes real LLM agents add on top of retrieval. Modelling those honestly
-would require an LLM in the benchmark, which would end its determinism and
-reproducibility (and is exactly what this project refuses to put in a trust
-path). So the ungated column here is a *best case* for the ungated pattern;
-a real retrieve-then-generate agent starts from these numbers and degrades.
+**What the extractive baseline does — and does not — proxy.** The
+deterministic baseline never paraphrases, never blends sources, never
+invents a number. For **faithfulness** that makes it a best case by
+construction: recitation maxes a containment verifier, and paraphrase,
+blending, and invention can only score worse there. On **task outcomes** the
+direction is not guaranteed: a retrieve-then-*generate* agent might recover
+some of this baseline's quality/coverage failures (state the total, cite the
+right rows) — and anything it asserts would still have to survive the same
+verifier. Measuring that honestly would require an LLM inside the benchmark,
+which would end its determinism and reproducibility (and put a model in a
+trust path, which this project refuses). The seam at the bottom of this page
+takes any answerer — measure yours.
 
 ## How this can fail
 
@@ -190,12 +229,21 @@ A benchmark that cannot fail is decorative. This one can, in four ways:
   gap between gated and ungated answering over identical evidence, not about
   generalization to your data. (For that, `tessera smoke` runs a trust-floor
   battery on your own connected repo — see [PILOT.md](PILOT.md).)
+- **The cases are ours, written against the gated engine.** The gold sets
+  double as its regression suite (two cases it fails are kept in), and the
+  refuse-kind share (40% of gold) shapes the headline gap — which is why the
+  kind mix and every per-case outcome are printed above rather than left to
+  aggregate impressions.
 - **n is small and stated:** 110 cases (25 gold, 85 synthetic) across three
-  batteries. Synthetic expectations are data-derived, not hand-tuned
-  ([ADR 0007](adr/0007-synthetic-scenario-generation.md)).
-- **The baseline is extractive.** See "lower bound" above: this
-  deliberately understates, never overstates, the gap to a real ungated
-  agent.
+  batteries. Synthetic expected *values* are recomputed from the data at
+  eval time ([ADR 0007](adr/0007-synthetic-scenario-generation.md)); on
+  business compose cases the expected *phrasing* is the engine's template
+  (the definitional boundary above; recorded in the ADR 0007 addendum),
+  while devex/github_actions synthetic facts are plain record text.
+- **The baseline is extractive.** By construction this understates the
+  *faithfulness* risk of generation (see above); on task quality a
+  generating agent could recover some of the failures — the answerer seam
+  below exists to test exactly that.
 - **Offline mode only.** The recorded online close of the synonymy case
   (embeddings on SAP HANA) is documented in the [WRITEUP](WRITEUP.md) but
   excluded here to keep the artifact account-free and byte-reproducible.
@@ -203,4 +251,8 @@ A benchmark that cannot fail is decorative. This one can, in four ways:
 If you want to attack this: swap in your own baseline answerer
 (`tessera.eval.benchmark.ungated_variant` shows the seam — any
 `(case, graph, kb, index) -> Answer` callable), or add cases to the gold
-sets and re-run. Issues and PRs that break the number are the point.
+sets and re-run. The **coverage and refusal** columns are open challenges
+for any answerer; the **quality** column on compose/RCA cases keys on the
+gated engine's phrasing (the structural notes say exactly where), so the
+honest way to attack it is with record-phrased cases of your own. Issues
+and PRs that break the number are the point.

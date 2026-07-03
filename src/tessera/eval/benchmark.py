@@ -2,8 +2,9 @@
 
 The launch-facing credibility artifact (spec 0122): what does an agent
 *without* an evidence gate do on the same corpus, same questions, judged by
-the same verifier? Deterministic, offline, no LLM anywhere; reproducible from
-a clone with ``uv run tessera-benchmark``. The written report is
+the same verifier? Deterministic, offline, no LLM anywhere in the
+measurement; reproducible from a clone with ``uv run tessera-benchmark``.
+The written report is
 ``docs/BENCHMARK.md``; a test pins its tables to this module's fresh output,
 so the published numbers cannot silently drift from the measured truth.
 
@@ -80,7 +81,9 @@ def ungated_variant(battery: Battery) -> Battery:
 
     Corpus builders, gold directory, synthetic generator, and claim shapes are
     the original battery's own — the baseline is scored with every grammar the
-    real system gets (generous to the baseline, by design).
+    real system gets (shared by design; for verbatim claims the vertical
+    shapes return no verdict and generic containment decides, so they are
+    moot rather than an advantage).
     """
     return replace(battery, answer=ungated_answer)
 
@@ -134,6 +137,65 @@ class SideScores:
 
 
 @dataclass(frozen=True)
+class StructuralNotes:
+    """Computed properties of the cases + corpus, independent of answerer.
+
+    These make the benchmark's definitional boundary a printed fact rather
+    than something a reader must reverse-engineer (spec 0122 review finding):
+    expected facts on compose/RCA cases are phrased by the gated engine's
+    render templates, so an answerer that does not compose (or does not use
+    that phrasing) cannot satisfy them regardless of retrieval quality —
+    ``facts_reachable`` counts the answer-kind cases where recitation could
+    in principle pass the quality check.
+    """
+
+    answer_count: int
+    refuse_count: int
+    # Answer-kind cases with ≥1 expected fact where EVERY fact appears (raw
+    # substring, exactly as the harness matches) in at least one record's
+    # text — i.e. quality is in-principle winnable by verbatim recitation.
+    facts_with_expectations: int
+    facts_reachable: int
+    # Cases expecting more support ids than the baseline's retrieval depth —
+    # full coverage is structurally out of reach for any k=UNGATED_K answerer.
+    support_over_k: int
+    # Vacuous conventions (harness semantics): answer-kind cases declaring no
+    # expected support / no expected facts — those components auto-pass.
+    no_expected_support: int
+    no_expected_facts: int
+
+
+def _structural_notes(cases: list[GoldCase], kb: KnowledgeBase) -> StructuralNotes:
+    answer_cases = [case for case in cases if case.kind != "refuse"]
+    with_facts = [case for case in answer_cases if case.expected_facts]
+    # A fact is recitation-reachable iff it occurs verbatim in some record's
+    # text (the render joins records with newline-prefixed provenance lines,
+    # so a fact cannot span records; matching is raw substring, exactly like
+    # the harness's quality check).
+    reachable = sum(
+        1
+        for case in with_facts
+        if all(
+            any(fact in record.text for record in kb.records)
+            for fact in case.expected_facts
+        )
+    )
+    return StructuralNotes(
+        answer_count=len(answer_cases),
+        refuse_count=len(cases) - len(answer_cases),
+        facts_with_expectations=len(with_facts),
+        facts_reachable=reachable,
+        support_over_k=sum(
+            1 for case in cases if len(case.expected_support) > UNGATED_K
+        ),
+        no_expected_support=sum(
+            1 for case in answer_cases if not case.expected_support
+        ),
+        no_expected_facts=len(answer_cases) - len(with_facts),
+    )
+
+
+@dataclass(frozen=True)
 class BenchmarkRow:
     """One battery × one case set, both answerers side by side."""
 
@@ -142,6 +204,7 @@ class BenchmarkRow:
     case_count: int
     tessera: SideScores
     ungated: SideScores
+    notes: StructuralNotes
 
 
 @dataclass(frozen=True)
@@ -222,6 +285,7 @@ def run_benchmark(batteries: tuple[Battery, ...] | None = None) -> BenchmarkRepo
                     case_count=len(cases),
                     tessera=_score_side(cases, battery, graph, kb, nodes),
                     ungated=_score_side(cases, ungated, graph, kb, nodes),
+                    notes=_structural_notes(cases, kb),
                 )
             )
     return BenchmarkReport(rows=tuple(rows))
@@ -263,6 +327,31 @@ def render_markdown(report: BenchmarkReport) -> str:
         lines.append(
             f"- {row.battery} · {row.case_set}: {_fmt(row.tessera.trustworthy)} "
             f"vs {_fmt(row.ungated.trustworthy)} ({'+' if gap >= 0 else ''}{_fmt(gap)})"
+        )
+    lines += [
+        "",
+        "**Structural notes (computed — properties of the cases and corpus, "
+        "independent of answerer).** *reachable Q*: answer-kind cases whose "
+        "expected facts all occur verbatim in some record, i.e. where "
+        "recitation could in principle pass the quality check — on the rest, "
+        "the expected phrasing is the gated engine's own composed output, so "
+        "the quality gap there measures whether composition happened at all, "
+        "not retrieval quality. *>k support*: cases expecting more evidence "
+        "ids than the baseline's retrieval depth (k=5) — full coverage is "
+        "structurally out of reach there. *vacuous*: answer-kind cases "
+        "declaring no expected support / no expected facts (those components "
+        "auto-pass, per the harness's own convention).",
+        "",
+    ]
+    for row in report.rows:
+        notes = row.notes
+        lines.append(
+            f"- {row.battery} · {row.case_set}: {notes.answer_count} answer / "
+            f"{notes.refuse_count} refuse · reachable Q "
+            f"{notes.facts_reachable}/{notes.facts_with_expectations} · "
+            f">k support {notes.support_over_k} · vacuous "
+            f"{notes.no_expected_support} support, "
+            f"{notes.no_expected_facts} facts"
         )
     lines += [
         "",
