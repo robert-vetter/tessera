@@ -13,6 +13,38 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-17] — 2026-07-03
+
+Demoable to humans: the presentation layer as a strict consumer of the existing
+trust objects — no engine, verifier, or boundary change; every battery number
+byte-identical throughout. Closes with the hosted demo **live** at
+<https://robert-vetter-tessera.hf.space>.
+
+### Added
+
+- **The web surface** (`uv run tessera-ui`; spec 0114, ADR 0027, #128): one
+  page, pure stdlib, zero JavaScript, strict CSP, escape-everything — ask →
+  routed answer with per-claim verifier chips → provenance drill-down (records,
+  locators, ER trail) → refusal cards → action draft → dry-run payload →
+  explicit approve → **simulated** receipt. Holds no credential; no code path
+  to the real actuator. Three focused adversarial reviews (security ×2,
+  trust-honesty): **0 majors**; all confirmed minors fixed and pinned.
+- **A real Claude agent grounded only through the MCP tools** (spec 0115,
+  #129): `scripts/record_agent_session.py` + the committed
+  `data/agent_session/` transcript — grounded RCA with cited evidence, a
+  refusal carried honestly (run R-1041 passed), and an action ending at a
+  simulated receipt.
+- **Hosting + assets** (spec 0116, #130/#131/#134/#135): `docs/DEMO.md`
+  (key-free hosting runbook, the 3-minute demo script, the EN+DE one-pager)
+  and the two-file Hugging Face Space under `deploy/hf-space/`.
+
+### Changed
+
+- **Narration exercised live for the first time** (spec 0113, #127; ADR 0013
+  boundary held: labelled, below the canonical claims, refusals un-narrated);
+  `narrate_texts` extracted so chat and UI share one guard. `:trust` renders
+  three-decimal metrics; MCP `serverInfo.version` reports the project version.
+
 ## [milestone-16] — 2026-07-03
 
 Close & clean — the Act 2 opener: a full self-audit acted on **before** the first real
@@ -786,7 +818,8 @@ with **un-planted** difficulty, holding faithfulness gated at 1.0 throughout.
   to GitHub Pages via GitHub Actions, with strict builds so broken links fail.
 - **This changelog.**
 
-[Unreleased]: https://github.com/robert-vetter/tessera/compare/milestone-16...HEAD
+[Unreleased]: https://github.com/robert-vetter/tessera/compare/milestone-17...HEAD
+[milestone-17]: https://github.com/robert-vetter/tessera/compare/milestone-16...milestone-17
 [milestone-16]: https://github.com/robert-vetter/tessera/compare/milestone-15...milestone-16
 [milestone-15]: https://github.com/robert-vetter/tessera/compare/milestone-14...milestone-15
 [phase-4]: https://github.com/robert-vetter/tessera/compare/phase-3...phase-4

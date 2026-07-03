@@ -13,6 +13,11 @@ and the **one-pager** copy.
 
 ## 1. Run it
 
+**The live instance:** <https://robert-vetter-tessera.hf.space>
+(a free Hugging Face Docker Space built from `deploy/hf-space/`; verified
+end-to-end from outside on 2026-07-03 — index, RCA ask with verifier chips,
+CSP intact through the proxy, simulated receipt with `sent: false`).
+
 Locally, key-free, in one command:
 
 ```bash

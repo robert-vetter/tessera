@@ -129,6 +129,10 @@ claims with per-claim verifier chips, click through to the exact evidence, watch
 a principled refusal, and run an action from draft → dry-run payload → approval →
 receipt (all simulated; it holds no credential):
 
+**Live, no install:** <https://robert-vetter-tessera.hf.space> — the same
+surface, hosted key-free on a Hugging Face Space
+([`deploy/hf-space/`](deploy/hf-space/)).
+
 ```bash
 uv run tessera-ui            # → http://127.0.0.1:8033  (stdlib-only, zero JS)
 ```
