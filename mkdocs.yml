@@ -84,6 +84,7 @@ nav:
       - 0026 Best-effort idempotency on the real path: adr/0026-best-effort-idempotency.md
       - 0027 The stdlib web surface: adr/0027-stdlib-web-ui.md
       - 0028 The BYO connector workspace boundary: adr/0028-byo-connector-workspace-boundary.md
+      - 0029 The declared ingest config: adr/0029-declared-ingest-config.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
