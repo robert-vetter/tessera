@@ -1,0 +1,1592 @@
+[
+  {
+    "domain": "devex",
+    "question": "Why did run R-1042 fail, and has it happened before? Cite your evidence.",
+    "trace": [
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "list_domains",
+            "arguments": {},
+            "result": {
+              "domains": [
+                {
+                  "name": "business",
+                  "description": "Business Data Copilot: customers, sales orders, and contract documents from the synthetic SALT master data plus authored agreements. Answers lookups, cross-source summaries, multi-entity comparisons, and surfaces conflicts; refuses ambiguous entities."
+                },
+                {
+                  "name": "devex",
+                  "description": "DevEx Copilot: CI/CD runs and logs, PR diffs, tickets, and service ownership. Answers root-cause questions for failed runs (grounded in log lines, linked to prior incidents), PR change-summaries tied to tickets, and ownership lookups; refuses on insufficient evidence."
+                },
+                {
+                  "name": "github_actions",
+                  "description": "The real GitHub Actions connector: this repository's own committed CI run history and runner logs. Answers root-cause questions for failed runs grounded in the actual log lines; refuses otherwise."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "ground",
+            "arguments": {
+              "domain": "devex",
+              "question": "Why did run R-1042 fail, and has it happened before?"
+            },
+            "result": {
+              "domain": "devex",
+              "question": "Why did run R-1042 fail, and has it happened before?",
+              "route": {
+                "kind": "rca",
+                "reason": "names pipeline run R-1042 — root-cause analysis"
+              },
+              "grounded": true,
+              "refused": false,
+              "refusal": null,
+              "claims": [
+                {
+                  "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Run:R-1042",
+                      "source": "devex_synthetic/runs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Run"
+                          ],
+                          [
+                            "row",
+                            "13"
+                          ]
+                        ],
+                        "render": "table Run, row 13"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+                    }
+                  ]
+                },
+                {
+                  "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "text": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-0987:chunk5",
+                      "source": "devex_synthetic/logs/run_R-0987.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "15-18"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 15-18, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "text": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "text": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    },
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    }
+                  ]
+                },
+                {
+                  "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR-198.diff:hunk1",
+                      "source": "devex_synthetic/prs/PR-198.diff",
+                      "locator": {
+                        "kind": "diff-hunk",
+                        "parts": [
+                          [
+                            "file",
+                            "src/payments/db_client.py"
+                          ],
+                          [
+                            "hunk",
+                            "1"
+                          ],
+                          [
+                            "lines",
+                            "4-7"
+                          ]
+                        ],
+                        "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+                    }
+                  ]
+                }
+              ],
+              "all_verified": true
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "## Why R-1042 failed\n\nRun **R-1042** (pipeline PIPE-PAY, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z) failed in the **integration-tests** job [Run:R-1042]. The log shows the payments-service integration suite hit:\n\n```\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n[run_R-1042:chunk5]\n\n## Has it happened before? Yes.\n\n- The identical error (`TimeoutError: connection to payments-db timed out after 30s`) also occurred in **run R-0987** [run_R-0987:chunk5], confirming this is a recurring failure.\n- It's a documented incident: **Ticket DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12 and resolved 2026-05-14, describes this exact timeout in the integration suite [Ticket:DEVEX-187].\n- That ticket was mitigated by **PR-198** (\"Raise payments-db pool timeout\"), merged 2026-05-14, which raised the client pool timeout from 10s to 30s [PR:PR-198]:\n```\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```\n[PR-198.diff:hunk1]\n\n**Conclusion:** R-1042 is a recurrence of the same payments-db connection timeout previously seen in R-0987 and \"fixed\" via DEVEX-187/PR-198. Since it resurfaced despite that mitigation (raising the timeout to 30s, which is exactly the threshold now being hit), the underlying DB latency/connectivity issue likely wasn't fully resolved — the fix may just have delayed the timeout rather than eliminating the root cause.",
+        "tool_calls": []
+      }
+    ],
+    "final_answer": "## Why R-1042 failed\n\nRun **R-1042** (pipeline PIPE-PAY, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z) failed in the **integration-tests** job [Run:R-1042]. The log shows the payments-service integration suite hit:\n\n```\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n[run_R-1042:chunk5]\n\n## Has it happened before? Yes.\n\n- The identical error (`TimeoutError: connection to payments-db timed out after 30s`) also occurred in **run R-0987** [run_R-0987:chunk5], confirming this is a recurring failure.\n- It's a documented incident: **Ticket DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12 and resolved 2026-05-14, describes this exact timeout in the integration suite [Ticket:DEVEX-187].\n- That ticket was mitigated by **PR-198** (\"Raise payments-db pool timeout\"), merged 2026-05-14, which raised the client pool timeout from 10s to 30s [PR:PR-198]:\n```\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```\n[PR-198.diff:hunk1]\n\n**Conclusion:** R-1042 is a recurrence of the same payments-db connection timeout previously seen in R-0987 and \"fixed\" via DEVEX-187/PR-198. Since it resurfaced despite that mitigation (raising the timeout to 30s, which is exactly the threshold now being hit), the underlying DB latency/connectivity issue likely wasn't fully resolved — the fix may just have delayed the timeout rather than eliminating the root cause.",
+    "full_answer": "## Why R-1042 failed\n\nRun **R-1042** (pipeline PIPE-PAY, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z) failed in the **integration-tests** job [Run:R-1042]. The log shows the payments-service integration suite hit:\n\n```\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n[run_R-1042:chunk5]\n\n## Has it happened before? Yes.\n\n- The identical error (`TimeoutError: connection to payments-db timed out after 30s`) also occurred in **run R-0987** [run_R-0987:chunk5], confirming this is a recurring failure.\n- It's a documented incident: **Ticket DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12 and resolved 2026-05-14, describes this exact timeout in the integration suite [Ticket:DEVEX-187].\n- That ticket was mitigated by **PR-198** (\"Raise payments-db pool timeout\"), merged 2026-05-14, which raised the client pool timeout from 10s to 30s [PR:PR-198]:\n```\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```\n[PR-198.diff:hunk1]\n\n**Conclusion:** R-1042 is a recurrence of the same payments-db connection timeout previously seen in R-0987 and \"fixed\" via DEVEX-187/PR-198. Since it resurfaced despite that mitigation (raising the timeout to 30s, which is exactly the threshold now being hit), the underlying DB latency/connectivity issue likely wasn't fully resolved — the fix may just have delayed the timeout rather than eliminating the root cause."
+  },
+  {
+    "domain": "devex",
+    "question": "Why did run R-1041 fail?",
+    "trace": [
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "list_domains",
+            "arguments": {},
+            "result": {
+              "domains": [
+                {
+                  "name": "business",
+                  "description": "Business Data Copilot: customers, sales orders, and contract documents from the synthetic SALT master data plus authored agreements. Answers lookups, cross-source summaries, multi-entity comparisons, and surfaces conflicts; refuses ambiguous entities."
+                },
+                {
+                  "name": "devex",
+                  "description": "DevEx Copilot: CI/CD runs and logs, PR diffs, tickets, and service ownership. Answers root-cause questions for failed runs (grounded in log lines, linked to prior incidents), PR change-summaries tied to tickets, and ownership lookups; refuses on insufficient evidence."
+                },
+                {
+                  "name": "github_actions",
+                  "description": "The real GitHub Actions connector: this repository's own committed CI run history and runner logs. Answers root-cause questions for failed runs grounded in the actual log lines; refuses otherwise."
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "ground",
+            "arguments": {
+              "domain": "devex",
+              "question": "Why did run R-1041 fail?"
+            },
+            "result": {
+              "domain": "devex",
+              "question": "Why did run R-1041 fail?",
+              "route": {
+                "kind": "rca",
+                "reason": "names pipeline run R-1041 — root-cause analysis"
+              },
+              "grounded": false,
+              "refused": true,
+              "refusal": "Run R-1041 did not fail — it passed. There is no failure to explain.",
+              "claims": [],
+              "all_verified": true
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "Tessera reports that run **R-1041 did not fail — it actually passed.** There's no failure to explain, so no root-cause claims are available (no fabricated explanation is being offered).",
+        "tool_calls": []
+      }
+    ],
+    "final_answer": "Tessera reports that run **R-1041 did not fail — it actually passed.** There's no failure to explain, so no root-cause claims are available (no fabricated explanation is being offered).",
+    "full_answer": "Tessera reports that run **R-1041 did not fail — it actually passed.** There's no failure to explain, so no root-cause claims are available (no fabricated explanation is being offered)."
+  },
+  {
+    "domain": "devex",
+    "question": "Draft and (simulated) execute an incident issue for run R-1042.",
+    "trace": [
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "list_actions",
+            "arguments": {},
+            "result": {
+              "actions": [
+                {
+                  "name": "incident",
+                  "description": "Draft an incident report from a failed pipeline run's root-cause analysis: the failing run, the error log lines, any prior occurrence and documented incident, and the resolving change — every field grounded in the cited evidence. A draft a human/agent approves and files; Tessera files nothing.",
+                  "domains": [
+                    "devex",
+                    "github_actions"
+                  ],
+                  "from_route": "rca"
+                },
+                {
+                  "name": "pr_summary",
+                  "description": "Draft a pull-request summary from a change analysis: the PR metadata, the diff hunks themselves, and the motivating ticket when the PR names one — every field grounded in the cited evidence. A draft a human/agent approves and posts; Tessera posts nothing.",
+                  "domains": [
+                    "devex"
+                  ],
+                  "from_route": "summary"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "",
+        "tool_calls": [
+          {
+            "tool": "draft_action",
+            "arguments": {
+              "action": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042"
+            },
+            "result": {
+              "kind": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042",
+              "route": {
+                "kind": "rca",
+                "reason": "names pipeline run R-1042 — root-cause analysis"
+              },
+              "grounded": true,
+              "refused": false,
+              "refusal": null,
+              "fields": [
+                {
+                  "name": "title",
+                  "value": "TimeoutError: connection to payments-db timed out after 30s",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "name": "failing_run",
+                  "value": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Run:R-1042",
+                      "source": "devex_synthetic/runs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Run"
+                          ],
+                          [
+                            "row",
+                            "13"
+                          ]
+                        ],
+                        "render": "table Run, row 13"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+                    }
+                  ]
+                },
+                {
+                  "name": "log",
+                  "value": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "name": "prior_occurrence",
+                  "value": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-0987:chunk5",
+                      "source": "devex_synthetic/logs/run_R-0987.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "15-18"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 15-18, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "name": "documented_incident",
+                  "value": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "name": "referenced_ticket",
+                  "value": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "name": "resolving_change",
+                  "value": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    },
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "name": "referenced_pull_request",
+                  "value": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    }
+                  ]
+                },
+                {
+                  "name": "code_change",
+                  "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR-198.diff:hunk1",
+                      "source": "devex_synthetic/prs/PR-198.diff",
+                      "locator": {
+                        "kind": "diff-hunk",
+                        "parts": [
+                          [
+                            "file",
+                            "src/payments/db_client.py"
+                          ],
+                          [
+                            "hunk",
+                            "1"
+                          ],
+                          [
+                            "lines",
+                            "4-7"
+                          ]
+                        ],
+                        "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+                    }
+                  ]
+                }
+              ],
+              "all_grounded": true,
+              "requires_approval": true,
+              "executed": false
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "All fields grounded. Now preview payload and execute (simulated).",
+        "tool_calls": [
+          {
+            "tool": "preview_payload",
+            "arguments": {
+              "action": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042"
+            },
+            "result": {
+              "kind": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042",
+              "target": "github",
+              "route": {
+                "kind": "rca",
+                "reason": "names pipeline run R-1042 — root-cause analysis"
+              },
+              "request": {
+                "method": "POST",
+                "path": "/repos/{owner}/{repo}/issues",
+                "body": {
+                  "title": "TimeoutError: connection to payments-db timed out after 30s",
+                  "body": "## Failing run\nRun R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.\n\n## Error log\n```\n--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n\n## Prior occurrence\nRecurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.\n\n## Documented incident\nDocumented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.\n\n## Referenced ticket\nTicket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).\n\n## Resolved by\nResolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.\n\n## Pull request\nPR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.\n\n## Code change\n```\ndiff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```",
+                  "labels": [
+                    "incident"
+                  ]
+                }
+              },
+              "slots": [
+                {
+                  "part": "title",
+                  "role": "title",
+                  "label": "",
+                  "value": "TimeoutError: connection to payments-db timed out after 30s",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "failing_run",
+                  "label": "Failing run",
+                  "value": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Run:R-1042",
+                      "source": "devex_synthetic/runs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Run"
+                          ],
+                          [
+                            "row",
+                            "13"
+                          ]
+                        ],
+                        "render": "table Run, row 13"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "log",
+                  "label": "Error log",
+                  "value": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "prior_occurrence",
+                  "label": "Prior occurrence",
+                  "value": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-0987:chunk5",
+                      "source": "devex_synthetic/logs/run_R-0987.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "15-18"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 15-18, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "documented_incident",
+                  "label": "Documented incident",
+                  "value": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "referenced_ticket",
+                  "label": "Referenced ticket",
+                  "value": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "resolving_change",
+                  "label": "Resolved by",
+                  "value": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    },
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "referenced_pull_request",
+                  "label": "Pull request",
+                  "value": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "code_change",
+                  "label": "Code change",
+                  "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR-198.diff:hunk1",
+                      "source": "devex_synthetic/prs/PR-198.diff",
+                      "locator": {
+                        "kind": "diff-hunk",
+                        "parts": [
+                          [
+                            "file",
+                            "src/payments/db_client.py"
+                          ],
+                          [
+                            "hunk",
+                            "1"
+                          ],
+                          [
+                            "lines",
+                            "4-7"
+                          ]
+                        ],
+                        "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+                    }
+                  ]
+                }
+              ],
+              "rendered": true,
+              "withheld_reason": null,
+              "all_grounded": true,
+              "sent": false,
+              "requires_approval": true
+            }
+          },
+          {
+            "tool": "execute_action",
+            "arguments": {
+              "action": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042"
+            },
+            "result": {
+              "kind": "incident",
+              "domain": "devex",
+              "question": "Draft an incident issue for run R-1042",
+              "target": "github",
+              "route": {
+                "kind": "rca",
+                "reason": "names pipeline run R-1042 — root-cause analysis"
+              },
+              "request": {
+                "method": "POST",
+                "path": "/repos/{owner}/{repo}/issues",
+                "body": {
+                  "title": "TimeoutError: connection to payments-db timed out after 30s",
+                  "body": "## Failing run\nRun R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.\n\n## Error log\n```\n--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed\n```\n\n## Prior occurrence\nRecurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.\n\n## Documented incident\nDocumented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.\n\n## Referenced ticket\nTicket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).\n\n## Resolved by\nResolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.\n\n## Pull request\nPR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.\n\n## Code change\n```\ndiff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)\n```",
+                  "labels": [
+                    "incident"
+                  ]
+                }
+              },
+              "slots": [
+                {
+                  "part": "title",
+                  "role": "title",
+                  "label": "",
+                  "value": "TimeoutError: connection to payments-db timed out after 30s",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "failing_run",
+                  "label": "Failing run",
+                  "value": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Run:R-1042",
+                      "source": "devex_synthetic/runs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Run"
+                          ],
+                          [
+                            "row",
+                            "13"
+                          ]
+                        ],
+                        "render": "table Run, row 13"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Run R-1042 of pipeline PIPE-PAY: status failed (failing job integration-tests), commit d6d43bc9, branch main, started 2026-06-08T14:02:11Z."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "log",
+                  "label": "Error log",
+                  "value": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "prior_occurrence",
+                  "label": "Prior occurrence",
+                  "value": "Recurring failure: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-0987.log' and 'devex_synthetic/logs/run_R-1042.log'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "run_R-0987:chunk5",
+                      "source": "devex_synthetic/logs/run_R-0987.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "15-18"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 15-18, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n09:21 INFO  starting payments-service integration suite\n09:21 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n09:21 ERROR job integration-tests failed"
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "documented_incident",
+                  "label": "Documented incident",
+                  "value": "Documented incident: \"TimeoutError: connection to payments-db timed out after 30s\" appears in 'devex_synthetic/logs/run_R-1042.log' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    },
+                    {
+                      "id": "run_R-1042:chunk5",
+                      "source": "devex_synthetic/logs/run_R-1042.log",
+                      "locator": {
+                        "kind": "log-span",
+                        "parts": [
+                          [
+                            "lines",
+                            "16-19"
+                          ],
+                          [
+                            "section",
+                            "integration-tests"
+                          ],
+                          [
+                            "chunk",
+                            "5"
+                          ]
+                        ],
+                        "render": "lines 16-19, section integration-tests, chunk 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "--- job: integration-tests ---\n14:09 INFO  starting payments-service integration suite\n14:09 ERROR payments-service: TimeoutError: connection to payments-db timed out after 30s\n14:09 ERROR job integration-tests failed"
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "referenced_ticket",
+                  "label": "Referenced ticket",
+                  "value": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14).",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "resolving_change",
+                  "label": "Resolved by",
+                  "value": "Resolved by: \"DEVEX-187\" appears in 'devex_synthetic/prs.csv' and 'devex_synthetic/tickets.csv'.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    },
+                    {
+                      "id": "Ticket:DEVEX-187",
+                      "source": "devex_synthetic/tickets.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "Ticket"
+                          ],
+                          [
+                            "row",
+                            "5"
+                          ]
+                        ],
+                        "render": "table Ticket, row 5"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "Ticket DEVEX-187 (incident, resolved) for component SVC-PAY: \"Payments CI failing: database connection timeout\" — The integration suite fails with TimeoutError: connection to payments-db timed out after 30s. Mitigated by raising the client pool timeout (PR-198). (created 2026-05-12, resolved 2026-05-14)."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "referenced_pull_request",
+                  "label": "Pull request",
+                  "value": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite.",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR:PR-198",
+                      "source": "devex_synthetic/prs.csv",
+                      "locator": {
+                        "kind": "table-row",
+                        "parts": [
+                          [
+                            "table",
+                            "PR"
+                          ],
+                          [
+                            "row",
+                            "3"
+                          ]
+                        ],
+                        "render": "table PR, row 3"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "PR PR-198: \"Raise payments-db pool timeout\" by dana.petrov, branch fix/db-pool-timeout, merged commit aee8f89f on 2026-05-14 — Fixes DEVEX-187: raises the payments-db client pool timeout from 10s to 30s so slow-but-healthy connections stop failing the suite."
+                    }
+                  ]
+                },
+                {
+                  "part": "body",
+                  "role": "code_change",
+                  "label": "Code change",
+                  "value": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)",
+                  "verified": true,
+                  "support": [
+                    {
+                      "id": "PR-198.diff:hunk1",
+                      "source": "devex_synthetic/prs/PR-198.diff",
+                      "locator": {
+                        "kind": "diff-hunk",
+                        "parts": [
+                          [
+                            "file",
+                            "src/payments/db_client.py"
+                          ],
+                          [
+                            "hunk",
+                            "1"
+                          ],
+                          [
+                            "lines",
+                            "4-7"
+                          ]
+                        ],
+                        "render": "file src/payments/db_client.py, hunk 1, lines 4-7"
+                      },
+                      "ingested_at": "2026-06-10",
+                      "text": "diff --git a/src/payments/db_client.py b/src/payments/db_client.py\n@@ -18,7 +18,7 @@ class PaymentsDbClient:\n     def connect(self) -> Connection:\n-        return self._pool.acquire(timeout=10)\n+        return self._pool.acquire(timeout=30)"
+                    }
+                  ]
+                }
+              ],
+              "actuator": "simulated",
+              "payload_grounded": true,
+              "all_grounded": true,
+              "executed": true,
+              "simulated": true,
+              "sent": false,
+              "withheld": false,
+              "withheld_reason": null,
+              "outcome": "simulated",
+              "result": {
+                "simulated": true,
+                "detail": "dry run — no request left Tessera; a human or agent approves and sends."
+              },
+              "idempotency_key": null,
+              "approved": false,
+              "requires_approval": true
+            }
+          }
+        ]
+      },
+      {
+        "assistant_text": "## Incident Draft for Run R-1042 — Simulated Execution Receipt\n\n**Route:** RCA (root-cause analysis) — all fields verified ✅\n\n**Would-be GitHub request:**\n`POST /repos/{owner}/{repo}/issues`\n\n**Title:** `TimeoutError: connection to payments-db timed out after 30s`\n\n**Body (summarized):**\n- **Failing run:** Run R-1042, pipeline PIPE-PAY, job `integration-tests` failed, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z *(source: runs.csv)*\n- **Error log:** `TimeoutError: connection to payments-db timed out after 30s` *(source: logs/run_R-1042.log, lines 16-19)*\n- **Prior occurrence:** Same timeout error also seen in run R-0987 *(source: logs/run_R-0987.log)*\n- **Documented incident:** Ticket **DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12, resolved 2026-05-14 *(source: tickets.csv)*\n- **Resolving change:** **PR-198** \"Raise payments-db pool timeout\" by dana.petrov, merged commit `aee8f89f` on 2026-05-14 *(source: prs.csv)*\n- **Code change:** `db_client.py` pool acquire timeout raised from 10s → 30s *(source: prs/PR-198.diff)*\n\n**Status:**\n- `all_grounded: true` — every field passed verification with cited provenance.\n- Executed via **simulated actuator only** — `sent: false`, `simulated: true`. Nothing left Tessera; no issue was actually filed.\n- `requires_approval: true` — a human or agent must approve and send this request outside Tessera to actually create the GitHub issue.",
+        "tool_calls": []
+      }
+    ],
+    "final_answer": "## Incident Draft for Run R-1042 — Simulated Execution Receipt\n\n**Route:** RCA (root-cause analysis) — all fields verified ✅\n\n**Would-be GitHub request:**\n`POST /repos/{owner}/{repo}/issues`\n\n**Title:** `TimeoutError: connection to payments-db timed out after 30s`\n\n**Body (summarized):**\n- **Failing run:** Run R-1042, pipeline PIPE-PAY, job `integration-tests` failed, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z *(source: runs.csv)*\n- **Error log:** `TimeoutError: connection to payments-db timed out after 30s` *(source: logs/run_R-1042.log, lines 16-19)*\n- **Prior occurrence:** Same timeout error also seen in run R-0987 *(source: logs/run_R-0987.log)*\n- **Documented incident:** Ticket **DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12, resolved 2026-05-14 *(source: tickets.csv)*\n- **Resolving change:** **PR-198** \"Raise payments-db pool timeout\" by dana.petrov, merged commit `aee8f89f` on 2026-05-14 *(source: prs.csv)*\n- **Code change:** `db_client.py` pool acquire timeout raised from 10s → 30s *(source: prs/PR-198.diff)*\n\n**Status:**\n- `all_grounded: true` — every field passed verification with cited provenance.\n- Executed via **simulated actuator only** — `sent: false`, `simulated: true`. Nothing left Tessera; no issue was actually filed.\n- `requires_approval: true` — a human or agent must approve and send this request outside Tessera to actually create the GitHub issue.",
+    "full_answer": "All fields grounded. Now preview payload and execute (simulated). ## Incident Draft for Run R-1042 — Simulated Execution Receipt\n\n**Route:** RCA (root-cause analysis) — all fields verified ✅\n\n**Would-be GitHub request:**\n`POST /repos/{owner}/{repo}/issues`\n\n**Title:** `TimeoutError: connection to payments-db timed out after 30s`\n\n**Body (summarized):**\n- **Failing run:** Run R-1042, pipeline PIPE-PAY, job `integration-tests` failed, commit `d6d43bc9`, branch `main`, started 2026-06-08T14:02:11Z *(source: runs.csv)*\n- **Error log:** `TimeoutError: connection to payments-db timed out after 30s` *(source: logs/run_R-1042.log, lines 16-19)*\n- **Prior occurrence:** Same timeout error also seen in run R-0987 *(source: logs/run_R-0987.log)*\n- **Documented incident:** Ticket **DEVEX-187** (\"Payments CI failing: database connection timeout\"), created 2026-05-12, resolved 2026-05-14 *(source: tickets.csv)*\n- **Resolving change:** **PR-198** \"Raise payments-db pool timeout\" by dana.petrov, merged commit `aee8f89f` on 2026-05-14 *(source: prs.csv)*\n- **Code change:** `db_client.py` pool acquire timeout raised from 10s → 30s *(source: prs/PR-198.diff)*\n\n**Status:**\n- `all_grounded: true` — every field passed verification with cited provenance.\n- Executed via **simulated actuator only** — `sent: false`, `simulated: true`. Nothing left Tessera; no issue was actually filed.\n- `requires_approval: true` — a human or agent must approve and send this request outside Tessera to actually create the GitHub issue."
+  }
+]
