@@ -85,3 +85,43 @@ The internship project descriptions change slightly from year to year; the *unde
 ## One caution worth keeping
 
 Senior engineers are allergic to overclaiming. The credible, powerful version of this story is *"I integrated hard, usually-separate pieces into one disciplined, measurable system, on your platform, aimed at your problems."* The non-credible version is *"I invented something that doesn't exist."* Stay on the first one — it is both true and more impressive to the people who will actually read it.
+
+---
+
+## Addendum (2026-07-03, spec 0128) — what changed since the section above was written
+
+The "Current SAP direction (2026)" section above has aged in Tessera's
+favor, and one of its recommendations is now simply *done*:
+
+- **The "agentic everything" recommendation is DELIVERED, measured, and
+  recorded.** The section above says Tessera "should therefore include an
+  agentic mode … and speak MCP." It does, since Milestones 11–15: an MCP
+  server exposing the grounded tools, evidence-gated action drafts, exact
+  payload previews, and execution behind approval with receipts — four
+  measured trust boundaries (ADR 0022–0025), one real send on the record,
+  and a recorded session of a **real Claude agent grounded only through
+  Tessera's MCP tools** (`data/agent_session/`). Read "should add" above
+  as historical context, not a to-do.
+- **Sapphire 2026 (May 12) sharpened the vocabulary** (verified in
+  [MARKET.md §7](MARKET.md)): the **SAP Business AI Platform** with the
+  **SAP Knowledge Graph** inside it; "relevant, reliable, responsible";
+  **SAP + Anthropic bringing Claude in "via MCP"** — i.e. SAP chose the
+  protocol Tessera already speaks; the **AI Agent Hub** (in LeanIX, Q3
+  2026) with "verification badges" — *asserted* trust, which is exactly
+  the asymmetry to name: **SAP asserts trust at platform level; Tessera
+  measures it at claim level — and gates action on it.** Supporting
+  hooks: the DSAG 2026 finding (77% run non-SAP AI in production, 3% use
+  SAP's own — trust must be earned), **SALT-KG** (SAP-authored: models
+  show "gaps in [their] ability to leverage semantics in relational
+  context" — this project's thesis), and the **Prior Labs** acquisition
+  (frontier tabular lab).
+- **"Ran on SAP" is now partially literal**, not aspirational: two
+  recorded online closes on HANA Cloud in-database embeddings
+  (`VECTOR_EMBEDDING`: github_actions 0.833 → 1.000, devex 0.950 →
+  1.000, `eval/history.jsonl`), and knowledge-graph persistence for HANA
+  Cloud's KG engine (RDF/SPARQL) built behind a tested seam — one
+  instance-configuration toggle away from its own recorded run
+  (spec 0129).
+
+The application-execution kit (targets, mapping table, cover-letter
+drafts for both German tracks) lives in `launch/sap/APPLICATION.md`.
