@@ -43,7 +43,11 @@ from tessera.grounding import Answer
 
 # A recurrence signature that is only a generic exit-code trailer — the weak
 # signal named in spec 0118 (matches the RCA claim text's quoted fragment).
-_TRAILER = re.compile(r'"Process completed with exit code \d+\.?"')
+# `-?`: negative exit codes are real on Windows runners; this regex and
+# rca.py's `_GENERIC_TRAILER` encode ONE definition of "generic trailer" and
+# must move together (spec 0126 scope amendment), or a negative-code trailer
+# would count as "sharp" in rca yet escape this WARN.
+_TRAILER = re.compile(r'"Process completed with exit code -?\d+\.?"')
 # An id that cannot exist in any snapshot (11 nines) — for the unknown refusal.
 _UNKNOWN_RUN_ID = "99999999999"
 
