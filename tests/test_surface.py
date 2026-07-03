@@ -176,3 +176,18 @@ def test_repl_handles_unknown_commands_and_eof(
     repl(io.StringIO(":wat\n"), ChatSession())
     out = capsys.readouterr().out
     assert "unknown command" in out
+
+
+def test_trust_panel_rounds_recorded_metrics() -> None:
+    """Cosmetic contract (spec 0113): the :trust panel renders recorded floats at
+    the eval's own three-decimal reporting precision, never raw repr floats."""
+    from tessera.surface.cli import _metric, _trust_panel
+
+    assert _metric(0.8888888888888888) == "0.889"
+    assert _metric(1.0) == "1.000"
+    assert _metric(24) == "24"
+    assert _metric(None) == "?"
+
+    panel = _trust_panel()
+    assert "0.8888888888888888" not in panel  # devex gold quality, now rounded
+    assert "0.889" in panel or "No recorded eval history" in panel
