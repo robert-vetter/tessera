@@ -7,7 +7,7 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
-short_description: The agent can only say what it can prove — and only do what you approve.
+short_description: Every claim proven, every action approved — with receipts.
 ---
 
 # Tessera — a trust layer for enterprise AI agents (live demo)
