@@ -59,3 +59,26 @@ gates **both**.
 - **Random sampling with a seed** — rejected: enumeration is just as
   deterministic and easier to audit (every entity appears; no sampling bias).
 - **Engine-derived expectations** — rejected as tautological (see context).
+
+## Addendum (2026-07-03, spec 0122)
+
+The benchmark unit's adversarial review sharpened a distinction this ADR
+left implicit. "Expectations never from engine output" holds for expected
+**values** everywhere: every number, count, id, and entity name in a
+synthetic expectation is recomputed from the ingested data at eval time,
+never read back from the engine. Expected **phrasing** differs by battery:
+the business generator's compose-case facts are written in the engine's own
+render templates ("Total net order value across …", "is one resolved
+entity", "Refused to sum across …"), while the devex/github_actions
+generators phrase facts as plain record text. For the eval's own purpose —
+regression against the measured engine — the template phrasing is
+appropriate and non-tautological (the *values* inside the templates are
+data-derived, so a computation regression still fails). But it makes those
+cases **definitionally unwinnable for any answerer that does not compose in
+the engine's words**, which matters the moment the cases are reused
+comparatively. The Faithfulness Floor benchmark (spec 0122,
+`docs/BENCHMARK.md`) therefore computes and publishes this boundary per
+battery ("reachable Q" in its structural notes) instead of letting the
+quality gap read as purely empirical. Any future battery should prefer
+record-reachable phrasing where the case's point is not the composition
+itself.

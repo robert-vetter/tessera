@@ -269,6 +269,16 @@ a regression in either vertical turns it red.
 Definition and what the number does (and does not) prove:
 [ADR 0005](docs/adr/0005-faithfulness-metric.md).
 
+**The Faithfulness Floor benchmark** puts the gate itself under measurement:
+the same corpora, cases, and verifier, with the engine's own retrieval run
+*ungated* (retrieve-and-recite) as the baseline. Offline-deterministic, no
+LLM judge, CI-pinned so the published tables cannot drift — and the baseline
+column is honest about where recitation wins. Trustworthy-outcome rates on
+the gold sets: **1.000 / 0.889 / 0.800 gated vs 0.182 / 0.222 / 0.000
+ungated** (business / devex / github_actions). Report + how to attack it:
+[docs/BENCHMARK.md](docs/BENCHMARK.md); reproduce with
+`uv run tessera-benchmark`.
+
 ### Knowledge graph & entity resolution
 
 The ingested records are assembled into an in-process knowledge graph, and a

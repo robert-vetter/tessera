@@ -18,6 +18,7 @@ dependencies = []
 tessera = "tessera.cli:main"
 tessera-chat = "tessera.surface.cli:main"
 tessera-eval = "tessera.eval.cli:main"
+tessera-benchmark = "tessera.eval.benchmark:main"
 tessera-compose = "tessera.business.composition:main"
 tessera-devex = "tessera.devex.cli:main"
 tessera-mcp = "tessera.agent.mcp_server:main"
