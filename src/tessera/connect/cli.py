@@ -85,9 +85,16 @@ def main(argv: list[str] | None = None) -> int:
     ask.add_argument("target", help="<owner>/<repo> of a connected repository")
     ask.add_argument("question", help='e.g. "Why did run 28641345176 fail?"')
 
+    smoke = sub.add_parser(
+        "smoke", help="check the trust contract holds on a connected snapshot"
+    )
+    smoke.add_argument("target", help="<owner>/<repo> of a connected repository")
+
     args = parser.parse_args(argv)
     if args.command == "connect":
         return _connect(args)
+    if args.command == "smoke":
+        return _smoke(args)
     return _ask(args)
 
 
@@ -159,6 +166,19 @@ def _ask(args: argparse.Namespace) -> int:
         if pointer:
             print(f"\n{pointer}")
     return 0
+
+
+def _smoke(args: argparse.Namespace) -> int:
+    from tessera.connect.smoke import run_smoke
+
+    try:
+        workspace = load_workspace(args.target)
+    except (InvalidTarget, WorkspaceNotConnected) as error:
+        print(f"smoke: {error}", file=sys.stderr)
+        return 2
+    report = run_smoke(workspace)
+    print(report.render())
+    return 0 if report.ok else 1
 
 
 def _manifest_pointer(question: str, manifest: Mapping[str, object]) -> str | None:
