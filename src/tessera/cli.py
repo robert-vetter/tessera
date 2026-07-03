@@ -19,9 +19,28 @@ import sys
 # milestone: `smoke` and `ingest` are claimed now and arrive with their units.
 _BYO_COMMANDS = frozenset({"connect", "ask", "smoke", "ingest"})
 
+_TOP_HELP = """\
+tessera — grounded answers with claim-level provenance.
+
+Bring-your-own-data (Milestone 18):
+  tessera connect github <owner>/<repo>   fetch a bounded, scrubbed snapshot
+  tessera ask <owner>/<repo> "<question>" answer over it, offline
+  (smoke, ingest — later Milestone 18 units)
+
+Otherwise the argument is a business-vertical question:
+  tessera "Which customer has the highest total order value?"
+
+See also: tessera-devex, tessera-chat, tessera-ui, tessera-eval.
+"""
+
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    # A leading --help at the front door lists the BYO subcommands too (a
+    # business question is never literally "-h"/"--help").
+    if args and args[0] in ("-h", "--help"):
+        print(_TOP_HELP)
+        return 0
     if args and args[0] in _BYO_COMMANDS:
         if args[0] in ("connect", "ask"):
             from tessera.connect.cli import main as connect_main

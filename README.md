@@ -152,7 +152,9 @@ logs — see [`.env.example`](.env.example)):
 
 ```bash
 uv run tessera connect github astral-sh/uv     # bounded snapshot → var/connect/
-uv run tessera ask astral-sh/uv "Why did run 28641345176 fail?"
+# connect prints a ready-to-run `ask` with a real failed-run id from the snapshot
+# (run ids expire with GitHub's ~90-day log retention — use the suggested one):
+uv run tessera ask astral-sh/uv "Why did run <run-id> fail?"
 ```
 
 `uv run tessera` is the CLI equivalent — one routed door: a deterministic router

@@ -23,10 +23,12 @@ from tessera.connect.github import (
     FetchCaps,
     FetchResponse,
     SnapshotResult,
+    default_transport,
     fetch_snapshot,
 )
-from tessera.connect.scrub import SCRUB_MARKER, scrub_text
+from tessera.connect.scrub import SCRUB_MARKER, neutralize_controls, scrub_text
 from tessera.connect.workspace import (
+    InvalidTarget,
     PRSource,
     Workspace,
     WorkspaceNotConnected,
@@ -485,6 +487,197 @@ def test_scrub_leaves_clean_text_alone() -> None:
     scrubbed, counts = scrub_text(text)
     assert scrubbed == text
     assert counts == {}
+
+
+def test_scrub_catches_more_credential_shapes() -> None:
+    # Shapes an adversarial review flagged as prior survivors (spec 0118 review).
+    cases = {
+        "gitlab-pat": "token glpat-ABCDEFGHIJ1234567890 here",
+        "npm-token": "npm_" + "a" * 36,
+        "google-api-key": "AIza" + "B" * 35,
+        "openai-key": "sk-proj-" + "c" * 24,
+        "jwt": "eyJ" + "a" * 12 + ".eyJ" + "b" * 12 + "." + "d" * 20,
+        "sensitive-assignment": "_authToken=" + "e" * 20,
+    }
+    for name, text in cases.items():
+        _, counts = scrub_text(text)
+        assert name in counts, f"{name} not scrubbed from {text!r}: {counts}"
+
+
+def test_scrub_neutralizes_terminal_control_sequences() -> None:
+    # ANSI CSI, an OSC-8 hyperlink, a carriage-return overwrite, a bare BEL, and
+    # a C1 CSI-equivalent — all stripped; \t and \n survive (locators/columns).
+    hostile = (
+        "\x1b[31mred\x1b[0m\t"
+        "\x1b]8;;http://evil.test\x07label\x1b]8;;\x07\n"
+        "real\rFORGED\x07\x9bmore"
+    )
+    cleaned, hits = neutralize_controls(hostile)
+    assert "\x1b" not in cleaned and "\x07" not in cleaned and "\r" not in cleaned
+    assert "\x9b" not in cleaned
+    assert "\t" in cleaned and "\n" in cleaned  # structure preserved
+    assert hits > 0
+    _, counts = scrub_text(hostile)
+    assert counts.get("control-sequences", 0) > 0
+
+
+def test_scrub_patterns_do_not_cross_line_boundaries(tmp_path: Path) -> None:
+    # A log line ending in "password:" (a routine prompt) must NOT let the
+    # scrubber eat the next TSV line's job column (corr M2). Build a real
+    # workspace whose failed-step log contains such a line and confirm the
+    # parsed chunk still names the real job.
+    job_log = "﻿" + "\n".join(
+        [
+            "2026-07-02T10:05:00.0Z ##[group]Run deploy",
+            "2026-07-02T10:05:01.0Z Enter host password:",
+            "2026-07-02T10:05:02.0Z ##[error]Process completed with exit code 1.",
+        ]
+    )
+    routes = _default_routes()
+    routes[BLOB_URL] = FetchResponse(status=200, headers={}, body=job_log.encode())
+    result = _connect(tmp_path, FakeTransport(routes), token="tok-test")
+    log = (result.workspace / "logs" / "900000002.failed.log").read_text("utf-8")
+    chunks = parse_log_chunks(log)
+    assert chunks and all(c.job == "test (3.12)" for c in chunks)
+    assert SCRUB_MARKER not in log  # nothing credential-shaped was actually present
+
+
+def test_tab_in_job_name_cannot_shift_tsv_columns(tmp_path: Path) -> None:
+    jobs = _jobs_listing()
+    jobs["jobs"][0]["name"] = "test\t(evil)\ninjection"  # type: ignore[index]
+    routes = _default_routes()
+    routes[JOBS_URL] = _json_response(jobs)
+    result = _connect(tmp_path, FakeTransport(routes), token="tok-test")
+    log = (result.workspace / "logs" / "900000002.failed.log").read_text("utf-8")
+    chunks = parse_log_chunks(log)
+    # The name is flattened to a single safe column value — no injected columns.
+    assert chunks and all(c.job == "test (evil) injection" for c in chunks)
+
+
+def test_manifest_misses_are_scrubbed(tmp_path: Path) -> None:
+    # A credential planted in a JOB NAME reaches a miss string; that miss is
+    # written to MANIFEST.json, so it too must be scrubbed (sec MAJOR-2).
+    jobs = _old_jobs_listing()
+    jobs["jobs"][0]["name"] = f"deploy {PLANTED_TOKEN}"  # type: ignore[index]
+    jobs["jobs"][0]["steps"] = []  # type: ignore[index]  # → job-level miss w/ name
+    routes = _default_routes()
+    routes[JOBS_URL_OLD] = _json_response(jobs)
+    routes[LOG_URL_OLD] = FetchResponse(status=200, headers={}, body=b"log\n")
+    result = _connect(
+        tmp_path, FakeTransport(routes), token="tok-test", caps=FetchCaps(failed_logs=5)
+    )
+    manifest_text = (result.workspace / "MANIFEST.json").read_text("utf-8")
+    assert PLANTED_TOKEN not in manifest_text
+    assert any(SCRUB_MARKER in miss for miss in result.manifest["misses"])
+
+
+def test_redirect_to_non_http_scheme_is_refused(tmp_path: Path) -> None:
+    routes = _default_routes()
+    routes[LOG_URL] = FetchResponse(
+        status=302, headers={"location": "file:///etc/passwd"}, body=b""
+    )
+    with pytest.raises(ConnectError, match="non-http redirect"):
+        _connect(tmp_path, FakeTransport(routes), token="tok-test")
+
+
+def test_non_json_200_is_a_clean_error(tmp_path: Path) -> None:
+    routes = {
+        RUNS_URL: FetchResponse(status=200, headers={}, body=b"<html>portal</html>")
+    }
+    with pytest.raises(ConnectError, match="not JSON"):
+        _connect(tmp_path, FakeTransport(routes), token=None)
+
+
+def test_default_transport_wraps_non_http_errors() -> None:
+    # The real transport has no FileHandler, so a file:// URL raises URLError,
+    # which must surface as a ConnectError (spec acceptance: clean message).
+    with pytest.raises(ConnectError, match="network error"):
+        default_transport("file:///etc/hosts", {})
+
+
+def test_token_rejected_for_logs_gives_a_token_aware_miss(tmp_path: Path) -> None:
+    routes = _default_routes()
+    routes[LOG_URL] = FetchResponse(status=403, headers={}, body=b"{}")
+    result = _connect(tmp_path, FakeTransport(routes), token="tok-test")
+    assert any("was not accepted" in miss for miss in result.manifest["misses"])
+    assert (
+        result.metadata_only_reason == "failed-run logs were unavailable (see misses)"
+    )
+
+
+def test_green_repo_metadata_only_reason(tmp_path: Path) -> None:
+    listing = _runs_listing()
+    # Drop both failures → a green repo with a token: no failed-run logs, but
+    # NOT because logs were unavailable.
+    runs = listing["workflow_runs"]
+    assert isinstance(runs, list)
+    listing["workflow_runs"] = [r for r in runs if r["conclusion"] != "failure"]
+    routes = {
+        RUNS_URL: _json_response(listing),
+        PULLS_URL: _json_response(_pulls_listing()),
+    }
+    result = _connect(tmp_path, FakeTransport(routes), token="tok-test")
+    assert result.metadata_only is True
+    assert result.metadata_only_reason == "no failed runs among the runs considered"
+
+
+def test_ask_pointer_names_omitted_and_excluded_runs(tmp_path: Path) -> None:
+    from tessera.connect.cli import _manifest_pointer
+
+    manifest = {
+        "omitted_failed_run_ids": [900000000],
+        "excluded_runs": {"900000003": "in_progress"},
+    }
+    assert "omitted" in (
+        _manifest_pointer("Why did run 900000000 fail?", manifest) or ""
+    )
+    assert "excluded" in (
+        _manifest_pointer("Why did run 900000003 fail?", manifest) or ""
+    )
+    assert _manifest_pointer("Why did run 111111111 fail?", manifest) is None
+
+
+def test_pr_body_scrubbed_then_capped_with_marker(tmp_path: Path) -> None:
+    pulls = _pulls_listing()
+    pulls[0]["body"] = "x" * 40 + PLANTED_TOKEN + "y" * 600  # straddles the cap
+    routes = _default_routes()
+    routes[PULLS_URL] = _json_response(pulls)
+    result = _connect(
+        tmp_path,
+        FakeTransport(routes),
+        token="tok-test",
+        caps=FetchCaps(pr_body_chars=50),
+    )
+    body = json.loads((result.workspace / "prs" / "42.json").read_text("utf-8"))["body"]
+    assert PLANTED_TOKEN not in body  # scrubbed BEFORE the cut, not lost past it
+    assert body.endswith("…[truncated]")
+    assert any("truncated" in miss for miss in result.manifest["misses"])
+
+
+def test_invalid_ask_targets_are_refused(tmp_path: Path) -> None:
+    for bad in ("..", ".", "", "/etc/passwd"):
+        with pytest.raises(InvalidTarget):
+            load_workspace(bad, root=tmp_path / "connect")
+
+
+def test_workspace_repo_collision_is_flagged(tmp_path: Path) -> None:
+    # a/b-c and a-b/c both map to dir "a-b-c"; loading the wrong one must error.
+    root = tmp_path / "connect"
+    (root / "a-b-c").mkdir(parents=True)
+    (root / "a-b-c" / "MANIFEST.json").write_text('{"repo": "a-b/c"}', "utf-8")
+    with pytest.raises(InvalidTarget, match="not 'a/b-c'"):
+        load_workspace("a/b-c", root=root)
+    # The matching target loads fine.
+    assert load_workspace("a-b/c", root=root).repo == "a-b/c"
+
+
+def test_cap_flags_reject_out_of_range(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tessera.connect.cli import main as connect_main
+
+    with pytest.raises(SystemExit):
+        connect_main(["connect", "github", "a/b", "--failed", "-1"])
+    with pytest.raises(SystemExit):
+        connect_main(["connect", "github", "a/b", "--runs", "0"])
 
 
 # --- the front-door dispatcher ------------------------------------------------------

@@ -27,8 +27,9 @@ to signed blob storage, where a naive HTTP client would re-send the
 **Fetch writes a gitignored local workspace; answering reads only that.**
 `tessera connect github <owner>/<repo>` is the network moment: a bounded
 fetch (recent runs, failed-run logs for the most recent failures, one page
-of PRs — explicit caps, tunable by flags) normalized into the **exact
-committed-snapshot format of ADR 0014** under `var/connect/<owner>-<repo>/`,
+of PRs — explicit caps, the most common three tunable by CLI flags)
+normalized into the committed-snapshot format of ADR 0014 (`runs/` + `logs/`,
+plus a `prs/` extra) under `var/connect/<owner>-<repo>/`,
 with a `MANIFEST.json` pinning what was fetched (run ids, snapshot date,
 caps, scrub counts, named misses) and a `NOTICE` naming the upstream.
 `tessera ask <owner>/<repo> "…"` builds the graph from those files alone —
@@ -71,6 +72,17 @@ papered over.
   historical afterwards; the "ran on X" pattern the project already uses.
 - **Accepted cost:** without a token the snapshot has no logs, so RCA
   grounds on run metadata only — a stated degradation, not a hidden one.
+- **Accepted cost:** the unchanged DevEx RCA keys "recurring failure" on a
+  shared error signature, which on real logs is frequently the generic
+  `Process completed with exit code N.` trailer — a *weak* recurrence signal
+  (the claim stays true and verifier-checked, but the label over-reaches on
+  unrelated same-exit-code failures). Surfaced by the per-repo smoke battery
+  and stated in the pilot runbook; the signature refinement is deferred named
+  future work because `devex/rca.py` is frozen this milestone.
+- **Accepted cost:** the snapshot's on-disk format is the committed corpus's
+  format *plus* a `prs/` directory the committed corpus does not have (a
+  workspace extra for the lexical path); the shared `runs/` + `logs/` shape is
+  what the unchanged source reads.
 
 ## Alternatives considered
 

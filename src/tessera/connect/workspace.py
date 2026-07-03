@@ -21,6 +21,7 @@ identically to the measured battery.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -34,9 +35,11 @@ from tessera.sources.github_actions import GitHubActionsSource
 
 JsonObj = dict[str, Any]
 
-# Workspaces live under the invocation directory (documented in PILOT.md):
-# foreign snapshots are the *user's* material, not the repo's — and var/ is
-# gitignored so they can never be committed (spec 0117 decision 2).
+# Workspaces live under ``var/connect/`` relative to the invocation directory:
+# foreign snapshots are the *user's* material, not the repo's — and ``var/`` is
+# gitignored so they can never be committed (spec 0117 decision 2). ``ask`` must
+# therefore run from the same directory as ``connect`` (the not-connected error
+# names the resolved path so a cwd mismatch is obvious).
 CONNECT_ROOT = Path("var") / "connect"
 
 # The unstructured-chunk locator kinds (mirrors the devex assembly).
@@ -46,11 +49,17 @@ _CHUNK_LOCATOR_KINDS = frozenset({"log-span", "diff-hunk"})
 class WorkspaceNotConnected(Exception):
     """Raised when a target has no snapshot yet; the message says what to run."""
 
-    def __init__(self, target: str) -> None:
+    def __init__(self, target: str, resolved: Path | None = None) -> None:
+        where = f" (looked in {resolved})" if resolved is not None else ""
         super().__init__(
-            f"no workspace for '{target}' — run "
-            f"`uv run tessera connect github {target}` first."
+            f"no workspace for '{target}'{where} — run "
+            f"`uv run tessera connect github {target}` first "
+            "(from the same directory)."
         )
+
+
+class InvalidTarget(Exception):
+    """Raised when an ``ask`` target could not name a workspace safely."""
 
 
 @dataclass(frozen=True)
@@ -70,19 +79,46 @@ class Workspace:
         return str(self.manifest.get("snapshot_date", ""))
 
 
+# A workspace dir name is <owner>-<repo>, lowercased — the same alphabet as a
+# GitHub owner/repo minus the slash. Anything else (``..``, absolute paths, path
+# separators) is rejected so an ``ask`` target can never resolve outside
+# ``var/connect/`` (the fetch path enforces the same via its own TARGET regex).
+_WORKSPACE_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")
+
+
 def workspace_name(target: str) -> str:
     """``owner/repo`` → the workspace directory name (lowercased)."""
     return target.replace("/", "-").lower()
 
 
 def load_workspace(target: str, root: Path = CONNECT_ROOT) -> Workspace:
-    """Resolve ``owner/repo`` (or a literal workspace dir name) to a workspace."""
+    """Resolve ``owner/repo`` (or a literal workspace dir name) to a workspace.
+
+    The resolved directory is confined to ``root``: a traversal-shaped target
+    (``..``, an absolute path, an embedded separator) is refused rather than
+    followed. When the target names a repo (``owner/repo``), the loaded
+    manifest's ``repo`` must match, so the ``a/b-c`` vs ``a-b/c`` directory
+    collision surfaces as a clear mismatch rather than a silently wrong answer.
+    """
     name = workspace_name(target) if "/" in target else target.lower()
+    if name in ("", ".", "..") or not _WORKSPACE_NAME.match(name):
+        raise InvalidTarget(
+            f"'{target}' is not a valid connected target "
+            "(expected <owner>/<repo>, e.g. astral-sh/uv)."
+        )
     path = root / name
     manifest_path = path / "MANIFEST.json"
     if not manifest_path.is_file():
-        raise WorkspaceNotConnected(target)
+        raise WorkspaceNotConnected(target, resolved=path.resolve())
     manifest: JsonObj = json.loads(manifest_path.read_text("utf-8"))
+    if "/" in target:
+        recorded = str(manifest.get("repo", "")).lower()
+        if recorded and recorded != target.lower():
+            raise InvalidTarget(
+                f"the workspace directory '{name}' holds a snapshot of "
+                f"'{manifest.get('repo')}', not '{target}' — the two map to the "
+                "same directory name; connect one at a time."
+            )
     return Workspace(name=name, path=path, manifest=manifest)
 
 
@@ -97,7 +133,12 @@ class PRSource:
         pr_dir = self.workspace.path / "prs"
         if not pr_dir.is_dir():
             return []
-        paths = sorted(pr_dir.glob("*.json"), key=lambda p: int(p.stem))
+        # Only numeric-stem files are workspace PR rows; ignore anything else a
+        # user may have dropped in (a stray note, an editor backup).
+        paths = sorted(
+            (p for p in pr_dir.glob("*.json") if p.stem.isdigit()),
+            key=lambda p: int(p.stem),
+        )
         return [json.loads(path.read_text("utf-8")) for path in paths]
 
     def ingest(self) -> list[EvidenceRecord]:

@@ -13,16 +13,32 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Callable, Mapping
 
 from tessera.connect.github import ConnectError, FetchCaps, fetch_snapshot
 from tessera.connect.workspace import (
     CONNECT_ROOT,
+    InvalidTarget,
     WorkspaceNotConnected,
     answer_workspace,
     build_workspace_graph,
     build_workspace_kb,
     load_workspace,
 )
+from tessera.devex.rca import RUN_ID
+
+
+def _positive(minimum: int, maximum: int | None = None) -> Callable[[str], int]:
+    """An argparse type that rejects out-of-range integers with a clear message."""
+
+    def check(raw: str) -> int:
+        value = int(raw)
+        if value < minimum or (maximum is not None and value > maximum):
+            bound = f"{minimum}..{maximum}" if maximum is not None else f">= {minimum}"
+            raise argparse.ArgumentTypeError(f"must be {bound}, got {value}")
+        return value
+
+    return check
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -46,19 +62,19 @@ def main(argv: list[str] | None = None) -> int:
     github.add_argument("target", help="<owner>/<repo>, e.g. astral-sh/uv")
     github.add_argument(
         "--runs",
-        type=int,
+        type=_positive(1, 100),
         default=30,
-        help="how many recent runs to consider (default 30)",
+        help="how many recent runs to consider, 1..100 (default 30)",
     )
     github.add_argument(
         "--failed",
-        type=int,
+        type=_positive(0),
         default=5,
         help="failed runs to fetch logs for (default 5)",
     )
     github.add_argument(
         "--jobs-per-run",
-        type=int,
+        type=_positive(0),
         default=3,
         help="failed jobs per run to fetch logs for (default 3)",
     )
@@ -107,10 +123,10 @@ def _connect(args: argparse.Namespace) -> int:
         print(f"  scrubbed before disk: {details}")
     for miss in manifest["misses"]:
         print(f"  miss: {miss}")
-    if result.metadata_only:
+    if result.metadata_only and result.metadata_only_reason:
         print(
-            "  NOTE: metadata-only snapshot (no failed-run logs) — RCA grounds "
-            "on run rows; see the misses above for why."
+            "  NOTE: no failed-run logs in this snapshot — "
+            f"{result.metadata_only_reason}."
         )
     if result.suggested_run:
         print(
@@ -123,6 +139,9 @@ def _connect(args: argparse.Namespace) -> int:
 def _ask(args: argparse.Namespace) -> int:
     try:
         workspace = load_workspace(args.target)
+    except InvalidTarget as error:
+        print(f"ask: {error}", file=sys.stderr)
+        return 2
     except WorkspaceNotConnected as error:
         print(f"ask: {error}", file=sys.stderr)
         return 2
@@ -135,4 +154,33 @@ def _ask(args: argparse.Namespace) -> int:
         f"{route.reason}]"
     )
     print(answer.render())
+    if not answer.is_grounded:
+        pointer = _manifest_pointer(args.question, workspace.manifest)
+        if pointer:
+            print(f"\n{pointer}")
     return 0
+
+
+def _manifest_pointer(question: str, manifest: Mapping[str, object]) -> str | None:
+    """If a refused run id is in the snapshot's omitted/excluded lists, say so —
+    "no run X" then reads as "not in this snapshot", not "never existed"."""
+    match = RUN_ID.search(question)
+    if not match:
+        return None
+    run_id = match.group(0)
+    if not run_id.isdigit():
+        return None
+    run_int = int(run_id)
+    omitted = manifest.get("omitted_failed_run_ids")
+    if isinstance(omitted, list) and run_int in omitted:
+        return (
+            f"(run {run_id} is a failed run this snapshot omitted under the "
+            "--failed cap — raise --failed and re-connect to include it.)"
+        )
+    excluded = manifest.get("excluded_runs")
+    if isinstance(excluded, dict) and run_id in excluded:
+        return (
+            f"(run {run_id} was excluded at connect time: {excluded[run_id]} — "
+            "not a completed success/failure.)"
+        )
+    return None

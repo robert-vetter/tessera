@@ -144,6 +144,34 @@ unit's live proof is recorded output, not a gated number.
   the interesting failure?" becomes visible per repo.
 - **GitHub API drift** (field renames): the fetcher pins
   `X-GitHub-Api-Version: 2022-11-28`.
+- **Recurrence signal strength (named limitation).** The unchanged DevEx RCA
+  labels a shared error *signature* across runs a "Recurring failure"; the
+  signature is the first `##[error]` line, which on real corpora is often the
+  generic trailer `Process completed with exit code N.` (measured: both proof
+  corpora). The emitted claim stays literally true and verifier-checked (the
+  fragment does appear in every cited log), but a generic trailer is a *weak*
+  recurrence signal — two unrelated failures that share an exit code get the
+  same label. This is surfaced, not hidden: Unit 3's smoke battery flags a
+  recurrence claim whose signature is a bare exit-code trailer, and PILOT.md
+  states it as an honest limit. The real fix — teaching `_signature` to skip
+  generic trailers when a specific error line exists — is **deferred named
+  future work**: `devex/rca.py` is frozen for this milestone (the ADR 0008
+  empty-diff audit), so it must be done in a later milestone openly, with the
+  batteries re-run, not silently here.
+- **Adversarial review (recorded):** three lenses (security, trust-honesty,
+  correctness) pre-merge. Fixed in this PR: control-sequence neutralization of
+  all foreign text at the fetch boundary; manifest miss strings + excluded
+  values scrubbed (nothing written bypasses the scrubber); non-HTTP network
+  errors → `ConnectError` (spec acceptance criterion); scrub patterns made
+  line-local (`[ \t]`, never `\s`) so a `password:`-terminated line can't eat
+  the next TSV job column; tab/newline stripped from job/step names; redirect
+  scheme guard + minimal opener (no file/ftp/data handlers) + auth only on
+  https api host; CLI flag bounds; non-JSON-200 tolerance; workspace
+  collision + traversal guards; token-aware 401/403 log diagnosis;
+  scrub-then-truncate PR bodies with a visible marker; `total_run_count`
+  coverage; boundary-second over-label named per run; metadata-only reason
+  distinguished; atomic move-aside swap. Explicitly deferred: the recurrence
+  `_signature` refinement (frozen file, above).
 
 ## Live proof (recorded at implementation, 2026-07-03)
 
