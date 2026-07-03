@@ -2174,3 +2174,120 @@ Kickoff prompt handed back in the session summary.
 **State of the tree**
 - `main` green and in sync; no open unit branches. PRs #138–#142 merged.
   **Tagged `milestone-15` + `milestone-16` + `milestone-17` + `milestone-18`.**
+
+## 2026-07-03 — Milestone 19 build share COMPLETE (launch & traction, staged; tag pends the maintainer's go)
+
+**Mode note:** ran autonomously from the maintainer's M19 kickoff per
+CLAUDE.md discipline — one spec per unit (spec before code), branch first,
+gate → PR → CI-green → squash-merge per unit (PRs #144–#148, specs
+0122–0126); pre-merge adversarial review on both trust-bearing units;
+decisions recorded in specs, not asked. **Nothing was published or sent** —
+every public act is staged for the maintainer's identity and timing (the
+kickoff's hard rule; `launch/README.md` states it).
+
+**Done this session (5 units):**
+- **Unit 1 — "The Faithfulness Floor" benchmark** (spec 0122, #144, +ADR
+  0007 addendum): `uv run tessera-benchmark` + `docs/BENCHMARK.md`. The
+  evidence-gated engine vs its own retrieval run ungated
+  (retrieve-and-recite) — same corpora, cases, verifier, claim shapes,
+  scored by the harness's own `_score`. Gold trustworthy-outcome rates:
+  **1.000/0.889/0.800 gated vs 0.182/0.222/0.000 ungated** (business/
+  devex/gha); the ungated side's per-claim faithfulness is 1.000 by
+  construction (recitation) — reported as the finding, not hidden. The
+  number can fail four ways (doc-pin byte-for-byte in CI, strict
+  direction pin, run_eval equality pin, the floor). Three-lens
+  adversarial review (methodology skeptic / correctness / honesty): 2
+  MAJORs, same wound — part of the quality gap is definitional (gold
+  facts phrased by the gated engine) — resolved by **computing and
+  publishing the boundary in the artifact itself** (structural notes:
+  reachable-Q per battery — business synthetic 0/45, its 0.038 IS the
+  ceiling and the doc says so; devex synthetic 10/10 and the baseline is
+  credited 0.583), scoping the lower-bound claim to faithfulness, and
+  pinning prose numbers by test.
+- **Unit 2 — registry artifacts, staged** (spec 0123, #145):
+  `launch/registries/` — official MCP Registry `server.json` (schema
+  2025-12-11, PyPI route; **`tessera` is TAKEN on PyPI; `tessera-trust`
+  staged** — dist-name + version-bump are the maintainer's decisions),
+  45-minute runbook (the official registry is the upstream: PulseMCP
+  auto-ingests weekly; mcp.so/awesome are satellites), blurbs, awesome
+  PR line, README `mcp-name` ownership marker; CI pins keep the staged
+  artifacts drift-proof (incl. version sync once pyproject leaves 0.0.0).
+- **Unit 3 — launch & outreach kit, drafted** (spec 0124, #146):
+  `launch/posts/` (Show HN + first comment + attack prep incl. the
+  benchmark's definitional-boundary answer; r/LLMDevs; X thread) and
+  `launch/outreach/` (DE/EN 4-touch DACH sequence offering the
+  PILOT.md pilot; written 2-week pilot success definition; call script;
+  tracking scaffold — person-level list gitignored, company rows only
+  committed).
+- **Unit 4 — Z Fellows check-in kit** (spec 0125, #147):
+  `launch/zfellows/CHECKIN.md` — the timed 5-minute arc with live-only
+  placeholders + fill sources, measured-record-bounded Q&A answers,
+  offline fallback in the script. Date-independent (check-in date still
+  open).
+- **Unit 5 — the M18-deferred rca.py edge** (spec 0126, #148):
+  recurrence signature = first **verifiable** non-generic error line
+  (else first verifiable; else NO recurrence claim — never one our own
+  verifier rejects); anchor = the signature's extraction chunk (the
+  mkdocs smoke-FAIL class); generic trailer covers negative exit codes
+  in rca + smoke's WARN together (recorded scope amendment).
+  Adversarial review found 1 MAJOR in my first cut (the
+  sharper-preference could pick quote-containing / normalize-to-empty
+  fragments the shared-fragment grammar can't check — re-opening the
+  FAIL class) + 2 MINORs + 1 NIT; all fixed, eight foreign-log fixtures
+  pin the shapes (the two core ones demonstrated failing on the old
+  code). **Output-neutral on committed corpora, proven twice** —
+  byte-identical renders of every committed failed run, independently
+  reproduced in review.
+
+**Current eval numbers (unchanged — byte-identical throughout):**
+- **business — gold 11: 1.000 / 1.000 / 1.000; synthetic 53: all 1.000.**
+- **devex — gold 9: 1.000 / 0.950 / 0.889 (offline); synthetic 24: all 1.000.**
+- **github_actions — gold 5: 1.000 / 0.833 / 0.800 (offline); synthetic 8: all 1.000.**
+- New, separately-published benchmark numbers live in `docs/BENCHMARK.md`
+  (CI-pinned). 557 tests (+21 this milestone); gate green on every PR.
+
+**Milestone 19 check (kickoff + ROADMAP2):** benchmark published in-repo,
+able to fail ✓ (Unit 1); findable = staged submissions + runbook ✓ (Unit
+2; submission itself is the maintainer's); launch + outreach drafted ✓
+(Unit 3); Z Fellows kit ✓ (Unit 4); the deferred rca edge folded in
+openly with batteries re-run and proven neutral ✓ (Unit 5). **ADR 0008
+frozen-core empty-diff audit `milestone-18..HEAD` CLEAN** (three source
+files touched all milestone: new `eval/benchmark.py`, vertical
+`devex/rca.py`, one regex token in `connect/smoke.py`); hosted demo, UI,
+MCP, BYO doors untouched. **The `milestone-19` tag PENDS the
+maintainer's public acts** — ROADMAP2's done-when includes "launched"
+and "outreach sent" (M17 precedent: tag when the milestone condition is
+met, not when the code is).
+
+**Next — the maintainer's go-list (everything staged; "go" costs minutes):**
+1. **Registries** (`launch/registries/RUNBOOK.md`, ~45 min): decide the
+   PyPI dist name (`tessera` is taken; `tessera-trust` staged) + first
+   version (0.1.0 staged); publish to PyPI → `mcp-publisher` → claims →
+   awesome PR.
+2. **Launch** (`launch/posts/`): re-run `tessera-benchmark`, warm the HF
+   Space, post Show HN + satellites on your timing; stay in-thread 3–4h.
+3. **Outreach** (`launch/outreach/`): fill `targets.csv` (gitignored),
+   send wave 1, work the 4-touch sequence toward ≥2 design-partner
+   pilots.
+4. **Z Fellows** (`launch/zfellows/CHECKIN.md`): confirm the check-in
+   date, fill the placeholders that morning, rehearse twice.
+5. Then any session tags `milestone-19` and rolls the CHANGELOG section.
+6. Standing items (unchanged): the 2–3-min demo video (script DEMO.md
+   §2; gates nothing), GitHub Pages source toggle (docs deploy 404s),
+   SALT HF access request, HANA instance health, BTP account,
+   dependabot #59/#60.
+
+**Open questions / risks**
+- The official MCP Registry is in preview (schema/reset risk recorded in
+  the runbook; `server.json` pins schema 2025-12-11 so mismatch fails
+  loudly at publish).
+- The benchmark invites attack by design — expect (and welcome)
+  methodology issues after launch; the attack surface is documented and
+  the honest answers are staged in the launch kit.
+- `The operation was canceled.` is another information-free runner line
+  outside the generic-trailer set (review note, semantics-adjacent,
+  recorded in spec 0126 — future work if smoke shows it mattering).
+
+**State of the tree**
+- `main` green and in sync; no open unit branches. PRs #144–#148 merged.
+  Tagged through `milestone-18`; **`milestone-19` pends launch**.

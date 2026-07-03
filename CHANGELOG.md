@@ -11,7 +11,80 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-*(nothing yet)*
+Milestone 19 (launch & traction), **the autonomous build share — complete**:
+the measured engine made findable and credible without touching the trust
+model. The ADR 0008 frozen-core empty-diff audit over `milestone-18..HEAD`
+is **clean** (the milestone touched three source files: the new
+`eval/benchmark.py`, the vertical `devex/rca.py`, and one regex token in
+`connect/smoke.py`); all six committed battery lines are byte-identical.
+**The `milestone-19` tag pends the maintainer's public acts** (ROADMAP2's
+done-when includes "launched" and "outreach sent" — his identity, his
+timing; everything is staged so "go" costs minutes).
+
+### Added
+
+- **"The Faithfulness Floor" benchmark** (spec 0122, #144): a
+  deterministic, offline, no-LLM-judge comparison of the evidence-gated
+  engine against its **own retrieval run ungated** (BM25 top-5,
+  retrieve-and-recite) — same corpora, same gold+synthetic cases, same
+  verifier and claim grammars, scored by the harness's own `_score`
+  (imported, not reimplemented). Headline (trustworthy-outcome rate,
+  gold): **1.000 / 0.889 / 0.800 gated vs 0.182 / 0.222 / 0.000 ungated**
+  (business / devex / github_actions) — with the gated side's own misses
+  visible. The published number can fail four ways: `docs/BENCHMARK.md`'s
+  tables are CI-pinned byte-for-byte against a fresh run, a strict
+  direction test per battery+set, an equality pin to `run_eval()`, and
+  the floor itself. Three-lens pre-merge adversarial review (methodology
+  / correctness / honesty): 2 MAJORs — resolved by making the artifact
+  **compute and publish its own definitional boundary** (structural
+  notes: recitation-reachable quality per battery, kind mix, >k-support
+  ceilings) instead of narrating the gap as purely empirical, and by
+  scoping the lower-bound claim to faithfulness. ADR 0007 addendum
+  records the value-vs-phrasing derivation distinction. `uv run
+  tessera-benchmark` (`--markdown`, `--cases`).
+- **Staged MCP registry submissions** (spec 0123, #145):
+  `launch/registries/` — official-registry `server.json` (schema
+  `2025-12-11`, PyPI route; **`tessera` is taken on PyPI**, `tessera-trust`
+  staged as the maintainer's decision), the ~45-minute submission runbook
+  (PyPI → `mcp-publisher` → PulseMCP/mcp.so claims → awesome-mcp-servers
+  PR; the official registry is the upstream aggregators ingest), form
+  blurbs, the PR-ready awesome entry, and the invisible `mcp-name`
+  ownership marker in the README. CI consistency pins
+  (`tests/test_registry_artifacts.py`) keep the staged artifacts true,
+  including pyproject↔server.json version sync once the version leaves
+  `0.0.0`. Nothing submitted.
+- **Launch & outreach kit, drafted not sent** (spec 0124, #146):
+  `launch/posts/` (Show HN with honest-limits paragraph + known-attack
+  prep wired to the benchmark's structural notes; r/LLMDevs; X thread;
+  channel notes) and `launch/outreach/` (DE/EN 4-touch DACH consultancy
+  sequence offering the `docs/PILOT.md` pilot, written 2-week pilot
+  success definition, 20-minute call script, tracking scaffold —
+  company-level rows only committed; the person-level working list is
+  gitignored).
+- **Z Fellows check-in kit** (spec 0125, #147):
+  `launch/zfellows/CHECKIN.md` — the timed 5-minute arc (Replit story →
+  live demo → shipped-in-N-weeks → 3/6/12-month plan → asks) with
+  live-only `[N]` placeholders and fill sources, Q&A pocket answers
+  bounded by the measured record, and the offline `tessera-ui` fallback
+  in the script.
+
+### Fixed
+
+- **RCA recurrence: verifiable signature + extraction-chunk anchor**
+  (spec 0126, #148) — the M18-deferred `mkdocs/mkdocs` smoke-FAIL class.
+  The signature is now the first **verifiable** non-generic error line
+  (else the first verifiable line; else no recurrence/incident claim at
+  all — never a claim the project's own verifier rejects), and the
+  shared-fragment anchor is the chunk the signature was extracted from,
+  not blindly `error_chunks[0]`. Generic-trailer definition covers
+  negative exit codes in both `rca.py` and `smoke`'s WARN (one
+  definition, moved together — recorded scope amendment). Pre-merge
+  adversarial review: 1 MAJOR (the first cut's sharper-preference could
+  select quote-containing / normalize-to-empty fragments the grammar
+  cannot check) + 2 MINORs + 1 NIT, all fixed; eight foreign-log
+  fixtures pin the shapes, the two core ones failing on the old code.
+  **Output-neutral on committed corpora, proven twice** (byte-identical
+  RCA renders; independently reproduced in review over all 19 runs).
 
 ## [milestone-18] — 2026-07-03
 
