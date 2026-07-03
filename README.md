@@ -170,6 +170,10 @@ uv run tessera ask data/ingest_demo "What do you know about Santa Fe?"
 uv run tessera ask data/ingest_demo "Tell me about Portland"   # → ambiguous, refused
 ```
 
+Both BYO paths are packaged as a design-partner offer — clone to a grounded,
+provenance-complete answer on your own data in under 30 minutes:
+[**Pilot in a day**](docs/PILOT.md).
+
 `uv run tessera` is the CLI equivalent — one routed door: a deterministic router
 decides whether your question is a simple lookup, a one-entity cross-source
 composition, or multi-step reasoning — and prints its route and reason above the
