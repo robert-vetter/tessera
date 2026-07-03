@@ -76,6 +76,38 @@ seam and stages the measurement.
    over evidence text + a new cloud surface): one focused review;
    findings fixed or recorded.
 
+**Review amendments (2026-07-03 — 1 MAJOR, 1 MINOR, 3 NITs, all
+addressed):**
+
+9. **U+2028/U+2029/U+0085 (the MAJOR).** The parser split with
+   `splitlines()`, which also splits on the Unicode line/paragraph
+   separators and NEL that the escaper correctly left raw — one
+   JS-flavored log line away from a broken round trip. Fixed both ways:
+   those three codepoints now escape as `\uXXXX` (every serialized
+   triple is one physical line in any tool), and the parser splits on
+   `\n` only (the serializer's own joiner). Pinned in the adversarial
+   fixture.
+10. **The SPARQL §19.2 pre-parse hazard (the MINOR), answered with a
+    canary.** SPARQL string literals have no `UCHAR` production; a
+    strictly conforming processor pre-decodes `\uXXXX` across the whole
+    query text, so content containing a literal backslash-u sequence
+    could be corrupted store-side — invisibly to the in-repo round
+    trip, and with no clean in-band escape available. The one-shot now
+    opens with an **escape-fidelity canary**: store a literal containing
+    exactly that shape (plus a U+2028), read it back, record
+    `EXACT`/`DIVERGED` verbatim in the run record, drop the canary
+    graph. The first live run measures the engine's actual behavior
+    instead of assuming the spec reading.
+11. NITs: `config` excluded from the store's repr (it carries
+    `hana_password`); the one-shot's COUNT extraction no longer crashes
+    on a differently-labelled alias (records `?` instead); the mentions
+    query now joins through resolutions ("mentions of a resolved
+    entity", as decision 7 promised). Also noted by the review, for the
+    record: `result[2]` as the response OUT parameter is
+    tutorial-verified but not yet live-verified (the probe errored
+    before OUT extraction) — the staged one-shot is the honest first
+    check.
+
 ## Acceptance criteria
 
 - [ ] `tessera/platform/kg.py`: triple mapping, N-Triples serializer +
