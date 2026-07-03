@@ -13,6 +13,75 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-18] — 2026-07-03
+
+Usable on your data: two bring-your-own-data doors that answer with the same
+claim-level provenance and honest refusals on data Tessera did **not** author —
+the design-partner pilot vehicle. The engine is untouched: the ADR 0008
+frozen-core empty-diff audit over `milestone-17..HEAD` is **clean** (only new
+files under `tessera/connect/` + `tessera/ingest/`, `tessera/cli.py`, and the
+single `pyproject.toml` entry-point line changed); all six committed battery
+lines are byte-identical.
+
+### Added
+
+- **`tessera connect github <owner>/<repo>` + `tessera ask`** (spec 0118,
+  ADR 0028, #139): fetch a bounded, scrubbed snapshot of any public repo's
+  GitHub Actions history into a gitignored `var/connect/` workspace (runs +
+  failed-step logs synthesized to the committed-corpus TSV shape + recent PRs),
+  then answer *"Why did run X fail?"* **offline** via the unchanged
+  `GitHubActionsSource` + DevEx RCA, every claim carrying workspace provenance;
+  passed / unknown runs refuse. Optional no-scope `GITHUB_TOKEN` raises rate
+  limits and unlocks log content (measured: GitHub 403s log content anonymously
+  even on public repos); never required, never in CI, never at answer time.
+  Pre-merge adversarial review (security + trust-honesty + correctness): two
+  MAJORs fixed (terminal-control-sequence neutralization of all foreign text;
+  the manifest's own miss strings scrubbed) plus network-error handling, a
+  line-local scrub, TSV-column-injection guards, redirect scheme hardening, and
+  more.
+- **`tessera smoke <owner>/<repo>`** (spec 0119, #140): an auto-derived per-repo
+  trust-floor battery — runs parse, a failed run grounds an RCA whose claims
+  pass the eval's own `is_supported`, provenance resolves to real files,
+  refusals fire — plus a `WARN` when recurrence keys on a generic `exit code N`
+  trailer. Reported (exit 0/1), never CI-gated; foreign data stays uncommitted.
+- **`tessera ingest <dir>` + `tessera ask <dir>`** (spec 0120, ADR 0029, #141):
+  a declared `tessera.toml` (stdlib `tomllib`, zero dependency) maps a directory
+  of CSV + Markdown onto the same ingestion door — rows + document chunks,
+  multi-field entity resolution from declared `match_fields`, document-mention
+  linking. A vertical-neutral answer layer does lexical retrieval + entity
+  lookup and **refuses when a name is ambiguous** (the M9/M10 ER mechanism on
+  foreign data). Ships a committed public-domain demo corpus
+  (`data/ingest_demo/`) with a deliberate "Portland" ambiguity. Pre-merge
+  adversarial review: three MAJORs fixed (a template render crash, control-
+  sequence injection, id/table-name collisions) plus path-confinement and
+  glob-scoping guards.
+- **The `tessera` front door** is now a thin dispatcher (`tessera/cli.py`):
+  `connect` / `ask` / `smoke` / `ingest` route to the BYO paths; anything else
+  falls through to the business demo door unchanged.
+- **"Pilot in a day" runbook** (`docs/PILOT.md`, spec 0121, #142): the
+  design-partner offer as commands — prerequisites, both BYO paths, the audit
+  artifact the client keeps, and first-class honest limits. Success criterion,
+  measured: a grounded, provenance-complete answer on your own repo in under 30
+  minutes from clone (~20s mechanical).
+
+### Measured (reported, not committed)
+
+- BYO proof corpora, fetched and answered offline 2026-07-03:
+  **`astral-sh/uv`** (large) and **`simonw/llm`** (small) — grounded RCAs with
+  workspace provenance and live refusals; both pass every hard `smoke` check.
+  Generality is claimed for **exactly these two** repos + the committed
+  `ingest_demo` corpus; a third repo (`mkdocs/mkdocs`) had `smoke` surface a
+  real gap — the smoke battery working as designed.
+
+### Notes / deferred
+
+- Named limitations (frozen `devex/rca.py`, deferred to a later milestone, to be
+  done openly with the batteries re-run): the recurrence signature is often the
+  generic `exit code N` trailer (a weak signal `smoke` flags), and on some real
+  logs the recurrence claim's anchor is an error-marked chunk that lacks the
+  signature, so `is_supported` rejects it (`smoke` flags this too — seen on
+  `mkdocs/mkdocs`).
+
 ## [milestone-17] — 2026-07-03
 
 Demoable to humans: the presentation layer as a strict consumer of the existing
