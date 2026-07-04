@@ -18,7 +18,7 @@ Inspecting the eight parquet tables (`var/salt_real/`, ~4.6M rows) yields one
 load-bearing fact:
 
 - **`I_Customer`** is `(CUSTOMER, ADDRESSID)` — a numeric code and an address
-  id. **No name.** Example: customer `0000109997`.
+  id. **No name** — just ten-digit codes.
 - **`I_AddrOrgNamePostalAddress`** — despite the name — has an
   `ADDRESSREPRESENTATIONCODE` that is empty on **0 of 1,788,887** rows; the
   only content is `COUNTRY` (ISO code) and a ~20%-filled `REGION`. **No
@@ -58,7 +58,8 @@ unknown code refused.
 ## The recorded run (2026-07-04)
 
 A deterministic slice of **25 real customers** that appear as `SOLDTOPARTY`
-and have a resolvable address (13,155 such customers exist), with exactly
+and have a resolvable address (13,155 such customers exist — the "connected
+universe" figure the slice script prints), with exactly
 their addresses, sales-document headers, and line items:
 
 ```
@@ -69,27 +70,35 @@ faithfulness: 109 / 109 emitted claims verifier-supported = 1.000
 provenance:   0 dangling citations — every claim traces to a real slice row
 ```
 
-A real grounded answer, verbatim (customer `0001114321`, a Romanian customer
-trading in EUR and RON):
+**No verbatim rows in this report, deliberately.** SALT is
+**CC-BY-NC-SA-4.0** *and* contact-gated; this MIT-licensed repo commits
+statistics and method, never records — the same rule
+`data/salt_synthetic/NOTICE` states (and the review of this unit enforced).
+In aggregate: the sampled customers span multiple countries and currencies —
+one EU customer's three documents split across two currencies, for
+instance — and every rendered answer has exactly the shape of the fixture
+example below, with each claim's provenance line pointing at the real slice
+row. Anyone with gated access reproduces the real renders via
+[§ Reproduce](#reproduce).
+
+The answer shape, shown on the **committed authored fixture**
+(`data/salt_real_fixture/` — same schema, invented codes, no encumbrance):
 
 ```
-Q: What do we know about customer 0001114321?
+Q: What do we know about customer 0000000001?
 
-- Customer 0001114321 (address 3001525443).
+- Customer 0000000001 (address 3000000001).
     ↳ salt_real/customers.csv (table I_Customer, row 1)
-- Address 3001525443: country RO.
-    ↳ salt_real/addresses.csv (table I_AddrOrgNamePostalAddress, row 25)
-- Sales document 0002414945: type ZMUN, currency EUR, incoterms FCA, created 2020-04-06.
-    ↳ salt_real/sales_docs.csv (table I_SalesDocument, row 53)
-- Sales document 0002414950: type ZMUN, currency RON, incoterms FCA, created 2020-04-06.
-    ↳ salt_real/sales_docs.csv (table I_SalesDocument, row 54)
-- Sales document 0002415390: type ZMUN, currency EUR, incoterms DAP, created 2020-04-06.
-    ↳ salt_real/sales_docs.csv (table I_SalesDocument, row 55)
+- Address 3000000001: country DE, region BW.
+    ↳ salt_real/addresses.csv (table I_AddrOrgNamePostalAddress, row 1)
+- Sales document 0009000001: type TA, currency EUR, incoterms DAP, created 2018-03-01.
+    ↳ salt_real/sales_docs.csv (table I_SalesDocument, row 1)
 ```
 
-Every line is a real SALT record with a provenance path back to the exact
-table row. This is grounded, provenance-complete answering **on the actual
-gated SAP dataset** — "ran on real SALT", scoped to what real SALT is.
+On the real slice, every such line is a real SALT record with a provenance
+path back to the exact table row. This is grounded, provenance-complete
+answering **on the actual gated SAP dataset** — "ran on real SALT", scoped
+to what real SALT is.
 
 ## Honest limits
 
@@ -106,6 +115,10 @@ gated SAP dataset** — "ran on real SALT", scoped to what real SALT is.
   authored anonymized fixture (`data/salt_real_fixture/`, real schema, no
   names). This report is the proof of the real run — the same posture as the
   BYO connector's recorded proofs ([PILOT.md](PILOT.md)).
+- **Line items ground the traversal, not the prose.** The 115 items are
+  ingested for the `sold_to` → `line_of` FK walk that finds a customer's
+  documents; answers surface document headers, not per-line products (an
+  item-level claim shape is straightforward future work).
 - **Faithfulness here is structural containment**, as everywhere in Tessera:
   each claim is a verbatim row snippet, so 1.000 means every claim is backed
   by exactly its cited record — not a semantic judgment.

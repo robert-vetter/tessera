@@ -125,3 +125,23 @@ on the actual SALT dataset, plus the recorded anonymization finding.
 - The slice must be **connected and deterministic** (stable customer
   selection, sorted) so the report's numbers are reproducible by anyone
   with gated access.
+
+**Review amendments (2026-07-04 — 1 MAJOR, 1 MINOR, 3 NITs, all fixed):**
+
+7. **No verbatim SALT rows in the committed report (the MAJOR).** The first
+   draft of `docs/SALT_REAL.md` quoted a real customer's rendered answer
+   (real coded ids + attributes). SALT is **CC-BY-NC-SA-4.0** and
+   contact-gated; verbatim rows in this MIT repo are a license conflict and
+   contradict `data/salt_synthetic/NOTICE`'s own "not redistributed here".
+   The report now shows the answer *shape* on the committed authored
+   fixture, describes the real run in aggregate (counts, countries,
+   currencies — statistics, not records), and states the redaction rule
+   explicitly. (Independently spotted before the review returned; the
+   review added the license precision.)
+8. **Malformed slices fail diagnosably (the MINOR):** `_rows` validates
+   each file's header and raises a `ValueError` naming the file and the
+   missing columns; pinned by a test.
+9. NITs: the slice script now prints the "connected universe" count so the
+   report's 13,155 is reproducible; the report's honest limits note that
+   line items ground the FK traversal but are not surfaced as claims; the
+   application kit's "1.000" carries the structural-containment qualifier.

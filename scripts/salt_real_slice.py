@@ -65,15 +65,22 @@ def main() -> int:
             strict=True,
         )
     )
-    chosen = sorted(
+    # Connectivity universe, printed so the report's figure is reproducible
+    # (review finding): sold-to customers whose address row actually resolves.
+    eligible = [
         code
-        for code, n in per_customer.items()
-        if code in cust_addr
-        and cust_addr[code] in address_ids
-        and 1 <= n <= MAX_ITEMS_PER_CUSTOMER
+        for code in per_customer
+        if code in cust_addr and cust_addr[code] in address_ids
+    ]
+    chosen = sorted(
+        code for code in eligible if 1 <= per_customer[code] <= MAX_ITEMS_PER_CUSTOMER
     )[:CUSTOMER_COUNT]
     chosen_set = set(chosen)
-    print(f"chosen customers: {len(chosen)} (of {len(per_customer):,} sold-to)")
+    print(
+        f"connected universe: {len(eligible):,} sold-to customers with a "
+        f"resolvable address (of {len(per_customer):,} sold-to)"
+    )
+    print(f"chosen customers: {len(chosen)}")
 
     # The items sold to the chosen customers, and the docs they belong to.
     item_rows = [

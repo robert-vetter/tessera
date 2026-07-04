@@ -48,12 +48,19 @@ def _clean(value: str) -> str:
     return cleaned.strip()
 
 
-def _rows(path: Path) -> list[dict[str, str]]:
+def _rows(path: Path, required: frozenset[str]) -> list[dict[str, str]]:
+    """Read one slice CSV, validating its header first: a hand-edited or
+    schema-drifted slice fails with the file and columns NAMED, not with a
+    bare ``KeyError`` three frames deep (review finding)."""
     with path.open(encoding="utf-8", newline="") as handle:
-        return [
-            {key: _clean(value) for key, value in row.items()}
-            for row in csv.DictReader(handle)
-        ]
+        reader = csv.DictReader(handle)
+        missing = required - set(reader.fieldnames or ())
+        if missing:
+            raise ValueError(
+                f"{path}: missing required column(s) {sorted(missing)} — "
+                "expected the salt_real_slice.py schema (docs/SALT_REAL.md)"
+            )
+        return [{key: _clean(value) for key, value in row.items()} for row in reader]
 
 
 def _record(
@@ -110,7 +117,10 @@ def ingest_slice(slice_dir: str | Path) -> SaltRealSlice:
         records.append(record)
         graph.add_node(Node(record=record, kind=kind))
 
-    for index, row in enumerate(_rows(base / "addresses.csv"), start=1):
+    for index, row in enumerate(
+        _rows(base / "addresses.csv", frozenset({"ADDRESSID", "COUNTRY", "REGION"})),
+        start=1,
+    ):
         add(
             f"Address:{row['ADDRESSID']}",
             "Address",
@@ -122,7 +132,9 @@ def ingest_slice(slice_dir: str | Path) -> SaltRealSlice:
                 f"Address:{row['ADDRESSID']}",
             ),
         )
-    for index, row in enumerate(_rows(base / "customers.csv"), start=1):
+    for index, row in enumerate(
+        _rows(base / "customers.csv", frozenset({"CUSTOMER", "ADDRESSID"})), start=1
+    ):
         code = row["CUSTOMER"]
         add(
             f"Customer:{code}",
@@ -142,7 +154,21 @@ def ingest_slice(slice_dir: str | Path) -> SaltRealSlice:
                 relation="located_at",
             )
         )
-    for index, row in enumerate(_rows(base / "sales_docs.csv"), start=1):
+    for index, row in enumerate(
+        _rows(
+            base / "sales_docs.csv",
+            frozenset(
+                {
+                    "SALESDOCUMENT",
+                    "TRANSACTIONCURRENCY",
+                    "SALESDOCUMENTTYPE",
+                    "INCOTERMSCLASSIFICATION",
+                    "CREATIONDATE",
+                }
+            ),
+        ),
+        start=1,
+    ):
         add(
             f"SalesDoc:{row['SALESDOCUMENT']}",
             "SalesDoc",
@@ -154,7 +180,13 @@ def ingest_slice(slice_dir: str | Path) -> SaltRealSlice:
                 f"SalesDoc:{row['SALESDOCUMENT']}",
             ),
         )
-    for index, row in enumerate(_rows(base / "sales_items.csv"), start=1):
+    for index, row in enumerate(
+        _rows(
+            base / "sales_items.csv",
+            frozenset({"SALESDOCUMENT", "SALESDOCUMENTITEM", "SOLDTOPARTY", "PRODUCT"}),
+        ),
+        start=1,
+    ):
         item_id = f"SalesItem:{row['SALESDOCUMENT']}/{row['SALESDOCUMENTITEM']}"
         add(
             item_id,

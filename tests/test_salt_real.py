@@ -108,3 +108,21 @@ def test_control_characters_in_foreign_fields_are_neutralized(tmp_path: Path) ->
     address = data.graph.node("Address:3000000001")
     assert "\x1b" not in address.record.text
     assert "\x1b[31m" not in address.record.text
+
+
+def test_malformed_slice_fails_with_the_file_and_columns_named(
+    tmp_path: Path,
+) -> None:
+    """A schema-drifted slice must fail diagnosably, not with a bare
+    KeyError (review finding): the error names the file and the columns."""
+    import pytest
+
+    slice_dir = tmp_path / "slice"
+    slice_dir.mkdir()
+    # addresses.csv missing ADDRESSID entirely.
+    (slice_dir / "addresses.csv").write_text("COUNTRY,REGION\nDE,\n", encoding="utf-8")
+    (slice_dir / "customers.csv").write_text(
+        "CUSTOMER,ADDRESSID\n0000000001,3000000001\n", encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match=r"addresses\.csv.*ADDRESSID"):
+        ingest_slice(slice_dir)
