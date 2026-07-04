@@ -1,8 +1,11 @@
 # Tessera
 
-**A trust layer for enterprise AI agents.**
-Every answer traceable to its evidence — across structured *and* unstructured
-data — with a number that tells you how much to trust it.
+**The agent can only say what it can prove — and only do what you approve.**
+An open, deterministic evidence layer for AI agents: claim-level provenance,
+principled refusals, approval-gated actions with receipts — and faithfulness
+as a number in CI, not a vibe.
+
+**Try it live:** <https://robert-vetter-tessera.hf.space>
 
 Tessera ingests heterogeneous enterprise data (tables, spreadsheets, documents,
 logs, tickets), resolves the entities scattered across those sources into a
@@ -13,6 +16,11 @@ trust this AI?" from a feeling into a measured **faithfulness** score.
 
 ## Start here
 
+- **[Benchmark — The Faithfulness Floor](BENCHMARK.md)** — evidence-gated vs.
+  the same engine ungated; CI-pinned; how to attack it.
+- **[Demo & Hosting](DEMO.md)** — the live surface, the 3-minute script.
+- **[Pilot in a Day](PILOT.md)** — grounded answers on your own repo or CSVs
+  in under 30 minutes.
 - **[Project Brief](PROJECT_BRIEF.md)** — motivation, the gap, vision,
   principles, scope, and what "excellent" means.
 - **[Capabilities](CAPABILITIES.md)** — the four pillars at feature level and
