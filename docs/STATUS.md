@@ -2427,3 +2427,59 @@ stay in place unchanged should a paid instance ever materialize. The SAP
 track's build surface is now fully closed; S1 still awaits only the SALT
 HF access request (free, one click + approval lead time), S3 remains a
 non-plan (same account-class constraint). Docs-only; eval untouched.
+
+## 2026-07-04 — SAP track S1 SHIPPED: Tessera runs on the real gated SALT dataset
+
+**Mode note:** the maintainer's gated HF access arrived (token in `.env`);
+the dataset was pulled to gitignored `var/salt_real/` (116 MB, 8 parquet
+tables). The shaping decision was his ("build what really applies"); the
+unit ran per discipline: spec 0130 before code, branch, focused pre-merge
+review, gate, PR #156.
+
+**The headline finding (measured, in the report):** real SALT is **fully
+anonymized** — `I_Customer` is code+address-id (no name);
+`I_AddrOrgNamePostalAddress`'s name column is empty on **all 1,788,887
+rows**; across all 8 tables there is no free-text name/street/city
+anywhere; linkage is exact foreign key. Consequence, recorded not hidden:
+**name-similarity ER has no real-SALT analog** (the synthetic corpus
+*invented* names to exercise it) — real SALT's difficulty is **relational,
+not lexical**, which is the SALT-KG thesis confirmed on the data, and the
+strongest honest line for the SAP application.
+
+**What shipped (PR #156, spec 0130):**
+- `scripts/salt_real_slice.py` (opt-in `salt` extra / pyarrow):
+  deterministic connected slice — 25 real customers (connected universe:
+  13,155, printed by the script), their addresses, 59 sales docs, 115
+  items → CSV in gitignored `var/salt_real_slice/`.
+- `tessera/sources/salt_real.py` (stdlib): ingests the slice into the
+  UNCHANGED engine — Customer/Address/SalesDoc/SalesItem nodes, exact-FK
+  edges (`located_at`/`sold_to`/`line_of`); `describe_customer` composes
+  customer + address + docs, each claim citing a real SALT row; unknown
+  code refuses; every field control-neutralized; malformed slices fail
+  with file+columns named.
+- **Recorded real run** (`docs/SALT_REAL.md`): 224 records, 255 edges;
+  **faithfulness 109/109 = 1.000 by the eval's own `is_supported`
+  (structural containment, caveat stated); 0 dangling citations.**
+- CI floor: `tests/test_salt_real.py` (7) over the authored anonymized
+  fixture `data/salt_real_fixture/` — no gated data, no pyarrow in CI.
+- Review (1 MAJOR + 1 MINOR + 3 NITs, all fixed): the MAJOR was verbatim
+  real rows in the report draft — SALT is CC-BY-NC-SA + gated vs the MIT
+  repo, and the NOTICE promises "not redistributed here"; the report now
+  carries statistics + the fixture-shaped example only.
+
+**Eval:** six lines byte-identical; frozen core + `sources/salt.py`
+untouched; 568 tests.
+
+**SAP track status:** S1 ✓ (this) · S2 seam ✓ / online tier-gated,
+stand-pat recorded (#155) · S3 non-plan (account class) · S4 kit ✓ —
+**the S-track is now fully closed on the build side.** APPLICATION.md's
+SALT line upgraded to the measured reality (with the containment
+qualifier).
+
+**Next:** unchanged — the maintainer's M19 launch acts (registries →
+Show HN → outreach → Z Fellows date → tag milestone-19). The SALT finding
+is fresh material for both the SAP letters (already woven in) and the
+next Z Fellows ship-update.
+
+**State of the tree:** `main` green after #156; no open unit branches;
+tags through `milestone-18` (`milestone-19` pends launch).
