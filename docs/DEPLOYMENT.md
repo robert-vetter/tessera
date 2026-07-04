@@ -172,18 +172,28 @@ canonical, and dropping the mirror loses nothing (ADR 0030). Losslessness
 is a tested contract (`tests/test_kg.py`: the serializer→parser→rebuild
 round trip is tuple-exact on all three committed graphs).
 
-**Enable the triple store (account owner, ~2 minutes + possible restart).**
-Measured 2026-07-03: the instance is alive (cloud version 2026.14.7) and
-`SYS.SPARQL_EXECUTE` exists, but answers *"No active TripleStore found in
-landscape"* until the feature is on:
+**The tier boundary (measured 2026-07-04).** The instance is alive (cloud
+version 2026.14.7) and `SYS.SPARQL_EXECUTE` exists, but answers *"No
+active TripleStore found in landscape"* — and on a **free-tier** instance
+that is where it ends: the Advanced Settings tab offers **no Triple Store
+option** (verified by screenshot and by `M_INIFILE_CONTENTS` carrying no
+triple-store entry), and SAP's license documentation states the knowledge
+graph engine **is not supported on free tier** (it needs a paid
+configuration, ≥3 vCPUs / 45 GB; BTP trial is equally gated). Turning
+"designed for SAP Knowledge Graph" into "ran on" is therefore a **spend
+decision** — upgrade the instance to a paid tier (pay-as-you-go plus
+keeping the instance stopped outside measurement windows keeps a one-shot
+cheap; exact rates in the SAP BTP estimator).
+
+On a paid-tier instance, the path is:
 
 1. SAP HANA Cloud Central → your instance → **Manage Configuration** →
-   **Advanced Settings** → check **Triple Store** → save. Note: applying
+   **Advanced Settings** → check **Triple Store** → save. Applying
    instance configuration may restart the database — do it away from live
    demos.
-2. Then the one-shot (mirrors all three graphs + runs three recorded
-   SPARQL queries; paste its record block back into this section with the
-   run date):
+2. Then the one-shot (an escape-fidelity canary, then mirrors all three
+   graphs + runs three recorded SPARQL queries; paste its record block
+   back into this section with the run date):
 
 ```bash
 set -a; source .env; set +a
@@ -195,9 +205,9 @@ Least-privilege note: `.env` currently carries **DBADMIN**; for anything
 beyond the one-shot, create a dedicated user with only the KG privileges
 (the `TESSERA_APP` pattern of the section above) and rotate.
 
-*Recorded run: — pending the Triple Store toggle (the seam, the procedure
-signature, and instance liveness are verified; the store itself is not
-yet).*
+*Recorded run: — pending a paid-tier instance (the seam, the procedure
+signature, and instance liveness are verified; the store itself is
+tier-gated — the free tier offers no Triple Store, measured 2026-07-04).*
 
 ## The real execution one-shot — actually sending behind approval (Milestone 15)
 

@@ -119,9 +119,10 @@ favor, and one of its recommendations is now simply *done*:
   recorded online closes on HANA Cloud in-database embeddings
   (`VECTOR_EMBEDDING`: github_actions 0.833 → 1.000, devex 0.950 →
   1.000, `eval/history.jsonl`), and knowledge-graph persistence for HANA
-  Cloud's KG engine (RDF/SPARQL) built behind a tested seam — one
-  instance-configuration toggle away from its own recorded run
-  (spec 0129).
+  Cloud's KG engine (RDF/SPARQL) built behind a tested seam. (Measured
+  2026-07-04: the KG engine is tier-gated — free-tier instances offer no
+  Triple Store — so its own recorded run awaits a paid-tier instance, a
+  spend decision; spec 0129, DEPLOYMENT.md.)
 
 The application-execution kit (targets, mapping table, cover-letter
 drafts for both German tracks) lives in `launch/sap/APPLICATION.md`.

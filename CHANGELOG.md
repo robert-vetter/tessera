@@ -31,10 +31,12 @@ request; S3 is a spend decision).
   review: 1 MAJOR (Unicode line-separator handling — fixed twice over)
   + the SPARQL §19.2 pre-parse hazard answered with an escape-fidelity
   canary the staged one-shot records verbatim. The online
-  "ran on SAP Knowledge Graph" measurement pends the Triple Store
-  toggle (runbook: DEPLOYMENT.md; one-shot:
-  `scripts/persist_knowledge_graph.py`). CI stays key-free; hdbcli
-  stays the lazy `cloud` extra.
+  "ran on SAP Knowledge Graph" measurement is **tier-gated** (measured
+  2026-07-04: free-tier instances offer no Triple Store — SAP license
+  doc; a paid-tier instance is a recorded spend decision; runbook:
+  DEPLOYMENT.md; one-shot: `scripts/persist_knowledge_graph.py`,
+  unchanged and ready). CI stays key-free; hdbcli stays the lazy
+  `cloud` extra.
 - **SAP application kit** (spec 0128, #151): `launch/sap/APPLICATION.md`
   — Sapphire-2026 mapping table, target teams, artifact links, CV
   bullets, EN iXp + DE Werkstudent cover letters (opening on the
