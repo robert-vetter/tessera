@@ -2509,6 +2509,19 @@ exactly one Show HN post; broadcast channels are optional).
   serve old commits by SHA from its caches for a while (0 forks, no
   known deep links — practical exposure ≈ nil); the two open dependabot
   PRs sit on pre-rewrite bases and will rebase on their next run.
+
+  **Correction + decision (same day, final readthrough finding):** the
+  "0 path traces in any ref" verification above was measured on **local
+  refs only**. GitHub's `refs/pull/*` retain pre-rewrite objects, so the
+  closed PRs (#146/#147/#151/#157) still serve the removed drafts via
+  the pull-request tab — a history rewrite cannot reach them; only a
+  GitHub Support request or repo re-creation can. **The maintainer
+  decided, eyes open, to accept this residual**: the PR/CI history is
+  itself part of the project's evidence (spec-first units, gated merges
+  — reviewable by anyone, including SAP), expected launch visibility is
+  modest, and the Support-removal path stays available at any time. The
+  audit trail now states reality rather than the earlier, too-strong
+  claim.
 - **Incident, honestly recorded:** my earlier "files stay local" claim
   broke — after the #157 squash-merge, checkout+pull deleted the
   untracked copies (they became tracked again on the old main). Restored
