@@ -2375,3 +2375,42 @@ pre-merge adversarial review.
 - `main` green and in sync; no open unit branches. PRs #150–#152 merged.
   Tags unchanged (through `milestone-18`; `milestone-19` pends launch;
   the SAP track carries no tag).
+
+## 2026-07-04 — S2 online run: the measured tier boundary (KG engine is not on free tier)
+
+**What happened.** The maintainer attempted the staged S2 one-shot. The
+diagnosis chain, each step measured: (1) the overnight connect failure was
+the free tier's auto-stop, not the toggle-restart — the instance came back
+9 minutes after Start and answered SQL; (2) `SPARQL_EXECUTE` still said
+"No active TripleStore found in landscape"; (3) `M_INIFILE_CONTENTS` has
+**no** triple-store entry and only the four baseline services run — the
+setting never landed; (4) the maintainer's Advanced Settings screenshot
+shows **no Triple Store option at all**, with the banner "Not all advanced
+options are available for free tier instances"; (5) verified against SAP's
+license documentation: **the knowledge graph engine is not supported on
+free-tier instances** (needs a paid configuration, ≥3 vCPUs / 45 GB; BTP
+trial equally gated). There was never a checkbox to find.
+
+**What changed in the repo (this entry's PR):** DEPLOYMENT.md's KG section
+now records the tier boundary (the paid-instance path stays as the
+runbook); the "one toggle away" phrasing corrected everywhere it appeared
+(SAP_ALIGNMENT addendum, launch/sap/APPLICATION.md incl. both cover
+letters — no sentence now claims the KG mirror "ran"); CHANGELOG
+[Unreleased] updated. The seam, tests, and the staged one-shot are
+unchanged and remain ready.
+
+**The decision now on the record (maintainer's, spend-class like S3):**
+- **Upgrade to a paid tier** for one measurement window (pay-as-you-go +
+  stopped-when-idle keeps a one-shot cheap; rates in the BTP estimator) →
+  run `scripts/persist_knowledge_graph.py` → paste the record (incl. the
+  escape-fidelity canary verdict) into DEPLOYMENT.md — "ran on SAP
+  Knowledge Graph" becomes literal.
+- **Or stand pat:** the honest posture — seam contract-tested, procedure
+  signature verified against the live instance, store tier-gated — is
+  itself a credible SAP-application line, and the free-tier
+  `VECTOR_EMBEDDING` closes remain the recorded "ran on SAP" proof.
+
+**Eval:** untouched (docs-only session; six lines byte-identical).
+
+**State of the tree:** `main` green; this correction is the only change.
+Tags unchanged.

@@ -40,7 +40,7 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 | "Relevant, reliable, responsible" (Sapphire 2026) | Grounded (claim-level provenance) · measured (CI-gated faithfulness floor, benchmark) · accountable (approval-gated actions with receipts) |
 | **Agent Hub "verification badges"** (LeanIX, Q3 2026) | A *measured* per-claim faithfulness score a badge could actually carry — asserted trust vs measured trust is the asymmetry to name |
 | **SAP + Anthropic: Claude "via MCP"** (Sapphire 2026) | Tessera is MCP-native; `data/agent_session/` is a real Claude agent grounded *only* through its seven tools — citing, refusing, action-gated |
-| **SAP Knowledge Graph** (in Business AI Platform) | An explainable, reversible KG with per-merge confidences; HANA Cloud KG-engine persistence built behind a seam (spec 0129 — one instance toggle from "ran on") |
+| **SAP Knowledge Graph** (in Business AI Platform) | An explainable, reversible KG with per-merge confidences; HANA Cloud KG-engine persistence built behind a contract-tested seam (spec 0129 — the free tier gates the store itself; the recorded run awaits a paid-tier instance) |
 | **SALT / SALT-KG** | Synthetic corpus on SALT's real schema since Phase 1 (drop-in for real SALT, access pending); SALT-KG's finding *is* the thesis |
 | **HANA Cloud** | Two recorded online closes: in-database `VECTOR_EMBEDDING` + `COSINE_SIMILARITY` took gha coverage 0.833 → 1.000 and devex 0.950 → 1.000 (`eval/history.jsonl`) |
 | **DSAG 2026: 77% run non-SAP AI, only 3% use SAP's own** | The German-audience hook: trust must be earned, not asserted — and here is a system that earns it with numbers |
@@ -87,11 +87,12 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 > faithfulness is a hard 1.0 floor in CI — with a reproducible benchmark
 > showing what removing the gate costs.
 >
-> Two parts of it already run on SAP technology: HANA Cloud in-database
-> embeddings closed two recorded retrieval misses (0.833→1.000,
-> 0.950→1.000, `eval/history.jsonl`), and the knowledge graph persists
-> to HANA's KG engine over SPARQL. The corpus is synthetic on SALT's
-> real schema, ready to swap in the real dataset. It speaks MCP — the
+> It already runs on SAP technology where the tier allows: HANA Cloud
+> in-database embeddings closed two recorded retrieval misses
+> (0.833→1.000, 0.950→1.000, `eval/history.jsonl`), and the knowledge
+> graph ships a contract-tested RDF/SPARQL mirror for HANA's KG engine.
+> The corpus is synthetic on SALT's real schema, ready to swap in the
+> real dataset. It speaks MCP — the
 > protocol SAP chose for Claude in the Business AI Platform — and there
 > is a recorded session of a Claude agent answering only through it.
 >
@@ -118,12 +119,12 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 > harter 1.0-Grenzwert in CI — inklusive eines reproduzierbaren
 > Benchmarks, der zeigt, was der Verzicht auf das Evidence-Gate kostet.
 >
-> Zwei Teile laufen bereits auf SAP-Technologie: HANA Cloud
-> In-Database-Embeddings (`VECTOR_EMBEDDING`) schlossen zwei
+> Es läuft bereits auf SAP-Technologie, wo die Tier-Stufe es erlaubt:
+> HANA Cloud In-Database-Embeddings (`VECTOR_EMBEDDING`) schlossen zwei
 > dokumentierte Retrieval-Lücken (0.833→1.000, 0.950→1.000), und der
-> Knowledge Graph persistiert per SPARQL in die HANA KG-Engine. Das
-> Korpus ist synthetisch auf dem echten SALT-Schema — bereit für den
-> Austausch gegen den realen Datensatz. Die Schnittstelle ist MCP, das
+> Knowledge Graph bringt einen contract-getesteten RDF/SPARQL-Mirror
+> für die HANA KG-Engine mit. Das Korpus ist synthetisch auf dem echten
+> SALT-Schema — bereit für den Austausch gegen den realen Datensatz. Die Schnittstelle ist MCP, das
 > Protokoll, das SAP für Claude in der Business AI Platform gewählt hat.
 >
 > Als Werkstudent bei {team} würde ich genau daran arbeiten:
@@ -144,5 +145,6 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
    letter must name *their* stated responsibility.
 4. Apply to **both** tracks; note req IDs + dates in a local file (not
    committed).
-5. If the KG toggle (spec 0129 runbook) has been flipped by then,
-   upgrade "persists to HANA's KG engine" with the recorded measurement.
+5. If a paid-tier instance has run the KG one-shot by then (spec 0129
+   runbook — the free tier gates the Triple Store), upgrade the KG line
+   with the recorded measurement.
