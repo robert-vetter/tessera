@@ -23,6 +23,15 @@ ingester is written against this real schema, ingesting the *actual* SALT datase
 is a documented drop-in — gated only by Hugging Face access — needing no change
 to the ingester, engine, or tests.
 
+UPDATE (2026-07-04): gated access arrived and the real dataset was ingested.
+The real data proved to be FULLY ANONYMIZED — coded ids, COUNTRY/REGION, and
+sales-document codes, with NO name/address text anywhere (this synthetic corpus
+ADDS names, which the real data lacks, to exercise entity resolution). So the
+"drop-in" holds for the STRUCTURAL / FK-linked grounding path (a separate
+ingester, tessera/sources/salt_real.py), not for name-based ER, which has no
+real-SALT analog. The measured finding and the recorded real run are in
+docs/SALT_REAL.md.
+
 License: this synthetic data is part of the Tessera project and is provided under
 the project's MIT license (see ../../LICENSE). It carries NO CC-BY-NC-SA
 encumbrance, because it contains no SALT data. The SALT license applies only to

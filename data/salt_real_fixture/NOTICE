@@ -1,0 +1,8 @@
+AUTHORED FIXTURE — NOT real SALT data.
+
+Hand-written to match the real SAP SALT slice schema (anonymized: coded ids,
+COUNTRY/REGION, sales-document codes — NO names, exactly as real SALT). It
+contains NO records from SAP's SALT dataset and carries no encumbrance; it
+exists so tessera/sources/salt_real.py and its tests run in CI without the
+gated data. The real dataset and any derived slice stay under gitignored
+var/ and are never committed (see data/salt_synthetic/NOTICE, spec 0130).

@@ -19,6 +19,28 @@ request; S3 is a spend decision).
 
 ### Added (SAP track)
 
+- **S1 — grounded answers on the REAL gated SAP SALT dataset** (spec
+  0130, #156): gated HF access arrived; inspecting the real data produced
+  the headline finding — **real SALT is fully anonymized** (coded ids,
+  `COUNTRY`/`REGION`, no name/address text anywhere; the address-name
+  column is empty on all 1,788,887 rows), so name-similarity ER has no
+  real-SALT analog (that capability is what the *synthetic* corpus was
+  built to exercise) and **SALT's difficulty is relational, not
+  lexical** — the SALT-KG thesis, confirmed on the data.
+  `tessera/sources/salt_real.py` ingests a deterministic connected slice
+  (25 real customers / 59 docs / 115 items) into the unchanged engine via
+  exact-FK edges; grounded answers compose customer + address + sales
+  docs, every claim citing a real SALT row — **faithfulness 109/109 =
+  1.000 by the eval's own verifier (structural containment), 0 dangling
+  citations** (recorded run: `docs/SALT_REAL.md`). No real data committed
+  (gated, CC-BY-NC-SA vs MIT — the report carries statistics and the
+  fixture-shaped example, never verbatim rows; enforced in review); CI
+  tests run on an authored anonymized fixture; `pyarrow` stays the
+  opt-in `salt` extra. Review: 1 MAJOR (verbatim rows in the report —
+  redacted) + 1 MINOR (diagnosable slice validation) + 3 NITs, all
+  fixed. Frozen `sources/salt.py` + core untouched; six eval lines
+  byte-identical.
+
 - **HANA Knowledge Graph persistence** (spec 0129, ADR 0030, #152):
   `tessera/platform/kg.py` mirrors the in-process graph to HANA Cloud's
   KG engine as RDF over `SYS.SPARQL_EXECUTE` — structure as triples

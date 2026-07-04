@@ -41,7 +41,7 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 | **Agent Hub "verification badges"** (LeanIX, Q3 2026) | A *measured* per-claim faithfulness score a badge could actually carry — asserted trust vs measured trust is the asymmetry to name |
 | **SAP + Anthropic: Claude "via MCP"** (Sapphire 2026) | Tessera is MCP-native; `data/agent_session/` is a real Claude agent grounded *only* through its seven tools — citing, refusing, action-gated |
 | **SAP Knowledge Graph** (in Business AI Platform) | An explainable, reversible KG with per-merge confidences; HANA Cloud KG-engine persistence built behind a contract-tested seam (spec 0129 — the free tier gates the store itself; the recorded run awaits a paid-tier instance) |
-| **SALT / SALT-KG** | Synthetic corpus on SALT's real schema since Phase 1 (drop-in for real SALT, access pending); SALT-KG's finding *is* the thesis |
+| **SALT / SALT-KG** | **Ran on the real gated SALT dataset** (docs/SALT_REAL.md): FK-linked grounding with claim-level provenance, faithfulness 1.000 (structural containment) on a real 25-customer slice — and the measured finding that real SALT is fully anonymized (its difficulty is relational, not lexical), which *is* the SALT-KG thesis, confirmed on the data |
 | **HANA Cloud** | Two recorded online closes: in-database `VECTOR_EMBEDDING` + `COSINE_SIMILARITY` took gha coverage 0.833 → 1.000 and devex 0.950 → 1.000 (`eval/history.jsonl`) |
 | **DSAG 2026: 77% run non-SAP AI, only 3% use SAP's own** | The German-audience hook: trust must be earned, not asserted — and here is a system that earns it with numbers |
 
@@ -89,10 +89,12 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 >
 > It already runs on SAP technology where the tier allows: HANA Cloud
 > in-database embeddings closed two recorded retrieval misses
-> (0.833→1.000, 0.950→1.000, `eval/history.jsonl`), and the knowledge
-> graph ships a contract-tested RDF/SPARQL mirror for HANA's KG engine.
-> The corpus is synthetic on SALT's real schema, ready to swap in the
-> real dataset. It speaks MCP — the
+> (0.833→1.000, 0.950→1.000, `eval/history.jsonl`), the knowledge graph
+> ships a contract-tested RDF/SPARQL mirror for HANA's KG engine, and it
+> grounds answers on the **real gated SALT dataset** with full
+> provenance — where I also measured that real SALT is fully anonymized,
+> so its difficulty is relational, not lexical (your own SALT-KG
+> finding, confirmed on the data). It speaks MCP — the
 > protocol SAP chose for Claude in the Business AI Platform — and there
 > is a recorded session of a Claude agent answering only through it.
 >
@@ -121,10 +123,13 @@ vectorization, SAP Build, AI Core, GenAI Hub, Joule extensibility").
 >
 > Es läuft bereits auf SAP-Technologie, wo die Tier-Stufe es erlaubt:
 > HANA Cloud In-Database-Embeddings (`VECTOR_EMBEDDING`) schlossen zwei
-> dokumentierte Retrieval-Lücken (0.833→1.000, 0.950→1.000), und der
+> dokumentierte Retrieval-Lücken (0.833→1.000, 0.950→1.000), der
 > Knowledge Graph bringt einen contract-getesteten RDF/SPARQL-Mirror
-> für die HANA KG-Engine mit. Das Korpus ist synthetisch auf dem echten
-> SALT-Schema — bereit für den Austausch gegen den realen Datensatz. Die Schnittstelle ist MCP, das
+> für die HANA KG-Engine mit, und es grounded Antworten auf dem **echten
+> gated SALT-Datensatz** mit vollständiger Provenance — wobei ich auch
+> gemessen habe, dass echtes SALT vollständig anonymisiert ist, seine
+> Schwierigkeit also relational statt lexikalisch ist (Ihr eigener
+> SALT-KG-Befund, an den Daten bestätigt). Die Schnittstelle ist MCP, das
 > Protokoll, das SAP für Claude in der Business AI Platform gewählt hat.
 >
 > Als Werkstudent bei {team} würde ich genau daran arbeiten:
