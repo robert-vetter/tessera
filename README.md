@@ -1,7 +1,8 @@
 # Tessera
 
-**A trust layer for enterprise AI agents.**
-Every answer traceable to its evidence — across structured *and* unstructured data — with a number that tells you how much to trust it.
+**The agent can only say what it can prove — and only do what you approve.**
+
+An open, deterministic **evidence layer for AI agents**. Every answer is built from claims that each trace back to the exact source record behind them; what can't be proven is refused, not guessed. Every action an agent takes is drafted only from verified claims, previewed exactly, and executed only behind your approval — with a receipt. Faithfulness is a number in CI, not a vibe.
 
 [![CI](https://github.com/robert-vetter/tessera/actions/workflows/ci.yml/badge.svg)](https://github.com/robert-vetter/tessera/actions/workflows/ci.yml)
 [![Docs](https://github.com/robert-vetter/tessera/actions/workflows/docs.yml/badge.svg)](https://robert-vetter.github.io/tessera/)
@@ -19,6 +20,10 @@ Every answer traceable to its evidence — across structured *and* unstructured 
      tests/test_registry_artifacts.py.
      mcp-name: io.github.robert-vetter/tessera -->
 
+**▶ Try it live** (no signup, read-only): <https://robert-vetter-tessera.hf.space> — ask a question, see each claim's verifier chip, click through to the evidence, watch a refusal, run an action to a receipt.
+**📊 The benchmark** — evidence-gated vs. the same engine *ungated*, same corpus and verifier, no LLM judge: [docs/BENCHMARK.md](docs/BENCHMARK.md).
+**🔌 MCP-native** — plug it in as your agent's evidence oracle: `uv run tessera-mcp`.
+
 > *Working name. A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture. That is exactly what this system does with enterprise data. Rename freely.*
 
 ---
@@ -27,17 +32,9 @@ Every answer traceable to its evidence — across structured *and* unstructured 
 
 Enterprise AI rarely fails because the language model is weak. It fails because nobody can trust the answer: the system silently mixes incompatible sources, invents details that sound plausible, and offers no way to trace a claim back to where it came from — let alone to *measure* how faithful it was. **Tessera** is an open framework that ingests heterogeneous enterprise data (database tables, spreadsheets, documents, logs, tickets), resolves the entities scattered across those sources into a single unified knowledge graph, and answers questions through a conversational interface in which **every individual claim is grounded in a traceable path back to the source records that support it**. On top of that, Tessera ships a benchmark harness that turns "do you trust this AI?" from a feeling into a metric — a faithfulness score, measured on synthetic and curated data, that you can watch go up as the system improves.
 
-## Why this matters (and why it maps onto SAP's actual problems)
+## Why this exists
 
-Three of SAP's AI groups are, underneath the surface, working on the *same* problem from three angles:
-
-- **Palo Alto (GenAI / Joule):** make a digital assistant reason over business data and "minimize errors" using knowledge substrates and knowledge graphs; benchmark solution quality.
-- **Singapore (Tabular AI):** perform generic *data matching* across any tabular and unstructured data using a foundation model + knowledge graph + LLMs; generate synthetic data; fine-tune.
-- **Newport Beach (Developer Experience):** ground an assistant in CI logs, pull-request diffs, and Jira context to surface root-cause analyses and summarize changes for up to 20,000 developers.
-
-All three reduce to: *take messy, multi-source enterprise data; unify it; reason over it; and do so in a way people can actually trust.* Tessera is a single, coherent take on that problem — built deliberately so that a slice of it speaks directly to each of those three teams.
-
-See [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md) for the explicit, location-by-location mapping.
+In 2025 an AI agent deleted a production database during a code freeze, then fabricated data and misreported whether a rollback was possible. The industry's post-mortem consensus — dry-runs, approval gates, blast-radius previews, draft-only credentials — *is* Tessera's action model. On top of it, Tessera adds the half most tools skip: an agent's **statements** are gated too, not just its actions — no claim without a traceable path to evidence, and a refusal where there is none. All of it **deterministic, with no model vendor inside the trust path**, so the guarantees hold on-prem and do not move when a model changes. (An optional LLM may *narrate* an answer; it never *attests*.)
 
 ## What Tessera does — four pillars
 
@@ -73,33 +70,41 @@ uv run tessera-chat
 
 Grounded RAG exists. Knowledge graphs exist. Entity resolution exists. What is rare — and what this project is actually about — is **doing all of them together, across structured and unstructured data at once, with a uniform provenance model and a faithfulness metric that holds the whole thing accountable.** Most systems pick one modality, skip provenance, and never measure faithfulness at all. Tessera treats *measurable trust* as the headline feature, not an afterthought. That framing is what a senior engineer recognizes as the real, unglamorous, valuable problem.
 
-## Built with (and toward) the SAP stack
+## Evidence-gated actions — over MCP
 
-Designed to run on SAP's own AI infrastructure rather than around it — SAP AI
-Core and the Generative AI Hub for the model layer (adapter implemented and
-contract-tested; provisioning is a written runbook —
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), [ADR 0012](docs/adr/0012-sap-deployment-path.md)),
-SAP HANA Cloud as the documented graph/vector target, and a Joule-style
-conversational surface (`uv run tessera-chat`) whose optional LLM narration is
-strictly bounded: it rephrases verifier-checked claims and can never add facts
-([ADR 0013](docs/adr/0013-narration-boundary.md)). The portable local mode —
-no keys, no network, zero runtime dependencies — is the default and is what CI
-verifies. Tessera is also **exposed to AI agents over MCP** (`uv run tessera-mcp`,
-the opt-in `agent` extra): **read-only grounded tools** — claims, provenance, and
-principled refusals ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)) —
-**propose-and-approve action drafts** (an `incident` from a root-cause analysis, a
-`pr_summary` from a change), each field traced to a verifier-passing claim or it is not
-proposed ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)), a **dry-run
-payload preview** — the exact GitHub request a drafted action would send, every value
-traced to a verified field ([ADR 0024](docs/adr/0024-executable-payload-preview.md)) —
-and **effectful execution behind approval**, gated on a fully-grounded payload, run by a
-**simulated actuator that sends nothing** by default with an opt-in real path behind a
-credential and approval ([ADR 0025](docs/adr/0025-execution-behind-approval.md)). The
-trust contract is *measured* to survive the protocol for all four. Tessera drafts,
-verifies, renders, and simulates; **nothing is sent from this repository** (the real
-actuator's network is never invoked in CI) — a human or agent approves and sends. In line
-with SAP's 2026 agentic direction; details in
-[`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
+An agent talks to Tessera over the Model Context Protocol (`uv run tessera-mcp`,
+the opt-in `agent` extra), and the trust contract is *measured* to survive the
+protocol across four boundaries:
+
+- **Read-only grounded tools** — claims, provenance, and principled refusals
+  ([ADR 0022](docs/adr/0022-agentic-mcp-boundary.md)).
+- **Propose-and-approve action drafts** — an `incident` from a root-cause
+  analysis, a `pr_summary` from a change; each field traces to a
+  verifier-passing claim or it is not proposed
+  ([ADR 0023](docs/adr/0023-grounded-action-boundary.md)).
+- **A dry-run payload preview** — the exact GitHub request a drafted action
+  would send, every value traced to a verified field
+  ([ADR 0024](docs/adr/0024-executable-payload-preview.md)).
+- **Effectful execution behind approval** — gated on a fully-grounded payload,
+  run by a **simulated actuator that sends nothing** by default, with an opt-in
+  real path behind a credential and an approval
+  ([ADR 0025](docs/adr/0025-execution-behind-approval.md)).
+
+Tessera drafts, verifies, renders, and simulates; **nothing is sent from this
+repository** — a human or agent approves and sends. (It did send exactly once,
+on the record: a real GitHub issue from a grounded incident, behind approval,
+with a committed receipt.)
+
+**Built toward SAP, not around it.** The deterministic, on-prem posture is the
+point: it runs on SAP AI Core / Generative AI Hub (model adapter
+contract-tested; runbook in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md),
+[ADR 0012](docs/adr/0012-sap-deployment-path.md)), persists to SAP HANA Cloud
+(in-database embeddings recorded online; the knowledge-graph-engine mirror is
+contract-tested), grounds answers on the **real gated SALT dataset**
+([docs/SALT_REAL.md](docs/SALT_REAL.md)), and offers a Joule-style surface
+(`uv run tessera-chat`) whose optional narration can never add facts
+([ADR 0013](docs/adr/0013-narration-boundary.md)). The full team-by-team
+mapping is in [`docs/SAP_ALIGNMENT.md`](docs/SAP_ALIGNMENT.md).
 
 ## Development setup
 
@@ -425,11 +430,16 @@ Both modalities arrive through one ingestion path:
   data generated by `scripts/generate_salt_synthetic.py` using the *schema* of
   SAP's [SALT](https://huggingface.co/datasets/SAP/SALT) (Sales Autocompletion
   Linked Business Tables; arXiv:2501.03413): the same tables, columns, and join
-  keys. We generate our own data because real SALT is access-gated and
-  redistributing a derived sample is legally unclear; using SALT's real schema
-  means ingesting the actual SALT dataset later is a drop-in swap. Regenerate it
-  deterministically with `uv run python scripts/generate_salt_synthetic.py`. See
+  keys. We ship synthetic data because real SALT is access-gated (CC-BY-NC-SA)
+  and redistributing a derived sample is legally unclear; using SALT's real
+  schema means the actual dataset is a drop-in. Regenerate it deterministically
+  with `uv run python scripts/generate_salt_synthetic.py`. See
   [`data/salt_synthetic/NOTICE`](data/salt_synthetic/NOTICE).
+  **Tessera has since run on the real gated SALT dataset** — deterministic
+  FK-linked grounding with claim-level provenance on the actual records, plus
+  the measured finding that real SALT is fully anonymized (its difficulty is
+  *relational, not lexical*): [`docs/SALT_REAL.md`](docs/SALT_REAL.md). No real
+  SALT data is committed; the run is reproducible with gated access.
 - **Unstructured** — [`data/business_docs/`](data/business_docs/), a small corpus
   of authored agreements/correspondence that reference the same synthetic
   customers under *variant* name forms (so entity resolution is genuine) and carry
