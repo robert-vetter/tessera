@@ -1,12 +1,12 @@
 # SAP Alignment — Tessera
 
-This is the document that connects the project to the three target teams and the SAP platform. It exists so that anyone reading the application can see, in one glance, that this was built *for* SAP's problems — not a generic side project retrofitted with SAP keywords.
+This document connects the project to SAP's AI teams and platform. It exists so that anyone can see, in one glance, that this was built *for* SAP's problems — not a generic side project retrofitted with SAP keywords.
 
 ---
 
 ## The shared insight
 
-Three SAP AI groups are working on three faces of one problem: **take heterogeneous enterprise data, unify it, reason over it, and make the result trustworthy.** Tessera is a single engine built so that one slice of it speaks directly to each team. The point to make in the application is not "I built something near your area" — it is "I independently arrived at the same core problem you are solving, and built a coherent answer to it."
+Three SAP AI groups are working on three faces of one problem: **take heterogeneous enterprise data, unify it, reason over it, and make the result trustworthy.** Tessera is a single engine built so that one slice of it speaks directly to each team. The point is not "I built something near your area" — it is "I independently arrived at the same core problem you are solving, and built a coherent answer to it."
 
 ---
 
@@ -19,7 +19,7 @@ Three SAP AI groups are working on three faces of one problem: **take heterogene
 - **Knowledge-graph grounding to minimize errors** — the entire provenance model exists to reduce exactly the errors this team is fighting.
 - **Pillar 4 (quantified trust)** — standardized benchmarking and synthetic data augmentation to assess solution quality, which is named almost verbatim in their brief.
 
-**The sentence for the application:** *"I built a conversational engine whose every claim is grounded in a knowledge graph and whose faithfulness is continuously benchmarked — because the hard part of an assistant like Joule isn't the conversation, it's not being wrong."*
+**In one sentence:** *"I built a conversational engine whose every claim is grounded in a knowledge graph and whose faithfulness is continuously benchmarked — because the hard part of an assistant like Joule isn't the conversation, it's not being wrong."*
 
 ## Newport Beach — Developer Experience
 
@@ -29,7 +29,7 @@ Three SAP AI groups are working on three faces of one problem: **take heterogene
 - **Reference vertical B (DevEx Copilot)** — RCA on failed pipelines, PR summarization from diffs, ticket-context enrichment. This is a near-literal match to their listed concrete projects.
 - The fact that the *same engine* serves this and the business vertical demonstrates the generalization that a platform team cares about.
 
-**The sentence for the application:** *"The same grounded-reasoning engine, pointed at CI logs, PR diffs, and tickets, produces sourced root-cause hypotheses and change summaries — the developer-experience use case, built on a general core rather than a one-off script."*
+**In one sentence:** *"The same grounded-reasoning engine, pointed at CI logs, PR diffs, and tickets, produces sourced root-cause hypotheses and change summaries — the developer-experience use case, built on a general core rather than a one-off script."*
 
 ## Singapore — Tabular AI
 
@@ -40,7 +40,7 @@ Three SAP AI groups are working on three faces of one problem: **take heterogene
 - **Pillar 4's synthetic data generation** — directly named in their brief.
 - A focused, well-explained adaptation of the matching/embedding component speaks to the "foundation-model fine-tuning" preference without overreaching into training base models.
 
-**The sentence for the application:** *"The matching layer resolves the same entity across a database row, a contract clause, and a log tag into one graph node — generic data matching over any tabular and unstructured data, evaluated with generated synthetic cases."*
+**In one sentence:** *"The matching layer resolves the same entity across a database row, a contract clause, and a log tag into one graph node — generic data matching over any tabular and unstructured data, evaluated with generated synthetic cases."*
 
 ---
 
@@ -54,7 +54,7 @@ The project is designed to run *on* SAP's AI infrastructure, which is what turns
 - **SAP Business Technology Platform (BTP)** — as the surrounding platform context; a free-tier footprint is enough to say, truthfully, "this runs on BTP."
 - **Joule** — as the conceptual model for the conversational surface; Tessera's interface is deliberately shaped to resemble a Joule-style assistant.
 
-**Honesty note for the application:** it is fine — better, even — to say "designed to run on SAP AI Core and HANA Cloud, with a portable local mode for development." That reads as a real engineer who understands platforms, not someone who pretends a free-tier experiment is a production deployment.
+**Honesty note:** it is fine — better, even — to say "designed to run on SAP AI Core and HANA Cloud, with a portable local mode for development." That reads as a real engineer who understands platforms, not someone who pretends a free-tier experiment is a production deployment.
 
 ---
 
@@ -69,16 +69,6 @@ The internship project descriptions change slightly from year to year; the *unde
 - **GenAI across the SDLC + measured developer productivity (Newport Beach).** The DevEx team's stable core is applying genAI across the whole software lifecycle — code maintainability, large-scale refactoring/transformation, documentation quality — and *measuring* the impact (DORA / SPACE / DevEx metrics). Frame the DevEx vertical broadly around that, and note the nice parallel: Tessera measures faithfulness the way the DevEx team measures productivity — same evidence-driven mindset.
 
 **Robustness rule:** target the *fundamentals* above (which barely move), keep the per-location framing in a thin layer you can re-tune in an afternoon, and never hard-code the project to one year's exact wording. If a 2027 description shifts emphasis, you adjust a few sentences in `README` and this file — not the engine.
-
----
-
-## How to actually use this in the motivation letter
-
-- **Lead with the SAP-sponsored scholarship.** That is a genuine, verifiable prior connection to SAP — far stronger than any constructed proof of interest. Open with it.
-- **Frame the project as convergence, not coincidence.** "I set out to solve the trust problem in enterprise AI, and discovered I had independently built toward the exact problems your Palo Alto, Newport Beach, and Singapore teams describe."
-- **Pick the two or three target projects and tailor.** Do not gesture at all of SAP. Name the specific projects you want and show the matching slice of Tessera for each.
-- **Let the metric do the bragging.** "Faithfulness improved from X to Y over the project" is more impressive to a senior engineer than any adjective. Numbers age well; superlatives don't.
-- **Point to the write-up, not just the repo.** A clear technical post about the project demonstrates the requirements-and-communication side the PoC roles explicitly ask for.
 
 ---
 
@@ -124,5 +114,5 @@ favor, and one of its recommendations is now simply *done*:
   Triple Store — so its own recorded run awaits a paid-tier instance, a
   spend decision; spec 0129, DEPLOYMENT.md.)
 
-The application-execution kit (targets, mapping table, cover-letter
-drafts for both German tracks) lives in `launch/sap/APPLICATION.md`.
+The maintainer's application material lives outside the public
+repository (see `launch/README.md`).

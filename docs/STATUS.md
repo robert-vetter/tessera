@@ -2483,3 +2483,55 @@ next Z Fellows ship-update.
 
 **State of the tree:** `main` green after #156; no open unit branches;
 tags through `milestone-18` (`milestone-19` pends launch).
+
+## 2026-07-04 — Launch readiness: README pivot, private launch material, HISTORY SCRUB, tag milestone-19
+
+**Maintainer decisions this session (recorded):** the AI-assisted build
+story stays public (CLAUDE.md, STATUS, specs, Co-Authored-By trailers —
+own it, don't hide it); the personal launch/application material leaves
+the public repo AND its history; `milestone-19` tags the **launch-ready**
+state; the launch channels remain his call (noted: no LinkedIn broadcast
+— HN/Reddit + private 1:1 outreach don't expose him to his university
+circle; the essential public act is exactly one Show HN post).
+
+**Done:**
+- **README repositioned launch-first** (#157): positioning line as the
+  headline; demo/benchmark/MCP above the fold; Replit hook opens "Why
+  this exists"; SAP mapping demoted to the SAP_ALIGNMENT link; SALT
+  section records the real-data run.
+- **Private material out, history scrubbed.** `launch/posts|outreach|
+  sap|zfellows` untracked (kept local + backed up outside the repo at
+  `~/Developer/private/tessera-private-launch-backup-20260704/`), then
+  `git filter-repo` removed the four paths from ALL history and a
+  `--replace-text` pass removed a personal scholarship reference from
+  CHANGELOG/STATUS/SAP_ALIGNMENT blobs. Verified: 0 path traces in any
+  ref; 0 term hits across all blobs; `launch/registries/` + all 19 tags
+  intact (rewritten); HEAD tree byte-identical before the text pass.
+  Force-pushed via a temporarily disabled ruleset (settings backed up,
+  restored to `active`, verified). Residual, named honestly: GitHub may
+  serve old commits by SHA from its caches for a while (0 forks, no
+  known deep links — practical exposure ≈ nil); the two open dependabot
+  PRs sit on pre-rewrite bases and will rebase on their next run.
+- **Incident, honestly recorded:** my earlier "files stay local" claim
+  broke — after the #157 squash-merge, checkout+pull deleted the
+  untracked copies (they became tracked again on the old main). Restored
+  byte-identical from the pre-deletion commit BEFORE the scrub (which
+  would have destroyed that recovery path), then backed up outside the
+  repo. Lesson pinned here: `git rm --cached` + branch switch is not a
+  durable "keep it local" — the external backup now is.
+- **SAP_ALIGNMENT depersonalized** (motivation-letter guidance removed;
+  "the sentence for the application" → "in one sentence"); CHANGELOG
+  rolled `[Unreleased]` → `[milestone-19] — 2026-07-04`; **tagged
+  `milestone-19`** on the scrubbed history.
+
+**Eval:** untouched; gate green pre-PR (docs-only).
+
+**Next (the maintainer's launch sequence, unchanged):** registries
+runbook (~45 min) → Show HN (warm the Space; Tue–Thu ET; the draft +
+attack prep live in his LOCAL `launch/posts/`) → outreach wave 1 →
+Z Fellows date + first ship-update mail. The repo a stranger now sees
+leads with the positioning line, the live demo, and the benchmark.
+
+**State of the tree:** `main` = scrubbed history, green; tags
+milestone-15…18 rewritten-equivalent + `milestone-19` new; no open unit
+branches; dependabot #59/#133 pending rebase.
