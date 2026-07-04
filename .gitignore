@@ -32,3 +32,12 @@ var/
 # Outreach working list: person-level data never enters the public repo
 # (spec 0124; the committed scaffold is targets.example.csv).
 launch/outreach/targets.csv
+
+# Personal launch/application material — kept LOCAL, never published (spec 0124
+# lesson). The foundation for the maintainer's own Show HN / outreach / SAP
+# application / Z Fellows work; only launch/registries/ (the MCP-registry
+# submission, needed by tests) stays tracked.
+launch/posts/
+launch/outreach/
+launch/sap/
+launch/zfellows/
