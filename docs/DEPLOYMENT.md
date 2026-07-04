@@ -205,9 +205,15 @@ Least-privilege note: `.env` currently carries **DBADMIN**; for anything
 beyond the one-shot, create a dedicated user with only the KG privileges
 (the `TESSERA_APP` pattern of the section above) and rotate.
 
-*Recorded run: — pending a paid-tier instance (the seam, the procedure
-signature, and instance liveness are verified; the store itself is
-tier-gated — the free tier offers no Triple Store, measured 2026-07-04).*
+*Recorded run: none — **closed as tier-gated** (decision 2026-07-04).
+Pay-as-you-go / paid upgrades are not available to this account class
+without an enterprise sales contact, and the maintainer declined that
+path. S2's final posture is the honest one: the seam is contract-tested
+against the documented interface, the procedure signature is verified
+against the live instance, and the store itself is tier-gated. The
+`VECTOR_EMBEDDING` closes above remain the recorded "ran on SAP"
+measurements. Should a paid-tier instance ever materialize, the runbook
+above and `scripts/persist_knowledge_graph.py` apply unchanged.*
 
 ## The real execution one-shot — actually sending behind approval (Milestone 15)
 

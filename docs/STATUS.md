@@ -2414,3 +2414,16 @@ unchanged and remain ready.
 
 **State of the tree:** `main` green; this correction is the only change.
 Tags unchanged.
+
+## 2026-07-04 — S2 online: closed as tier-gated (decision recorded)
+
+The paid-tier path is off: pay-as-you-go is not offered to this account
+class without an enterprise sales contact, which the maintainer declined.
+Decision recorded (DEPLOYMENT.md "Recorded run" note): **S2 stands pat on
+the honest posture** — seam contract-tested, procedure signature
+live-verified, store tier-gated; the free-tier `VECTOR_EMBEDDING` closes
+remain the recorded "ran on SAP" proof. The runbook and staged one-shot
+stay in place unchanged should a paid instance ever materialize. The SAP
+track's build surface is now fully closed; S1 still awaits only the SALT
+HF access request (free, one click + approval lead time), S3 remains a
+non-plan (same account-class constraint). Docs-only; eval untouched.
