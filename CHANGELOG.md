@@ -11,6 +11,29 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
+*(nothing yet)*
+
+## [milestone-19] — 2026-07-04
+
+### Launch readiness (2026-07-04)
+
+- **README repositioned launch-first** (#157): the fixed positioning line
+  ("The agent can only say what it can prove — and only do what you
+  approve") is the headline; live demo, benchmark, and the MCP callout sit
+  above the fold; the Replit hook opens "Why this exists"; the SAP
+  team-mapping moved from the spine to `docs/SAP_ALIGNMENT.md`; the SALT
+  section records the real-data run.
+- **Personal launch/application material moved out of the public
+  repository** (kept local; `launch/registries/` stays tracked and
+  test-pinned), and the git history was rewritten to remove it end-to-end
+  — method, verification, and an honest incident note in `docs/STATUS.md`
+  (2026-07-04). `docs/SAP_ALIGNMENT.md` depersonalized (application
+  guidance lives with the maintainer, not in the product repo).
+- **The tag `milestone-19` marks the launch-READY state**: the M19 build
+  share, the SAP track, and launch prep are complete; the public launch
+  acts (registries, Show HN, outreach) follow under the maintainer's
+  identity and timing.
+
 **SAP track (post-M19, specs 0127–0129, PRs #150–#152):** the remaining
 Act 2 build surface, scoped on measured facts (spec 0127: instance alive
 at cloud version 2026.14.7; the KG triple store awaits the account
@@ -61,8 +84,7 @@ request; S3 is a spend decision).
   `cloud` extra.
 - **SAP application kit** (spec 0128, #151): `launch/sap/APPLICATION.md`
   — Sapphire-2026 mapping table, target teams, artifact links, CV
-  bullets, EN iXp + DE Werkstudent cover letters (opening on the
-  SAP-sponsored scholarship), submission checklist; plus a
+  bullets, EN iXp + DE Werkstudent cover letters, submission checklist; plus a
   dated `SAP_ALIGNMENT.md` addendum fixing its one stale beat (the
   agentic/MCP mode it recommended shipped in M11–M15). Nothing
   submitted.
@@ -75,9 +97,9 @@ model. The ADR 0008 frozen-core empty-diff audit over `milestone-18..HEAD`
 is **clean** (the milestone touched three source files: the new
 `eval/benchmark.py`, the vertical `devex/rca.py`, and one regex token in
 `connect/smoke.py`); all six committed battery lines are byte-identical.
-**The `milestone-19` tag pends the maintainer's public acts** (ROADMAP2's
-done-when includes "launched" and "outreach sent" — his identity, his
-timing; everything is staged so "go" costs minutes).
+**Tag semantics, decided by the maintainer (2026-07-04):** `milestone-19`
+marks the **launch-ready** state (ROADMAP2's "launched / outreach sent"
+remain his public acts, staged so "go" costs minutes).
 
 ### Added
 
