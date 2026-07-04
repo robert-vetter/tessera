@@ -2314,8 +2314,7 @@ pre-merge adversarial review.
   on the SALT/HF access request; S3 stays a spend decision.
 - **S4 — the application kit** (spec 0128, #151):
   `launch/sap/APPLICATION.md` — both German tracks (EN iXp + DE
-  Werkstudent letters, opening on the SAP-sponsored
-  scholarship), the Sapphire-2026 mapping table (Agent Hub
+  Werkstudent letters), the Sapphire-2026 mapping table (Agent Hub
   "verification badges" ↔ a *measured* faithfulness score; Claude-via-MCP
   ↔ the recorded agent session; DSAG 3% hook), target teams (BTP AI
   Core/GenAI Hub, Joule Studio, Business AI research, Prior Labs),
@@ -2490,9 +2489,8 @@ tags through `milestone-18` (`milestone-19` pends launch).
 story stays public (CLAUDE.md, STATUS, specs, Co-Authored-By trailers —
 own it, don't hide it); the personal launch/application material leaves
 the public repo AND its history; `milestone-19` tags the **launch-ready**
-state; the launch channels remain his call (noted: no LinkedIn broadcast
-— HN/Reddit + private 1:1 outreach don't expose him to his university
-circle; the essential public act is exactly one Show HN post).
+state; the launch channels remain his call (the essential public act is
+exactly one Show HN post; broadcast channels are optional).
 
 **Done:**
 - **README repositioned launch-first** (#157): positioning line as the
@@ -2500,8 +2498,7 @@ circle; the essential public act is exactly one Show HN post).
   this exists"; SAP mapping demoted to the SAP_ALIGNMENT link; SALT
   section records the real-data run.
 - **Private material out, history scrubbed.** `launch/posts|outreach|
-  sap|zfellows` untracked (kept local + backed up outside the repo at
-  `~/Developer/private/tessera-private-launch-backup-20260704/`), then
+  sap|zfellows` untracked (kept local, backed up outside the repo), then
   `git filter-repo` removed the four paths from ALL history and a
   `--replace-text` pass removed a personal scholarship reference from
   CHANGELOG/STATUS/SAP_ALIGNMENT blobs. Verified: 0 path traces in any

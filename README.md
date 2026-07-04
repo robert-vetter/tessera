@@ -24,7 +24,7 @@ An open, deterministic **evidence layer for AI agents**. Every answer is built f
 **📊 The benchmark** — evidence-gated vs. the same engine *ungated*, same corpus and verifier, no LLM judge: [docs/BENCHMARK.md](docs/BENCHMARK.md).
 **🔌 MCP-native** — plug it in as your agent's evidence oracle: `uv run tessera-mcp`.
 
-> *Working name. A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture. That is exactly what this system does with enterprise data. Rename freely.*
+> *A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture — which is what this system does with enterprise data.*
 
 ---
 
@@ -47,8 +47,8 @@ In 2025 an AI agent deleted a production database during a code freeze, then fab
 
 The same core engine powers two deliberately different demonstrations, to prove the engine generalizes:
 
-- **Business Data Copilot** — ask questions across a company's structured records and documents and get grounded, cited answers. *(Speaks to Palo Alto / Singapore.)* — `uv run tessera`
-- **DevEx Copilot** — point it at CI/CD logs, pull-request diffs, and ticket history; get root-cause hypotheses for failed pipelines and grounded summaries of what a change actually does. *(Speaks to Newport Beach.)* — `uv run tessera-devex`
+- **Business Data Copilot** — ask questions across a company's structured records and documents and get grounded, cited answers. — `uv run tessera`
+- **DevEx Copilot** — point it at CI/CD logs, pull-request diffs, and ticket history; get root-cause hypotheses for failed pipelines and grounded summaries of what a change actually does. — `uv run tessera-devex`
 
 As of Phase 3 **both verticals run and both are measured** — on a core whose
 files are byte-identical between the `phase-2` and `phase-3` tags
@@ -68,7 +68,7 @@ uv run tessera-chat
 
 ## What makes it genuinely hard (the honest version)
 
-Grounded RAG exists. Knowledge graphs exist. Entity resolution exists. What is rare — and what this project is actually about — is **doing all of them together, across structured and unstructured data at once, with a uniform provenance model and a faithfulness metric that holds the whole thing accountable.** Most systems pick one modality, skip provenance, and never measure faithfulness at all. Tessera treats *measurable trust* as the headline feature, not an afterthought. That framing is what a senior engineer recognizes as the real, unglamorous, valuable problem.
+Grounded RAG exists. Knowledge graphs exist. Entity resolution exists. What is rare — and what this project is actually about — is **doing all of them together, across structured and unstructured data at once, with a uniform provenance model and a faithfulness metric that holds the whole thing accountable.** Most systems pick one modality, skip provenance, and never measure faithfulness at all. Tessera treats *measurable trust* as the headline feature, not an afterthought.
 
 ## Evidence-gated actions — over MCP
 
@@ -467,6 +467,10 @@ miss is named in the data's README rather than hidden.
 | [`docs/MARKET.md`](docs/MARKET.md) | Dated market/regulatory/program snapshot grounding Act 2 |
 | [`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md) | The full drift/bug audit Act 2's first milestone acts on |
 | [`docs/WRITEUP.md`](docs/WRITEUP.md) | **The technical write-up**: approach, the recorded results trail, limitations, lessons |
+| [`docs/BENCHMARK.md`](docs/BENCHMARK.md) | **The Faithfulness Floor benchmark** — gated vs. ungated, CI-pinned, how to attack it |
+| [`docs/DEMO.md`](docs/DEMO.md) | Run/host the live demo; the 3-minute script |
+| [`docs/PILOT.md`](docs/PILOT.md) | **Pilot in a day** — grounded answers on your own repo/data in <30 min |
+| [`docs/SALT_REAL.md`](docs/SALT_REAL.md) | The recorded run on the real gated SAP SALT dataset |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | The SAP deployment path (AI Core / GenAI Hub / HANA Cloud) and the local-first posture |
 | [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | How the project is run: workflow, tooling, quality gates, anti-drift |
 | [`docs/SETUP.md`](docs/SETUP.md) | How to go from these docs to a running, gated project |
@@ -474,7 +478,7 @@ miss is named in the data's README rather than hidden.
 
 ## Status
 
-**Phases 0–4 complete, plus twelve post-roadmap milestones**
+**Phases 0–4 complete, plus fifteen post-roadmap milestones**
 (see [`docs/STATUS.md`](docs/STATUS.md) and the [changelog](CHANGELOG.md)): both
 verticals run on one measured engine, the faithfulness floor is gated in CI, and
 the Joule-style session and SAP deployment path are in place. When every number
@@ -511,10 +515,15 @@ approval**, best-effort idempotent (ADR 0026), exactly once, recorded as a commi
 scrubbed receipt ([`data/execution/`](data/execution/) →
 [`tessera-exec-oneshot#1`](https://github.com/robert-vetter/tessera-exec-oneshot/issues/1))
 — and **Milestone 16** preceded it with a full self-audit and trust-path hardening
-([`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md)). The plan from here —
-productization for real users on SAP-aligned rails — is **Act 2**:
-[`docs/ROADMAP2.md`](docs/ROADMAP2.md), grounded in that audit and a sourced market
-snapshot ([`docs/MARKET.md`](docs/MARKET.md)).
+([`docs/AUDIT_2026-07-02.md`](docs/AUDIT_2026-07-02.md)). **Act 2** then made it a product:
+**milestone 17** put the demo live for humans (the hosted web surface + a recorded
+session of a real Claude agent grounded only through the MCP tools), **milestone 18**
+made it usable on *your* data (`tessera connect github`, `tessera ingest`, the
+[pilot runbook](docs/PILOT.md)), and **milestone 19** made it launch-ready — the
+[Faithfulness Floor benchmark](docs/BENCHMARK.md), the registry artifacts, a run on
+the [real gated SALT dataset](docs/SALT_REAL.md), and the HANA knowledge-graph
+mirror seam. The plan: [`docs/ROADMAP2.md`](docs/ROADMAP2.md), grounded in the audit
+and a sourced market snapshot ([`docs/MARKET.md`](docs/MARKET.md)).
 
 ## License
 
