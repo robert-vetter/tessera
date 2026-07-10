@@ -226,6 +226,34 @@ def test_the_action_section_is_a_leaf_from_day_one() -> None:
     assert "leaf 'action' does not match its content" in integrity_mismatches(tampered)
 
 
+def test_format_and_closure_kind_are_hashed() -> None:
+    """Defense-in-depth (adversarial review, finding 4 / finding 1): editing
+    the format section or the closure kind without re-sealing breaks
+    integrity, naming the leaf."""
+    bundle = build_bundle("business", _GROUNDED["business"])
+    integrity = bundle["integrity"]
+    assert isinstance(integrity, dict)
+    leaves = integrity["leaves"]
+    assert isinstance(leaves, dict)
+    assert "format" in leaves and "closure.kind" in leaves
+
+    with_minor = copy.deepcopy(bundle)
+    fmt = with_minor["format"]
+    assert isinstance(fmt, dict)
+    fmt["minor"] = 99
+    assert "leaf 'format' does not match its content" in integrity_mismatches(
+        with_minor
+    )
+
+    with_kind = copy.deepcopy(bundle)
+    closure = with_kind["evidence_closure"]
+    assert isinstance(closure, dict)
+    closure["kind"] = "cited-records-only"
+    assert "leaf 'closure.kind' does not match its content" in integrity_mismatches(
+        with_kind
+    )
+
+
 # --- the CLI -----------------------------------------------------------------------
 
 
