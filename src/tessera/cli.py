@@ -2,8 +2,8 @@
 
 A thin dispatcher (spec 0117 decision 5): when the first argument is exactly
 one of the reserved subcommands — ``connect``, ``ask``, ``smoke``, ``ingest``
-(the BYO paths, Milestone 18) or ``bundle`` (trust bundles, Milestone 20;
-``verify`` follows with unit 0134) — the invocation goes to that path;
+(the BYO paths, Milestone 18) or ``bundle``/``verify`` (trust bundles,
+Milestone 20) — the invocation goes to that path;
 anything else falls through to the business CLI with identical behaviour, so
 ``uv run tessera "Which customers …?"`` keeps working exactly as every README
 example shows.
@@ -32,6 +32,7 @@ Bring-your-own-data (Milestone 18):
 
 Trust bundles (Milestone 20):
   tessera bundle "<q>" --domain <d>       emit a sealed, portable trust bundle
+  tessera verify <file>.tsb               re-execute its verification, offline
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
@@ -51,6 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.bundle.cli import main as bundle_main
 
         return bundle_main(args[1:])
+    if args and args[0] == "verify":
+        from tessera.bundle.cli import verify_main
+
+        return verify_main(args[1:])
     if args and args[0] in _BYO_COMMANDS:
         from tessera.connect.cli import main as connect_main
 

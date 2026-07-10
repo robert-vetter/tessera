@@ -63,9 +63,15 @@ def leaf_manifest(bundle: dict[str, object]) -> dict[str, str]:
     graph = _dict(_get(closure, "graph"), "evidence_closure.graph")
 
     leaves: dict[str, str] = {
+        "format": digest(_get(bundle, "format")),
         "engine": digest(_get(bundle, "engine")),
         "result": digest(_get(bundle, "result")),
         "action": digest(_get(bundle, "action")),
+        # The closure metadata (its declared kind) is hashed too, so tampering
+        # the label is at least an integrity break without a re-seal; the
+        # verifier additionally decides re-derivability from what is PRESENT,
+        # never from this label alone (spec 0134, the downgrade-attack fix).
+        "closure.kind": digest(_get(closure, "kind")),
         "kb": digest(_get(closure, "kb")),
         "graph.edges": digest(_get(graph, "edges")),
         "graph.resolutions": digest(_get(graph, "resolutions")),

@@ -1,18 +1,21 @@
-"""The ``tessera bundle`` command — emit a sealed trust bundle (spec 0133).
+"""The ``tessera bundle`` and ``tessera verify`` commands (specs 0133/0134).
 
-Dispatched from the front door (``tessera/cli.py``, the spec-0117 pattern).
-``tessera verify`` — the offline re-executing check — arrives with unit
-0134 and will live beside this entry.
+Dispatched from the front door (``tessera/cli.py``, the spec-0117 pattern):
+``bundle`` emits a sealed trust bundle; ``verify`` re-checks one offline by
+re-execution — integrity and semantics, reported separately, exit codes
+4 (envelope broken) > 2 (semantic failure) > 3 (degraded) > 0 (pass).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
 from tessera.agent.grounded import available_domains
 from tessera.bundle.emit import build_bundle, write_bundle
+from tessera.bundle.verify import BundleFormatError, render_report, verify_bundle
 
 _DESCRIPTION = """\
 Emit a sealed trust bundle: one .tsb file carrying the grounded answer (or
@@ -71,3 +74,78 @@ def main(argv: list[str] | None = None) -> int:
     print(f"root:    {integrity['root']}")
     print(f"wrote:   {args.out} ({size:,} bytes)")
     return 0
+
+
+# --- tessera verify ---------------------------------------------------------------
+
+_VERIFY_DESCRIPTION = """\
+Re-check a trust bundle offline by RE-EXECUTION: every recorded claim
+verdict is re-derived from the evidence packaged in the file (the eval's
+own deterministic verifier, re-run), and the packaged corpus must re-yield
+the recorded answer for the recorded question. Integrity (hashes) and
+semantics (truth of the record) are reported separately — a re-sealed
+tampered file passes the first and fails the second.
+
+Exit codes: 0 pass · 2 semantic failure · 3 degraded (visibly not
+re-derivable) · 4 envelope unreadable or hashes broken.
+"""
+
+
+def _verify_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="tessera verify",
+        description=_VERIFY_DESCRIPTION,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument("bundle", help="path to the .tsb file to verify")
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="emit the machine-readable report instead of the human one",
+    )
+    return parser
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """A JSON object hook that refuses duplicate keys. Standard ``json`` keeps
+    last-wins, which would let a file carry a first-wins/streaming reader a
+    *different* value (e.g. an injected refusal) than the verifier blesses —
+    so a trust bundle must be single-valued, not merely self-consistent."""
+    seen: dict[str, object] = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ValueError(f"duplicate key {key!r} in a trust bundle object")
+        seen[key] = value
+    return seen
+
+
+def verify_main(argv: list[str] | None = None) -> int:
+    args = _verify_parser().parse_args(argv)
+    path = Path(args.bundle)
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as error:
+        print(f"error: cannot read {path}: {error}", file=sys.stderr)
+        return 4
+    try:
+        bundle = json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
+    except (json.JSONDecodeError, ValueError) as error:
+        print(
+            f"error: {path} is not a well-formed trust bundle: {error}", file=sys.stderr
+        )
+        return 4
+    if not isinstance(bundle, dict):
+        print(f"error: {path} is not a JSON object", file=sys.stderr)
+        return 4
+
+    try:
+        report = verify_bundle(bundle)
+    except BundleFormatError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 4
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(render_report(report, source=str(path)))
+    return report.exit_code

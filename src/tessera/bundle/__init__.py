@@ -18,4 +18,7 @@ frozen core changes. Modules arrive unit by unit:
   leaf manifest, root, integrity re-check (spec 0133, ADR 0031).
 - :mod:`tessera.bundle.emit` — ground a question, package the closure,
   seal the bundle (spec 0133); CLI in :mod:`tessera.bundle.cli`.
+- :mod:`tessera.bundle.verify` — offline re-executing verification: both
+  layers (integrity + semantics), the verdict taxonomy, named causes
+  (spec 0134).
 """
