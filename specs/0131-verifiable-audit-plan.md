@@ -339,17 +339,21 @@ the gate fails and the change is wrong by definition.
 ## Autonomy
 
 Everything above is decided; units execute without interactive stops per
-CLAUDE.md "Autonomous phase execution." Exactly three questions are the
-maintainer's (none blocks M20/M21; defaults apply until answered):
+CLAUDE.md "Autonomous phase execution." Exactly three questions were the
+maintainer's — **all three answered on 2026-07-10 at plan presentation**,
+so the act carries no open decisions:
 
-- **Q1 — Rekor anchoring, recorded run:** posting demo-bundle roots to
-  the public Sigstore log is an external, public act. Default: client
-  ships fixture-tested + staged runbook; no public post.
-- **Q2 — LLM-judge one-shot:** small API spend + a pinned judge config.
-  Default: script staged + fixture-tested; no recorded measurement.
-- **Q3 — technical-report staging:** whether unit 0141 additionally
-  stages an arXiv-ready technical report (publication is the
-  maintainer's act, under his identity). Default: WRITEUP addendum only.
+- **Q1 — Rekor anchoring, recorded run: YES.** Unit 0138 executes the
+  one documented public post of demo-bundle roots (hashes of synthetic
+  demo data only) to the public Sigstore log and records it.
+- **Q2 — LLM-judge one-shot: YES, judge = Claude via the existing
+  `ANTHROPIC_API_KEY`.** Unit 0140 runs the recorded RAGAS measurement
+  with version and full judge configuration documented; the fairness
+  note states the divergence from RAGAS's vendor-default judge
+  explicitly.
+- **Q3 — technical-report staging: YES.** Unit 0141 additionally stages
+  an arXiv-ready technical report; submission remains the maintainer's
+  act, under his identity.
 
 ## Risks
 
