@@ -11,12 +11,42 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-- **Act 3 planned — verifiable audit (trust bundles):** spec 0131 fixes
-  the track plan (the scoped novelty claim + mandatory caveats, decisions
-  D1–D12, units 0132–0141 across Milestones 20–22, the autonomy posture,
-  and the three maintainer questions); `docs/ROADMAP3.md` carries the
-  act-level story. `.gitignore` hardened to an allowlist for `launch/`
-  so new local application material can never leak by omission.
+*(nothing yet)*
+
+## [milestone-20] — 2026-07-10
+
+**Act 3, Milestone 20 — the trust bundle re-executes.** A portable `.tsb`
+record of a grounded answer that a third party re-checks offline by
+*re-executing* the verification, from the file alone — the differentiator
+the receipt story pointed at since Milestone 15.
+
+- **Act 3 planned** (spec 0131, `docs/ROADMAP3.md`): the scoped novelty
+  claim + mandatory prior-art caveats, decisions D1–D12, units 0132–0141
+  across Milestones 20–22, the autonomy posture, and the three maintainer
+  questions (all answered). `.gitignore` hardened to an allowlist for
+  `launch/`.
+- **Serialization round-trip** (spec 0132, #166): `tessera/bundle/serde.py`
+  reconstructs the whole chain from dicts alone — byte-identical
+  round-trips on all three committed corpora, tuple-exact graph rebuild,
+  and the re-verification bridge that re-derives the recorded verdicts
+  through the eval's own `is_supported`.
+- **Bundle format + emission** (spec 0133, ADR 0031, #167): the `.tsb`
+  contract — canonical JSON (`tessera-canonical-json-1`, deliberately not
+  RFC 8785), engine + claim-grammar pins, the full evidence closure, and
+  an integrity manifest with one leaf per record (tampering is named) —
+  and `tessera bundle "<q>" --domain <d>`.
+- **Offline re-executing verify** (spec 0134, #168): `tessera verify
+  <file>.tsb` — stdlib-only, two layers reported separately (integrity +
+  semantic re-execution), the verdict taxonomy
+  RE-DERIVED / INTEGRITY-ONLY / NOT-EVALUABLE, exit codes 4 > 2 > 3 > 0,
+  degradation always visible. `scripts/foil_integrity_only.py` is the
+  hash-only foil; `docs/BUNDLE.md` carries the flip-a-byte walkthrough.
+  Trust-bearing: two independent adversarial review passes found and this
+  milestone fixed three confirmed holes (a `kind`-label downgrade, a
+  fabricated-display-provenance PASS, a dangling-reference crash) before
+  merge.
+- Additive throughout: the frozen core (ADR 0008) is byte-identical
+  `milestone-19..milestone-20`; the six eval lines are unchanged.
 
 ## [milestone-19] — 2026-07-04
 

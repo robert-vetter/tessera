@@ -2603,3 +2603,58 @@ report staged in unit 0141. The act carries no open decisions.
 **Next:** kick off Milestone 20 unit 0132 (serialization round-trip)
 per the spec-0131 kickoff discipline; standing items unchanged
 (dependabot rebases, demo video, BTP).
+
+---
+
+## 2026-07-10 — Milestone 20 CLOSED: the trust bundle re-executes (tag `milestone-20`)
+
+Ran autonomously from the maintainer's "Führe Milestone 20 aus" kickoff.
+Three units, each spec → branch → gate → PR → CI-green → squash-merge;
+the trust-bearing verifier got two independent adversarial review passes
+before merge.
+
+**Done this session**
+- **Unit 0132 — serde** (#166, spec 0132): `tessera/bundle/serde.py`
+  reconstructs the whole chain from dicts (from_dict for every boundary
+  object + both directions for the core); tuple-exact graph rebuild; the
+  re-verification bridge. 23 tests.
+- **Unit 0133 — format + emission** (#167, spec 0133, ADR 0031): the
+  `.tsb` contract — `tessera-canonical-json-1` (not RFC 8785; recorded),
+  engine + claim-grammar pins, the full evidence closure, an integrity
+  manifest with one leaf per record; `tessera bundle`. Byte-stable across
+  interpreter hash seeds. Sizes: business 404 KB, devex 147 KB,
+  github_actions 34 KB. 21 tests.
+- **Unit 0134 — offline verify** (#168, spec 0134): `tessera verify` —
+  stdlib-only, two layers (integrity + semantic re-execution), verdict
+  taxonomy RE-DERIVED / INTEGRITY-ONLY / NOT-EVALUABLE, exit 4>2>3>0.
+  `scripts/foil_integrity_only.py` + `docs/BUNDLE.md` (flip-a-byte
+  walkthrough). **Milestone floor pinned:** 100% re-derivation equality
+  across every gold case of all three committed batteries, from the file
+  bytes alone.
+- **Two adversarial review passes** (a "trust-path" review + a 3-lens
+  workflow) found three confirmed holes, all fixed before merge:
+  (1) the self-declared `evidence_closure.kind` could switch
+  re-execution off → gated on the graph actually being present, not the
+  label; `format`+`closure.kind` now hashed; (2) check (b) compared
+  reconstructed dataclasses, letting derived display fields
+  (`locator.render`, `all_verified`) carry fabricated provenance to a
+  silent PASS → now compares canonical bytes; duplicate JSON keys
+  rejected; (3) a dangling graph reference crashed re-execution with an
+  uncaught `KeyError` (exit 1, outside the taxonomy) → referential-
+  integrity check + defensive backstop, so no input crashes verify.
+  BUNDLE.md's honest-limits now state which evidence is load-bearing per
+  domain (graph for the business grammar; KB for lexical routes).
+
+**Verified at close:** frozen-core empty-diff `milestone-19..HEAD` CLEAN
+(all core + boundary + verifier-grammar files byte-identical);
+`eval/history.jsonl` byte-identical; six eval lines unchanged
+(business 11/53 all 1.0; devex 1.0/0.950/0.889; gha 1.0/0.833/0.800);
+gate green (646 tests); mkdocs strict green; CHANGELOG rolled to
+`[milestone-20] — 2026-07-10`; tag `milestone-20`.
+
+**Next:** Milestone 21 (specs 0135–0137): Ed25519 signing (extra `sign`
++ pure-Python RFC 8032 verify), action bundles, the Auditability Floor
+(mutation battery + 3-OS CI matrix). Standing items unchanged.
+
+**State of the tree:** `main` green; new package `tessera/bundle/`; tags
+through `milestone-20`; no open unit branches.
