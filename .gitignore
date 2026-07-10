@@ -29,15 +29,13 @@ site/
 # fetched by `tessera connect`, read by `tessera ask`, NEVER committed.
 var/
 
-# Outreach working list: person-level data never enters the public repo
-# (spec 0124; the committed scaffold is targets.example.csv).
-launch/outreach/targets.csv
-
 # Personal launch/application material — kept LOCAL, never published (spec 0124
-# lesson). The foundation for the maintainer's own Show HN / outreach / SAP
-# application / Z Fellows work; only launch/registries/ (the MCP-registry
-# submission, needed by tests) stays tracked.
-launch/posts/
-launch/outreach/
-launch/sap/
-launch/zfellows/
+# lesson; includes person-level outreach data such as targets.csv). Everything
+# under launch/ is local by default; only launch/README.md and
+# launch/registries/ (the MCP-registry submission, needed by tests) stay
+# tracked. The allowlist form exists so a new local subdirectory can never
+# leak by omission.
+launch/*
+!launch/README.md
+!launch/registries/
+!launch/registries/**

@@ -2545,3 +2545,59 @@ leads with the positioning line, the live demo, and the benchmark.
 **State of the tree:** `main` = scrubbed history, green; tags
 milestone-15…18 rewritten-equivalent + `milestone-19` new; no open unit
 branches; dependabot #59/#133 pending rebase.
+
+---
+
+## 2026-07-10 — Launch result recorded; Act 3 planned (verifiable audit: trust bundles)
+
+**Launch, honestly:** the Show HN went out 2026-07-07 under the
+maintainer's identity and landed at ~2 points — the statistical median
+for the category, exactly the priced-in normal case from the 2026-07-04
+audit. Two operational stumbles (title submitted without the "Show HN:"
+prefix, first comments caught by the new-account filter) were fixed or
+moot in-flight; neither changed the outcome. The positioning and the
+pilot wedge survive a quiet launch by design (ROADMAP2 risk table); no
+re-litigation.
+
+**Decision: build the thing the receipt story points at.** A structured
+prior-art research pass (2026-07-10, six lenses over 2024–2026 papers,
+the MCP/receipt ecosystem, cryptographic provenance, and enterprise
+audit requirements; adversarial prior-art + feasibility verification per
+candidate) found one confirmed-empty, structurally defensible slot:
+every shipping agent-receipt system verifies **integrity** (signatures,
+hash chains, Merkle proofs) and none verifies **content** — an
+independent 2026 conformance test states verbatim that no tested tool
+performs re-execution verification. Tessera's deterministic verifier is
+the missing half, already built. Act 3 packages it: **trust bundles** a
+third party re-checks offline by re-executing claim-vs-evidence
+verification (`tessera verify answer.tsb` re-derives every verdict from
+the file alone; flip one byte → the exact dependent claim fails, named).
+
+**Done this session**
+- **Spec 0131** (the Act 3 track plan): the scoped novelty claim fixed
+  verbatim with its mandatory caveats (the envelope — signing, Merkle,
+  transparency logs, mutation batteries — is crowded prior art; only
+  the semantic re-execution core is claimed); decisions D1–D12 (verdict
+  taxonomy `RE-DERIVED`/`INTEGRITY-ONLY`/`NOT-EVALUABLE`, full-graph
+  closure in v1, canonical bytes per the proven `_canonical_request`
+  pattern, stdlib-only verify path, signing as optional extra with
+  pure-Python verify, opt-in Rekor, the Auditability Floor with 100%
+  equality + 100% mutation-detection pins and a 3-OS CI matrix,
+  compliance *mapping* language, SALT data ban); units 0132–0141
+  reserved across **Milestones 20–22**; acceptance criteria; risks.
+- **docs/ROADMAP3.md** (Act 3), mkdocs nav entry; CHANGELOG
+  `[Unreleased]` entry.
+- **.gitignore hardened to an allowlist** for `launch/` (everything
+  local by default; only `launch/README.md` + `launch/registries/`
+  tracked) — a new local application-material subdirectory can no
+  longer leak by omission.
+
+**Eval:** untouched (docs/plan only); gate green pre-PR.
+
+**Open maintainer questions (Q1–Q3, none block M20/M21; defaults in
+spec 0131):** Rekor public anchoring recorded run · LLM-judge one-shot
+(small spend, pinned judge) · arXiv-ready technical report staging.
+
+**Next:** kick off Milestone 20 unit 0132 (serialization round-trip)
+per the spec-0131 kickoff discipline; standing items unchanged
+(dependabot #59/#133 rebase, demo video, BTP).
