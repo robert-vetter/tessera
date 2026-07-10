@@ -11,7 +11,12 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-*(nothing yet)*
+- **Act 3 planned — verifiable audit (trust bundles):** spec 0131 fixes
+  the track plan (the scoped novelty claim + mandatory caveats, decisions
+  D1–D12, units 0132–0141 across Milestones 20–22, the autonomy posture,
+  and the three maintainer questions); `docs/ROADMAP3.md` carries the
+  act-level story. `.gitignore` hardened to an allowlist for `launch/`
+  so new local application material can never leak by omission.
 
 ## [milestone-19] — 2026-07-04
 
