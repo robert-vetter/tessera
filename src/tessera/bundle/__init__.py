@@ -12,4 +12,10 @@ frozen core changes. Modules arrive unit by unit:
 
 - :mod:`tessera.bundle.serde` — dict round-trips for the whole chain
   (spec 0132): the reconstruction layer everything else stands on.
+- :mod:`tessera.bundle.canonical` — the ``tessera-canonical-json-1`` byte
+  recipe and digests (spec 0133, ADR 0031).
+- :mod:`tessera.bundle.format` — the ``.tsb`` file contract: sections,
+  leaf manifest, root, integrity re-check (spec 0133, ADR 0031).
+- :mod:`tessera.bundle.emit` — ground a question, package the closure,
+  seal the bundle (spec 0133); CLI in :mod:`tessera.bundle.cli`.
 """

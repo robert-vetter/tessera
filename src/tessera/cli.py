@@ -1,14 +1,16 @@
-"""The ``tessera`` front door: BYO subcommands, else the business demo.
+"""The ``tessera`` front door: BYO + bundle subcommands, else the business demo.
 
 A thin dispatcher (spec 0117 decision 5): when the first argument is exactly
 one of the reserved subcommands — ``connect``, ``ask``, ``smoke``, ``ingest``
-— the invocation goes to the BYO paths (Milestone 18); anything else falls
-through to the business CLI with identical behaviour, so ``uv run tessera
-"Which customers …?"`` keeps working exactly as every README example shows.
+(the BYO paths, Milestone 18) or ``bundle`` (trust bundles, Milestone 20;
+``verify`` follows with unit 0134) — the invocation goes to that path;
+anything else falls through to the business CLI with identical behaviour, so
+``uv run tessera "Which customers …?"`` keeps working exactly as every README
+example shows.
 
-Recorded residual (spec 0117): a business *question* whose first word is
-literally a reserved word would mis-route — rephrase it or use
-``tessera-chat``. The reserved words are not natural question openers.
+Recorded residual (spec 0117, extended by spec 0133): a business *question*
+whose first word is literally a reserved word would mis-route — rephrase it
+or use ``tessera-chat``. The reserved words are not natural question openers.
 """
 
 from __future__ import annotations
@@ -28,6 +30,9 @@ Bring-your-own-data (Milestone 18):
   tessera ask <owner>/<repo>|<dir> "<q>"  answer over a repo or a directory
   tessera smoke <owner>/<repo>            check the trust contract holds on it
 
+Trust bundles (Milestone 20):
+  tessera bundle "<q>" --domain <d>       emit a sealed, portable trust bundle
+
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
 
@@ -42,6 +47,10 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0] in ("-h", "--help"):
         print(_TOP_HELP)
         return 0
+    if args and args[0] == "bundle":
+        from tessera.bundle.cli import main as bundle_main
+
+        return bundle_main(args[1:])
     if args and args[0] in _BYO_COMMANDS:
         from tessera.connect.cli import main as connect_main
 
