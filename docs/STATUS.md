@@ -2594,10 +2594,12 @@ the file alone; flip one byte → the exact dependent claim fails, named).
 
 **Eval:** untouched (docs/plan only); gate green pre-PR.
 
-**Open maintainer questions (Q1–Q3, none block M20/M21; defaults in
-spec 0131):** Rekor public anchoring recorded run · LLM-judge one-shot
-(small spend, pinned judge) · arXiv-ready technical report staging.
+**Maintainer questions Q1–Q3: all answered YES at plan presentation
+(2026-07-10; recorded in spec 0131):** Rekor recorded run approved ·
+LLM-judge one-shot approved with Claude as judge (existing key, config
+documented, vendor-default divergence noted) · arXiv-ready technical
+report staged in unit 0141. The act carries no open decisions.
 
 **Next:** kick off Milestone 20 unit 0132 (serialization round-trip)
 per the spec-0131 kickoff discipline; standing items unchanged
-(dependabot #59/#133 rebase, demo video, BTP).
+(dependabot rebases, demo video, BTP).
