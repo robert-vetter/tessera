@@ -151,6 +151,15 @@ def engine_version_spoof(b: dict[str, object]) -> Mutation:
     return Mutation("engine_version_spoof", _reseal(m), DEGRADED, "9.9.9")
 
 
+def extra_top_section(b: dict[str, object]) -> Mutation:
+    """Add an unauthenticated top-level section (no re-seal needed — the
+    manifest hashes leaves, not the section set): rejected as an envelope
+    break, since the root must commit to the section set."""
+    m = _working_copy(b)
+    m["smuggled"] = {"payload": "unauthenticated"}
+    return Mutation("extra_top_section", m, TAMPERED, "unexpected top-level")
+
+
 # --- action mutations (only reachable when the bundle carries an action) -------------
 
 
@@ -182,6 +191,30 @@ def wire_slot_edit(b: dict[str, object]) -> Mutation:
     return Mutation("wire_slot_edit", _reseal(m), FAIL, "wire")
 
 
+def outcome_forgery(b: dict[str, object]) -> Mutation:
+    """Forge the execution outcome (claim a real create) + re-seal: the whole
+    simulated receipt is re-derived, so outcome/result/simulated fail."""
+    m = _working_copy(b)
+    action = m["action"]
+    action["outcome"] = "created"
+    action["simulated"] = False
+    action["executed"] = True
+    action["actuator"] = "github"
+    action["result"] = {
+        "status": 201,
+        "response": {"number": 1337, "html_url": "https://example.invalid/1337"},
+    }
+    return Mutation("outcome_forgery", _reseal(m), FAIL, "execution outcome")
+
+
+def approval_strip(b: dict[str, object]) -> Mutation:
+    """Forge approval on a bundled (simulated) action + re-seal: a bundled
+    action is an unapproved simulation, so the altered approval is caught."""
+    m = _working_copy(b)
+    m["action"]["approved"] = True
+    return Mutation("approval_strip", _reseal(m), FAIL, "unapproved")
+
+
 # The battery, split by which bundle it applies to. Answer mutations run on a
 # business answer bundle; action mutations on a devex incident action bundle.
 AnswerMutation = Callable[[dict[str, object]], Mutation]
@@ -197,10 +230,13 @@ ANSWER_MUTATIONS: tuple[AnswerMutation, ...] = (
     leaf_tamper,
     root_mismatch,
     engine_version_spoof,
+    extra_top_section,
 )
 
 ACTION_MUTATIONS: tuple[AnswerMutation, ...] = (
     wire_body_injection,
     wire_method_repoint,
     wire_slot_edit,
+    outcome_forgery,
+    approval_strip,
 )

@@ -529,7 +529,15 @@ def _action_problems(
         )
 
     # Re-derive the exact wire request the frozen pipeline produces from this
-    # answer, then require the recorded receipt to match it.
+    # answer, then re-run the SIMULATED execution over it and require the WHOLE
+    # recorded receipt to match — the request AND the execution-outcome metadata
+    # (outcome, result, simulated/executed/actuator, approval). The adversarial
+    # audit of M20/M21 found that binding only the request let a receipt claim a
+    # real create (outcome="created", simulated=false, a fabricated result URL)
+    # while passing; comparing the full simulated receipt closes that, since a
+    # bundled action is only ever an unapproved, unsent simulation.
+    from tessera.agent.execution import execute_payload
+
     proposal = ActionProposal(
         kind=receipt.kind,
         domain=result.domain,
@@ -548,24 +556,61 @@ def _action_problems(
             "for this action (the frozen pipeline withholds it)"
         )
         return tuple(dict.fromkeys(problems))
-    if receipt.method != expected.method or receipt.path != expected.path:
-        problems.append(
-            "the wire method/path does not match the request re-derived from "
-            "the packaged evidence"
+
+    expected_receipt = execute_payload(expected)  # SimulatedActuator, no approval
+    expected_d = expected_receipt.to_dict()
+    recorded_d = receipt.to_dict()
+    if recorded_d != expected_d:
+        named = False
+        if receipt.method != expected_receipt.method or receipt.path != (
+            expected_receipt.path
+        ):
+            problems.append(
+                "the wire method/path does not match the request re-derived from "
+                "the packaged evidence"
+            )
+            named = True
+        if receipt.body != expected_receipt.body:
+            problems.append(
+                "the wire body does not match the request re-derived from the "
+                "packaged evidence — it adds or alters content beyond the "
+                "grounded values"
+            )
+            named = True
+        if recorded_d["slots"] != expected_d["slots"]:
+            problems.append(
+                "the wire slots do not match those re-derived from the packaged "
+                "evidence (a value, its provenance, or its role was altered)"
+            )
+            named = True
+        outcome_keys = (
+            "target",
+            "actuator",
+            "executed",
+            "simulated",
+            "withheld",
+            "withheld_reason",
+            "outcome",
+            "result",
+            "idempotency_key",
+            "approved",
+            "requires_approval",
         )
-    if receipt.body != expected.body:
-        problems.append(
-            "the wire body does not match the request re-derived from the "
-            "packaged evidence — it adds or alters content beyond the grounded "
-            "values"
-        )
-    if tuple(s.to_dict() for s in receipt.slots) != tuple(
-        s.to_dict() for s in expected.slots
-    ):
-        problems.append(
-            "the wire slots do not match those re-derived from the packaged "
-            "evidence (a value, its provenance, or its role was altered)"
-        )
+        diverged = [k for k in outcome_keys if recorded_d.get(k) != expected_d.get(k)]
+        if diverged:
+            problems.append(
+                "the action's execution outcome does not match a simulated draft "
+                f"(altered {', '.join(diverged)}) — a bundled action is an "
+                "unapproved, unsent simulation, not an executed one"
+            )
+            named = True
+        if not named:
+            # Safety net: the recorded receipt differs from the re-derived one in
+            # a field none of the named checks covers — never a silent pass.
+            problems.append(
+                "the action receipt does not match the one re-derived from the "
+                "packaged evidence"
+            )
     return tuple(dict.fromkeys(problems))
 
 
@@ -579,6 +624,16 @@ def verify_bundle(
     :class:`BundleFormatError` when the envelope is unreadable. With
     ``require_signed``, an unsigned bundle is an envelope failure (exit 4)."""
     _check_format(bundle)
+    # The anchor section is reserved for transparency-log anchoring (unit 0138)
+    # and has no verifier yet. It is an attestation OVER the root, so it is not
+    # in the integrity manifest; until 0138 gives it meaning, a non-null anchor
+    # is unverifiable content this version must refuse rather than ignore (the
+    # M20/M21 audit found it could otherwise ride along unauthenticated).
+    if bundle.get("anchor") is not None:
+        raise BundleFormatError(
+            "the anchor section is reserved and not verifiable by this version "
+            "(transparency anchoring arrives in a later unit)"
+        )
     engine = _section(bundle, "engine")
     closure = _section(bundle, "evidence_closure")
 

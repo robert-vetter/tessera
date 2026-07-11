@@ -83,13 +83,26 @@ canonical bytes:
 
 - `node:<record-id>` — one leaf **per graph node**, so integrity
   tampering names the exact record;
-- `engine`, `result`, `graph.edges`, `graph.resolutions`,
-  `graph.mentions`, `kb`, `action` — one leaf per remaining section.
-  `action` is a leaf from day one (hashing its literal `null` until unit
-  0136 fills it), so that unit extends content, not the manifest shape.
-  `signature` and `anchor` are attestations **over** the sealed root and
-  are structurally excluded from the manifest they attest — a signature
-  inside its own signed content would be circular.
+- `format`, `engine`, `result`, `closure.kind`, `graph.edges`,
+  `graph.resolutions`, `graph.mentions`, `kb`, `action` — one leaf per
+  remaining section. `action` is a leaf from day one (hashing its literal
+  `null` until unit 0136 fills it), so that unit extends content, not the
+  manifest shape. `closure.kind` is hashed too, so relabelling the closure
+  is at least an integrity break without a re-seal (the verifier
+  additionally decides re-derivability from the graph's *presence*, never
+  from this label — spec 0134). `signature` and `anchor` are attestations
+  **over** the sealed root and are structurally excluded from the manifest
+  they attest — a signature inside its own signed content would be
+  circular.
+
+Because the manifest hashes individual leaves rather than the containing
+dicts, the root does not by itself commit to the *section set* — an
+unexpected extra top-level, `evidence_closure`, or `graph` key would ride
+along unhashed and unread. The verifier therefore also rejects any section
+outside the fixed format-major-1 set (`integrity_mismatches`), so the root
+effectively commits to the set as well as the contents; and a non-null
+`anchor` (reserved, no verifier until unit 0138) is refused rather than
+ignored. (Both hardenings were added after the M20/M21 adversarial audit.)
 
 `integrity.root` is sha256 over the canonical bytes of the manifest
 itself (whose keys sort deterministically). This is a **depth-1 Merkle

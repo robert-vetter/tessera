@@ -152,21 +152,9 @@ def record_from_dict(data: dict[str, object]) -> EvidenceRecord:
     )
 
 
-def claim_to_dict(claim: Claim) -> dict[str, object]:
-    return {
-        "text": claim.text,
-        "support": [record_to_dict(record) for record in claim.support],
-    }
-
-
-def claim_from_dict(data: dict[str, object]) -> Claim:
-    return Claim(
-        text=_str(data, "text"),
-        support=tuple(
-            record_from_dict(_dict(item, f"support[{i}]"))
-            for i, item in enumerate(_list(_get(data, "support"), "support"))
-        ),
-    )
+# A bare ``Claim`` never crosses into a bundle on its own — claims travel as
+# ``GroundedClaim`` (verdict + provenance) and are rebuilt for re-verification
+# by :func:`claim_from_grounded` below — so no ``Claim`` dict pair is defined.
 
 
 # --- core: graph and knowledge base ----------------------------------------------

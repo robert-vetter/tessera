@@ -471,6 +471,17 @@ def test_wrong_format_major_is_an_envelope_error() -> None:
         verify_bundle(tampered)
 
 
+def test_non_null_anchor_is_refused() -> None:
+    """Adversarial audit (final review, finding 2): the reserved anchor section
+    has no verifier yet, so a non-null anchor is unverifiable content this
+    version must refuse rather than ignore — even re-sealed."""
+    bundle = _fresh("business", _GROUNDED["business"])
+    tampered = copy.deepcopy(bundle)
+    tampered["anchor"] = {"forged": "rekor-entry"}
+    with pytest.raises(BundleFormatError, match="anchor section is reserved"):
+        verify_bundle(_reseal(tampered))
+
+
 # --- the CLI ------------------------------------------------------------------------
 
 

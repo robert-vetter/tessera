@@ -92,6 +92,8 @@ nav:
       - 0028 The BYO connector workspace boundary: adr/0028-byo-connector-workspace-boundary.md
       - 0029 The declared ingest config: adr/0029-declared-ingest-config.md
       - 0030 HANA KG persistence boundary: adr/0030-hana-kg-persistence-boundary.md
+      - 0031 The trust-bundle format: adr/0031-trust-bundle-format.md
+      - 0032 Bundle signing: adr/0032-bundle-signing.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |
