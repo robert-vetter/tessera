@@ -459,6 +459,116 @@ def _answer_rederivation(
     )
 
 
+# --- action re-derivation (spec 0136) ----------------------------------------------
+
+
+def _action_problems(
+    action_section: dict[str, object],
+    result: GroundedResult,
+) -> tuple[str, ...]:
+    """Re-derive the WHOLE wire action from the re-derived answer (spec 0136).
+
+    The strong check — the action-layer analogue of the answer re-derivation
+    (b): re-run the frozen drafting + rendering pipeline over the re-derived
+    ``result`` (bound to the packaged evidence by check (b)) and require the
+    recorded receipt's request and slots to equal it **exactly**. Because the
+    frozen pipeline is a deterministic function of the answer, this binds the
+    method, path, the *entire* body dict (every key — labels, and anything an
+    attacker might inject), the per-slot value→claim→role attribution, and the
+    slot order all at once. Anything the receipt added or altered beyond what
+    the evidence produces diverges and fails. Pure over the file's content;
+    the actuator and network are never touched (the adversarial review of
+    unit 0136 found the earlier field-by-field check let injected body keys,
+    a repointed method/path, and cross-claim splices pass — this closes them).
+    """
+    from tessera.agent.actions import _CATALOG, ActionProposal, _draft_fields
+    from tessera.agent.payloads import render_payload
+    from tessera.bundle.serde import execution_receipt_from_dict
+
+    try:
+        receipt = execution_receipt_from_dict(action_section)
+    except ValueError as error:
+        return (f"the action section is malformed: {error}",)
+
+    problems: list[str] = []
+    if receipt.sent:
+        problems.append(
+            "the bundled action claims a real send (sent=true); only simulated "
+            "actions are ever bundled"
+        )
+    if receipt.domain != result.domain or receipt.question != result.question:
+        problems.append(
+            "the action records a different domain/question than the answer it rests on"
+        )
+
+    kind = _CATALOG.get(receipt.kind)
+    if kind is None:
+        return tuple(
+            dict.fromkeys([*problems, f"unknown action kind {receipt.kind!r}"])
+        )
+    if result.domain not in kind.domains:
+        return tuple(
+            dict.fromkeys(
+                [
+                    *problems,
+                    f"the {receipt.kind!r} action does not apply to "
+                    f"domain {result.domain!r}",
+                ]
+            )
+        )
+    if result.route_kind != kind.required_route:
+        return tuple(
+            dict.fromkeys(
+                [
+                    *problems,
+                    f"the {receipt.kind!r} action requires route "
+                    f"{kind.required_route!r}, but the answer routed to "
+                    f"{result.route_kind!r}",
+                ]
+            )
+        )
+
+    # Re-derive the exact wire request the frozen pipeline produces from this
+    # answer, then require the recorded receipt to match it.
+    proposal = ActionProposal(
+        kind=receipt.kind,
+        domain=result.domain,
+        question=result.question,
+        route_kind=result.route_kind,
+        route_reason=result.route_reason,
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=tuple(_draft_fields(kind, result)),
+    )
+    expected = render_payload(proposal)
+    if not expected.rendered:
+        problems.append(
+            "the packaged evidence does not re-derive a grounded wire request "
+            "for this action (the frozen pipeline withholds it)"
+        )
+        return tuple(dict.fromkeys(problems))
+    if receipt.method != expected.method or receipt.path != expected.path:
+        problems.append(
+            "the wire method/path does not match the request re-derived from "
+            "the packaged evidence"
+        )
+    if receipt.body != expected.body:
+        problems.append(
+            "the wire body does not match the request re-derived from the "
+            "packaged evidence — it adds or alters content beyond the grounded "
+            "values"
+        )
+    if tuple(s.to_dict() for s in receipt.slots) != tuple(
+        s.to_dict() for s in expected.slots
+    ):
+        problems.append(
+            "the wire slots do not match those re-derived from the packaged "
+            "evidence (a value, its provenance, or its role was altered)"
+        )
+    return tuple(dict.fromkeys(problems))
+
+
 # --- the verifier ------------------------------------------------------------------
 
 
@@ -580,6 +690,10 @@ def verify_bundle(
                 answer_rederives, answer_cause = _answer_rederivation(
                     _section(bundle, "result"), result, graph, kb, domain_name
                 )
+                # An action bundle also re-derives its wire request (spec 0136).
+                action_section = bundle.get("action")
+                if isinstance(action_section, dict):
+                    structural.extend(_action_problems(action_section, result))
             except Exception as error:  # noqa: BLE001 - backstop, see below
                 # Defensive backstop: re-execution must never escape as an
                 # uncaught exception (the command runs on strangers' machines).

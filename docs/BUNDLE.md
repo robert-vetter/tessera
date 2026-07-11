@@ -144,6 +144,37 @@ case a bundle whose cited evidence is absent from the packaged closure
 fails referential validation before re-execution — a named semantic
 failure, never a crash and never a pass.
 
+## Action bundles
+
+A bundle can also carry an *action* — the wire request Tessera would send
+for a grounded action (a GitHub issue, a PR comment), packaged from the
+**simulated** actuator (nothing is sent):
+
+```console
+$ uv run tessera bundle "Why did run R-1042 fail, and has this happened before?" \
+    --domain devex --action incident -o action.tsb
+outcome: grounded — 8/8 claim(s) verified
+action:  incident — POST (9 grounded slot(s))
+root:    sha256:…
+wrote:   action.tsb
+```
+
+`tessera verify` then re-derives the action too, from the packaged
+evidence: it re-runs the deterministic drafting-and-rendering pipeline
+over the re-derived answer and requires the recorded request — the
+method, the endpoint path, the **entire** body (every key), and the
+grounded slots — to equal what the evidence produces. Because the request
+is a deterministic function of the answer, this binds everything at once:
+inject an extra body field (a `labels` or `assignees` the endpoint would
+honour), repoint the method or path, or splice one claim's evidence under
+another's section, and even after re-sealing the request no longer matches
+what the evidence re-derives — exit 2, named. That is the action-layer
+analogue of the flip-a-byte catch. What a re-executed action bundle proves is that every
+value that would go on the wire was grounded and the request adds nothing;
+it does not assert that a send happened (simulated bundles record
+`sent: false` by construction — the one recorded real send is the
+Milestone 15 receipt fixture, not a bundle).
+
 ## Verdict taxonomy and exit codes
 
 Degradation is always visible, never a false PASS:
