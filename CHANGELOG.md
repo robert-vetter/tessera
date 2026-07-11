@@ -13,6 +13,42 @@ then the phase tags are the releases.
 
 *(nothing yet)*
 
+## [milestone-21] — 2026-07-11
+
+**Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
+binding and a standing, CI-pinned audit guarantee — the frozen core and the
+six faithfulness eval lines untouched throughout.
+
+- **Ed25519 signing, verification stays stdlib-only** (spec 0135, ADR 0032,
+  #170). A signature over `integrity.root` binds a bundle to a keyholder,
+  closing the re-seal gap Milestone 20 documented: a content tamperer can
+  recompute the manifest and root but not the keyholder's signature over the
+  new root, so a re-sealed signed bundle fails. Signing needs the optional
+  `sign` extra (PyNaCl); **verification is a pure-Python RFC 8032
+  implementation** (`bundle/ed25519.py`), pinned against the RFC's own test
+  vectors and cross-checked against libsodium — so `tessera verify` stays
+  stdlib-only on a clean clone. `tessera bundle keygen` / `--sign`;
+  `tessera verify --require-signed`. The binding is to a key, not an identity
+  (key distribution out of scope, stated plainly).
+- **Action bundles — the wire request re-derives** (spec 0136, #171). A
+  grounded GitHub issue / PR comment is packaged in the `action` section (the
+  simulated actuator; nothing is sent) and re-derived offline: `tessera verify`
+  re-runs the frozen drafting + rendering pipeline over the re-derived answer
+  and requires the recorded receipt's method, path, entire body, and slots to
+  equal it exactly. An adversarial pre-merge review found three false-PASS
+  attacks against an earlier field-by-field check (injected body keys, a
+  repointed endpoint, a cross-claim splice); the full re-derivation closes all
+  three by construction. `tessera bundle --action`.
+- **The Auditability Floor** (spec 0137, #172). The audit analogue of the
+  Faithfulness Floor: two CI-pinned floors that can fail — 100% re-derivation
+  equality across every committed gold case (verified out-of-process, a fresh
+  interpreter per bundle) and 100% detection over a 13-class deterministic
+  mutation battery (each caught in the right layer with a named cause).
+  `tessera-auditability`; `docs/AUDITABILITY.md` carries the byte-pinned block.
+  A new CI **bundle-determinism matrix** (3 OS × Python 3.12/3.13) guards
+  byte-identical emission and re-derivation across platforms; `.gitattributes`
+  pins LF repo-wide.
+
 ## [milestone-20] — 2026-07-10
 
 **Act 3, Milestone 20 — the trust bundle re-executes.** A portable `.tsb`
