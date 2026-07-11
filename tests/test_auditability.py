@@ -69,7 +69,9 @@ def test_out_of_process_equality_matches(report: AuditabilityReport) -> None:
 
 
 def test_published_doc_block_matches_fresh_run(report: AuditabilityReport) -> None:
-    doc = DOC_PATH.read_text("utf-8")
+    # Normalize newlines: `.gitattributes` pins LF, but a stray CRLF checkout
+    # must not be mistaken for a stale block (the content is what is pinned).
+    doc = DOC_PATH.read_text("utf-8").replace("\r\n", "\n")
     assert doc.count(DOC_BEGIN) == 1 and doc.count(DOC_END) == 1, (
         "docs/AUDITABILITY.md must contain exactly one generated block"
     )
