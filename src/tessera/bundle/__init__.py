@@ -30,4 +30,8 @@ Action bundles (spec 0136) reuse the same modules: emission packages a
 simulated grounded action's receipt in the ``action`` section, and
 verification re-derives that the wire request reconstructs from its slots
 and every value traces to a verifier-passing claim.
+
+- :mod:`tessera.bundle.mutations` — the deterministic tamper battery the
+  Auditability Floor (``tessera.eval.auditability``, spec 0137) measures
+  against, so the verifier's teeth are a CI-pinned number.
 """

@@ -54,6 +54,7 @@ nav:
   - Technical Write-up: WRITEUP.md
   - Benchmark — The Faithfulness Floor: BENCHMARK.md
   - Trust Bundles: BUNDLE.md
+  - Auditability Floor: AUDITABILITY.md
   - Real SALT data (S1): SALT_REAL.md
   - Engineering: ENGINEERING.md
   - Setup: SETUP.md
