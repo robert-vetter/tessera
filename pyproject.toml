@@ -40,6 +40,12 @@ salt = ["pyarrow>=17"]
 # tests/test_agent.py and tests/test_mcp_server.py). The grounded-tool
 # substance (tessera.agent.grounded) carries no MCP dependency (ADR 0022).
 agent = ["mcp>=1.0"]
+# Ed25519 signing for trust bundles — OPT-IN: `uv sync --extra sign`. Imported
+# lazily only by tessera.bundle.signing (emit side + keygen, spec 0135).
+# VERIFICATION never needs it: tessera.bundle.ed25519 is a pure-Python RFC 8032
+# verifier, so `tessera verify` stays stdlib-only on a clean clone (guarded by
+# tests/test_bundle_signing.py::test_verify_path_pulls_no_nacl).
+sign = ["pynacl>=1.5"]
 
 [build-system]
 requires = ["hatchling"]
@@ -96,6 +102,14 @@ ignore_missing_imports = true
 # (ADR 0022); CI runs the base graph without it, so its absence must not fail the
 # gate (mirrors the hdbcli override; the wiring is contract-tested where installed).
 module = ["mcp.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The optional Ed25519 signing library (PyNaCl) is imported lazily and only under
+# the 'sign' extra (ADR 0032); CI verifies with the pure-Python RFC 8032 module and
+# never installs it, so its absence must not fail the gate. Verification never
+# touches nacl (tests/test_bundle_signing.py::test_verify_path_pulls_no_nacl).
+module = ["nacl.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

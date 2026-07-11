@@ -21,4 +21,8 @@ frozen core changes. Modules arrive unit by unit:
 - :mod:`tessera.bundle.verify` — offline re-executing verification: both
   layers (integrity + semantics), the verdict taxonomy, named causes
   (spec 0134).
+- :mod:`tessera.bundle.ed25519` — pure-Python RFC 8032 signature *verify*,
+  so the verify path stays stdlib-only (spec 0135, ADR 0032).
+- :mod:`tessera.bundle.signing` — Ed25519 signing + keygen behind the
+  optional ``sign`` extra (spec 0135).
 """
