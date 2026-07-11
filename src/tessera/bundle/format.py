@@ -30,6 +30,26 @@ CLOSURE_FULL_SNAPSHOT = "full-graph-snapshot"
 # and therefore structurally excluded from the manifest they attest.
 _UNSEALED_SECTIONS = ("signature", "anchor")
 
+# The exact section sets a format-major-1 bundle carries. The manifest hashes
+# individual leaves, not the containing dicts, so an unexpected extra key
+# would otherwise ride along unauthenticated (it is neither hashed nor read) —
+# a latent trap for any future section. Requiring the sets closes it: the root
+# effectively commits to the section *set*, not only the leaf *contents*.
+_TOP_LEVEL_KEYS = frozenset(
+    {
+        "format",
+        "engine",
+        "result",
+        "evidence_closure",
+        "integrity",
+        "action",
+        "signature",
+        "anchor",
+    }
+)
+_CLOSURE_KEYS = frozenset({"kind", "graph", "kb"})
+_GRAPH_KEYS = frozenset({"nodes", "edges", "resolutions", "mentions"})
+
 
 def _dict(value: object, key: str) -> dict[str, object]:
     if not isinstance(value, dict):
@@ -140,6 +160,8 @@ def integrity_mismatches(bundle: dict[str, object]) -> list[str]:
         else:
             stored[name] = value
 
+    problems.extend(_section_set_problems(bundle))
+
     recomputed = leaf_manifest(bundle)
     for name in sorted(recomputed.keys() - stored.keys()):
         problems.append(f"missing leaf {name!r}")
@@ -151,4 +173,33 @@ def integrity_mismatches(bundle: dict[str, object]) -> list[str]:
 
     if _get(integrity, "root") != compute_root(recomputed):
         problems.append("root does not recompute from the content")
+    return problems
+
+
+def _section_set_problems(bundle: dict[str, object]) -> list[str]:
+    """The bundle must carry exactly the format-major-1 section set — no extra
+    top-level, evidence-closure, or graph keys. The manifest hashes leaves, not
+    the containing dicts, so an unexpected key would otherwise pass through
+    unauthenticated (neither hashed nor read). Requiring the set makes the root
+    commit to the section set, closing that latent trap (the M20/M21 audit
+    found it on the reserved ``anchor`` and on injected top-level keys)."""
+    problems: list[str] = []
+    extra_top = set(bundle) - _TOP_LEVEL_KEYS
+    if extra_top:
+        problems.append(
+            f"unexpected top-level section(s) {sorted(extra_top)} — not "
+            "committed by the integrity manifest"
+        )
+    closure = bundle.get("evidence_closure")
+    if isinstance(closure, dict):
+        extra_closure = set(closure) - _CLOSURE_KEYS
+        if extra_closure:
+            problems.append(
+                f"unexpected evidence_closure key(s) {sorted(extra_closure)}"
+            )
+        graph = closure.get("graph")
+        if isinstance(graph, dict):
+            extra_graph = set(graph) - _GRAPH_KEYS
+            if extra_graph:
+                problems.append(f"unexpected graph key(s) {sorted(extra_graph)}")
     return problems

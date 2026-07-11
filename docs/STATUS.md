@@ -2703,3 +2703,55 @@ answered; the act carries no open decisions.
 **State of the tree:** `main` green; `tessera/bundle/` now carries serde,
 canonical, format, emit, verify, cli, ed25519, signing, mutations; tags
 through `milestone-21`; no open unit branches.
+
+---
+
+## 2026-07-11 — Comprehensive M20+M21 review: core confirmed airtight, three adjacent gaps hardened
+
+**Trigger:** maintainer asked for a full independent review of Milestones
+20 and 21 together ("make sure everything fits, nothing is missing"). Ran
+four parallel read-only review lenses (completeness-vs-plan,
+docs-vs-code honesty, final adversarial re-verification, discipline/
+integration).
+
+**The verdict was strong.** The core promise held against every attack —
+**no false PASS** of a claim, answer, or wire action; all five prior
+M20/M21 fixes confirmed non-circumventable; the pure-Python ed25519 sound
+against RFC vectors **and a 300-keypair libsodium cross-check (0
+disagreements)**; frozen core + agent chain byte-identical at both tags;
+the six eval lines unmoved; both floors provably failable; the
+stdlib-only verify guarantee real and guarded.
+
+**Three gaps in adjacent trust regions, now closed (this session):**
+1. **Action-receipt execution outcome was not re-derived** (adversarial
+   finding 1 + completeness "approval strip"): a re-sealed bundle could
+   forge `outcome="created"`, `simulated=false`, a fake `result` URL, or
+   `approved=true` and still PASS (only `sent` was checked). Fixed —
+   verify now re-runs the simulated execution over the re-derived answer
+   and requires the WHOLE receipt to match (exit 2, named).
+2. **Non-manifested sections were unauthenticated** (adversarial
+   finding 2): the manifest hashes leaves, not the section set, so an
+   extra top-level/closure/graph key or a non-null reserved `anchor`
+   rode along unread. Fixed — the integrity check now commits to the
+   section set and refuses a non-null `anchor` (exit 4). Important before
+   unit 0138 consumes `anchor`.
+3. **Auditability Floor grew 13 → 16** (`outcome_forgery`,
+   `approval_strip`, `extra_top_section`); still 100% detected, pinned.
+
+**Docs truthfulness fixes:** BUNDLE.md quickstart refreshed (sizes
+404,340/150,706/37,412; root `5cc2…4903`; the `signature: UNSIGNED`
+line); a new honest limit (a PASS is not a recency/anti-replay claim);
+ADR 0031's leaf list corrected (`format` + `closure.kind`); ADRs
+0031/0032 added to the docs nav (`mkdocs --strict` now clean); the
+"reserved" phrasing corrected (only `anchor` remains reserved); the
+vestigial `serde` Claim pair removed.
+
+**Gate:** green (692 tests, +4); mypy strict (148 files); six eval lines
+byte-identical; `mkdocs --strict` clean. Frozen core untouched (this was
+verification + format + docs only). Post-close hardening — tags
+`milestone-20`/`milestone-21` stay; guarantees are strictly stronger.
+
+**Next:** Milestone 22 unchanged (the public proof — Rekor, COMPLIANCE,
+the forged-bundle challenge + RAGAS one-shot, the write-up/arXiv report;
+Q1/Q2/Q3 already answered yes). The `anchor` refusal is the honest seam
+0138 will open.

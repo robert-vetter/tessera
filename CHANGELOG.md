@@ -11,7 +11,26 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-*(nothing yet)*
+- **Act 3 hardening after a comprehensive M20+M21 review.** A four-lens
+  audit (completeness, docs-vs-code honesty, adversarial re-verification,
+  discipline) confirmed the core promise holds — no false PASS of a claim,
+  answer, or wire action, all prior fixes intact, ed25519 sound against a
+  300-key libsodium cross-check — and surfaced three gaps in adjacent
+  trust regions, now closed:
+  - the action receipt's **execution outcome** (`outcome`/`result`/
+    `simulated`/`executed`/`actuator`/`approved`) is now re-derived by
+    re-running the simulated execution over the re-derived answer, so a
+    receipt forging a real create (or a forged approval) fails instead of
+    passing — previously an exit-0 gap;
+  - the integrity check now commits to the **section set** (rejects any
+    unexpected top-level / closure / graph key) and refuses a non-null
+    reserved `anchor`, so nothing rides along unauthenticated;
+  - the Auditability Floor grew to **16 mutation classes** (added
+    `outcome_forgery`, `approval_strip`, `extra_top_section`).
+  Plus documentation truthfulness fixes: refreshed the BUNDLE.md quickstart
+  (sizes, root, the `signature:` line), a new honest limit (a PASS is not a
+  recency/anti-replay claim), ADR 0031's leaf list corrected, ADRs 0031/0032
+  added to the docs nav, and the vestigial `serde` Claim pair removed.
 
 ## [milestone-21] — 2026-07-11
 

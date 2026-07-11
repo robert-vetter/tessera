@@ -29,13 +29,14 @@ layers, and `tessera verify` reports them separately:
 $ uv run tessera bundle "Compare Müller Logistik and Nordwind Logistik totals." \
     --domain business -o answer.tsb
 outcome: grounded — 3/3 claim(s) verified
-root:    sha256:bd34…1383
-wrote:   answer.tsb (404,168 bytes)
+root:    sha256:5cc2…4903
+wrote:   answer.tsb (404,340 bytes)
 
 $ uv run tessera verify answer.tsb
 bundle:    answer.tsb — tessera-trust-bundle v1
 engine:    domain business, sealed under tessera 0.0.0 (installed: 0.0.0)
 integrity: intact — every leaf and the root re-computed
+signature: UNSIGNED — integrity proves the file is the file, not who made it
 semantic:  RE-DERIVED — 3/3 recorded claim verdict(s) re-executed and matched
   [ok] claim 0: supported — 'Nordwind Logistik GmbH': total net order value across 3 order(s): EUR 84,500.00.
   [ok] claim 1: supported — 'Mueller Logistik Gmbh': total net order value across 5 order(s): EUR 77,500.00.
@@ -199,15 +200,20 @@ report.
 
 Canonical JSON (`tessera-canonical-json-1` — deliberately *not* RFC 8785;
 ADR 0031 records why), sections `format` / `engine` / `result` /
-`evidence_closure` / `integrity`, plus `action`, `signature`, and
-`anchor` reserved for Milestones 21–22. The integrity manifest carries
-one leaf **per packaged record**, so tampering is named, not just
-detected; the root is sha256 over the sorted manifest. The evidence
-closure is the **full corpus snapshot** — whole-graph claim shapes
-(superlatives, comparisons) cannot be re-derived from cited records
-alone, and packaging everything closes the omit-a-row attack by
-construction rather than by policy. Measured sizes on the committed
-corpora: business 404,168 bytes, devex 150,534, github_actions 35,273.
+`evidence_closure` / `integrity` / `action` / `signature`, plus `anchor`
+reserved for transparency anchoring (a later unit). `action` (the wire
+request) and `signature` (the Ed25519 signature over the root) both ship
+today; only `anchor` remains reserved and must be null until its verifier
+exists. The integrity manifest carries one leaf **per packaged record**,
+so tampering is named, not just detected; the root is sha256 over the
+sorted manifest, and the verifier also rejects any section outside the
+fixed set so the root commits to the section *set*, not only the leaf
+contents. The evidence closure is the **full corpus snapshot** —
+whole-graph claim shapes (superlatives, comparisons) cannot be re-derived
+from cited records alone, and packaging everything closes the omit-a-row
+attack by construction rather than by policy. Measured sizes on the
+committed corpora: business 404,340 bytes, devex 150,706,
+github_actions 37,412.
 
 ## Honest limits
 
@@ -232,7 +238,19 @@ corpora: business 404,168 bytes, devex 150,534, github_actions 35,273.
   tessera version and the claim-grammar identifiers; `verify` under a
   different version reports `NOT-EVALUABLE` naming both sides rather
   than re-deriving under a different grammar and calling it the same
-  verdict (ADR 0031).
+  verdict. The identifier pin is a *proxy* — a grammar's body could
+  change under a stable name at the same version — so version equality
+  plus identifier equality together are what count as "the same grammar"
+  (ADR 0031 §5).
+- **A PASS is not a recency claim.** A bundle re-derives against the
+  evidence snapshot it packages, frozen at emission — nothing binds it to
+  wall-clock time or to the current state of the underlying data. A
+  PASS says "these claims follow from *this* packaged evidence," not
+  "this evidence is still current," and there is no anti-replay binding
+  yet: an old bundle re-verifies forever. Trusted time and public
+  inclusion are the job of transparency anchoring (the reserved `anchor`
+  section, a later unit); until then, freshness is out of scope and a
+  consumer must not read a PASS as a currency guarantee.
 - **The grammars are the boundary.** Claims inside the engine's checkable
   grammars are recomputed (sums, rankings, counts, conflicts); anything
   else falls to normalized containment against the cited records. This
