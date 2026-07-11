@@ -2658,3 +2658,48 @@ gate green (646 tests); mkdocs strict green; CHANGELOG rolled to
 
 **State of the tree:** `main` green; new package `tessera/bundle/`; tags
 through `milestone-20`; no open unit branches.
+
+---
+
+## 2026-07-11 — Milestone 21 CLOSED: sealed and measured (tag `milestone-21`)
+
+**Done this session** — three units, each spec → branch → gate → PR →
+CI-green → squash-merge, both trust-bearing units adversarially reviewed
+pre-merge:
+
+- **0135 — Ed25519 signing, stdlib-only verify** (ADR 0032, #170). A
+  signature over `integrity.root` closes the re-seal gap M20 documented.
+  Signing needs the optional `sign` extra (PyNaCl); verification is a
+  pure-Python RFC 8032 implementation (`bundle/ed25519.py`), pinned
+  against the RFC vectors + a libsodium cross-check, so `tessera verify`
+  stays stdlib-only. Binds to a key, not an identity (out-of-scope stated).
+- **0136 — action bundles** (#171). The wire request is packaged and
+  re-derived offline by re-running the frozen drafting/rendering pipeline
+  over the re-derived answer and requiring full equality (method, path,
+  whole body, slots). The adversarial review found **three confirmed
+  false-PASS attacks** against a first field-by-field cut (injected body
+  keys, repointed endpoint, cross-claim splice) — all closed by the full
+  re-derivation. Frozen agent code called, never modified.
+- **0137 — the Auditability Floor** (#172). Two CI-pinned floors that can
+  fail: 100% re-derivation equality (25/25 gold cases, out-of-process) and
+  100% mutation detection (13 classes, named cause each). `docs/AUDITABILITY.md`
+  byte-pinned; new **bundle-determinism CI matrix** (3 OS × Py 3.12/3.13)
+  green including Windows; `.gitattributes` pins LF.
+
+**Audit:** frozen-core empty-diff `milestone-20..HEAD` **clean** — the
+engine AND the agent chain (`actions`/`payloads`/`execution`/`grounded`,
+which 0136 *calls* but never edits) are byte-identical. Six eval lines
+unchanged (business 11/53 all 1.0; devex 1.0/0.950/0.889; gha
+1.0/0.833/0.800). Gate green (688 tests, +42); mkdocs strict green;
+CHANGELOG rolled to `[milestone-21] — 2026-07-11`; tag `milestone-21`.
+
+**Next:** Milestone 22 — the public proof (specs 0138–0141): Rekor
+anchoring (Q1 = yes, recorded run), `docs/COMPLIANCE.md` (EU AI Act
+Art. 12(2)/14 mapping), the forged-bundle challenge + the RAGAS-vs-verifier
+one-shot (Q2 = yes, Claude judge), the WRITEUP addendum + a staged
+arXiv-ready report (Q3 = yes). All three maintainer questions already
+answered; the act carries no open decisions.
+
+**State of the tree:** `main` green; `tessera/bundle/` now carries serde,
+canonical, format, emit, verify, cli, ed25519, signing, mutations; tags
+through `milestone-21`; no open unit branches.
