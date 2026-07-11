@@ -25,4 +25,9 @@ frozen core changes. Modules arrive unit by unit:
   so the verify path stays stdlib-only (spec 0135, ADR 0032).
 - :mod:`tessera.bundle.signing` — Ed25519 signing + keygen behind the
   optional ``sign`` extra (spec 0135).
+
+Action bundles (spec 0136) reuse the same modules: emission packages a
+simulated grounded action's receipt in the ``action`` section, and
+verification re-derives that the wire request reconstructs from its slots
+and every value traces to a verifier-passing claim.
 """

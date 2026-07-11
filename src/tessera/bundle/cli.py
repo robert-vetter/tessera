@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 from tessera.agent.grounded import available_domains
-from tessera.bundle.emit import build_bundle, write_bundle
+from tessera.bundle.emit import build_action_bundle, build_bundle, write_bundle
 from tessera.bundle.verify import BundleFormatError, render_report, verify_bundle
 
 _DESCRIPTION = """\
@@ -22,7 +22,14 @@ Emit a sealed trust bundle: one .tsb file carrying the grounded answer (or
 the explicit refusal), the full evidence closure (graph + knowledge base),
 the engine pins, and an integrity manifest sealed by a root hash — the
 portable record `tessera verify` re-checks offline by re-execution.
+
+With --action, the bundle also packages a simulated, grounded action (a
+GitHub issue or PR comment): `tessera verify` then re-derives that the
+wire request reconstructs from its slots and every value traces to a
+verifier-passing claim.
 """
+
+_ACTIONS = ("incident", "pr_summary")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -55,6 +62,12 @@ def _parser() -> argparse.ArgumentParser:
         default=None,
         help="signing key path (default: var/keys/bundle_signing.key)",
     )
+    parser.add_argument(
+        "--action",
+        choices=_ACTIONS,
+        default=None,
+        help="also package a simulated grounded action drafted from the answer",
+    )
     return parser
 
 
@@ -65,7 +78,10 @@ def main(argv: list[str] | None = None) -> int:
         return keygen_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
-        bundle = build_bundle(args.domain, args.question)
+        if args.action:
+            bundle = build_action_bundle(args.action, args.domain, args.question)
+        else:
+            bundle = build_bundle(args.domain, args.question)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
@@ -99,6 +115,13 @@ def main(argv: list[str] | None = None) -> int:
             1 for claim in claims if isinstance(claim, dict) and claim["verified"]
         )
         print(f"outcome: grounded — {verified}/{len(claims)} claim(s) verified")
+    action = bundle.get("action")
+    if isinstance(action, dict):
+        slots = action.get("slots")
+        n = len(slots) if isinstance(slots, list) else 0
+        request = action.get("request")
+        method = request["method"] if isinstance(request, dict) else "?"
+        print(f"action:  {action['kind']} — {method} ({n} grounded slot(s))")
     print(f"root:    {integrity['root']}")
     signature = bundle.get("signature")
     if isinstance(signature, dict):

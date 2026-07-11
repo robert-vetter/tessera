@@ -40,6 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from tessera.agent.grounded import (
+    GroundedClaim,
     GroundedResult,
     available_domains,
     domain,
@@ -459,6 +460,93 @@ def _answer_rederivation(
     )
 
 
+# --- action re-derivation (spec 0136) ----------------------------------------------
+
+
+def _value_is_backed(value: str, verified_claims: tuple[GroundedClaim, ...]) -> bool:
+    """The frozen ``_field`` faithfulness rule, re-run here: a wire value is
+    grounded iff it is identical to a verified claim's text, or a
+    normalized-containment fragment of one of that claim's cited records."""
+    from tessera.resolution import normalize
+
+    needle = normalize(value)
+    for claim in verified_claims:
+        if value == claim.text:
+            return True
+        if needle and any(needle in normalize(e.text) for e in claim.support):
+            return True
+    return False
+
+
+def _action_problems(
+    action_section: dict[str, object],
+    result: GroundedResult,
+    claim_checks: tuple[ClaimCheck, ...],
+    node_ids: set[str],
+) -> tuple[str, ...]:
+    """Re-derive the wire action from the packaged evidence (spec 0136): the
+    request must reconstruct from its own slots, and every wire value must
+    trace to a re-derived, verified claim. Pure functions over the file's
+    content — the frozen actuator is never re-run."""
+    from tessera.agent.payloads import render_body
+    from tessera.bundle.serde import execution_receipt_from_dict
+
+    try:
+        receipt = execution_receipt_from_dict(action_section)
+    except ValueError as error:
+        return (f"the action section is malformed: {error}",)
+
+    problems: list[str] = []
+    if receipt.domain != result.domain or receipt.question != result.question:
+        problems.append(
+            "the action records a different domain/question than the answer it rests on"
+        )
+    if not receipt.slots:
+        problems.append("the action bundle carries no wire slots to re-derive")
+        return tuple(problems)
+
+    # (1) Request reconstruction: the body re-renders from the slots, adding
+    # nothing; the incident title / PR path carry their slot's value.
+    rerendered = render_body(receipt.slots)
+    recorded_body = receipt.body.get("body")
+    if recorded_body != rerendered:
+        problems.append(
+            "the wire body does not re-render from its slots — the request adds "
+            "content beyond its grounded values"
+        )
+    title_slots = [s for s in receipt.slots if s.part == "title"]
+    if title_slots and receipt.body.get("title") != title_slots[0].value:
+        problems.append("the wire title does not match the grounded title slot")
+    path_slots = [s for s in receipt.slots if s.part == "path"]
+    for slot in path_slots:
+        if slot.value not in receipt.path:
+            problems.append(
+                f"the grounded path value {slot.value!r} is not in the wire path"
+            )
+
+    # (2) Slot-to-claim binding: every wire value traces to a verified,
+    # re-derived claim. Use the RE-DERIVED verdicts, not the recorded ones.
+    verified_claims = tuple(
+        claim
+        for claim, check in zip(result.claims, claim_checks, strict=True)
+        if check.rederived
+    )
+    for slot in receipt.slots:
+        if not _value_is_backed(slot.value, verified_claims):
+            problems.append(
+                f"wire {slot.part} value {slot.value[:60]!r} traces to no "
+                "re-derived, verified claim — a fabricated wire value"
+            )
+        # (3) Referential: slot provenance resolves to packaged nodes.
+        for evidence in slot.support:
+            if evidence.id not in node_ids:
+                problems.append(
+                    f"a wire slot cites record {evidence.id!r}, absent from the "
+                    "packaged evidence snapshot"
+                )
+    return tuple(dict.fromkeys(problems))
+
+
 # --- the verifier ------------------------------------------------------------------
 
 
@@ -580,6 +668,13 @@ def verify_bundle(
                 answer_rederives, answer_cause = _answer_rederivation(
                     _section(bundle, "result"), result, graph, kb, domain_name
                 )
+                # An action bundle also re-derives its wire request (spec 0136).
+                action_section = bundle.get("action")
+                if isinstance(action_section, dict):
+                    node_ids = {node.id for node in graph.nodes}
+                    structural.extend(
+                        _action_problems(action_section, result, claims, node_ids)
+                    )
             except Exception as error:  # noqa: BLE001 - backstop, see below
                 # Defensive backstop: re-execution must never escape as an
                 # uncaught exception (the command runs on strangers' machines).

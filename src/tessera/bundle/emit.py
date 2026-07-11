@@ -86,6 +86,34 @@ def build_bundle(domain_name: str, question: str) -> dict[str, object]:
     return seal(unsealed)
 
 
+def build_action_bundle(
+    action: str, domain_name: str, question: str
+) -> dict[str, object]:
+    """Ground ``question``, draft and (simulated) execute ``action``, and
+    package the receipt in the bundle's ``action`` section (spec 0136).
+
+    A strict consumer of the frozen action chain: it runs
+    :func:`~tessera.agent.execution.execute_action` through the **simulated**
+    actuator (sends nothing) and packages the resulting receipt. Raises
+    :class:`ValueError` if the action is not fully grounded on this question —
+    a withheld action carries no wire request to verify. No real send is ever
+    bundled here.
+    """
+    from tessera.agent.execution import execute_action
+
+    receipt = execute_action(action, domain_name, question)
+    if not receipt.all_grounded:
+        raise ValueError(
+            f"the '{action}' action is not grounded on this question "
+            f"({receipt.withheld_reason or 'no verifier-passing fields'}); "
+            "there is no wire request to bundle"
+        )
+    bundle = build_bundle(domain_name, question)
+    unsealed = {key: value for key, value in bundle.items() if key != "integrity"}
+    unsealed["action"] = receipt.to_dict()
+    return seal(unsealed)
+
+
 def bundle_bytes(bundle: dict[str, object]) -> bytes:
     """The exact file bytes: the canonical serialization plus one newline —
     so two machines emitting the same bundle write byte-identical files."""
