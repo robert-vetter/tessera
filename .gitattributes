@@ -1,0 +1,12 @@
+# Byte-determinism is a load-bearing property of this repo (trust bundles must
+# emit and re-derive identically on every platform, spec 0137). Force LF on all
+# text files so a checkout is byte-identical everywhere — GitHub's Windows
+# runners default to autocrlf=true, which would otherwise rewrite line endings
+# and break byte-pinned docs and fixtures.
+* text=auto eol=lf
+
+# Binary/parquet-ish assets are never touched (none tracked today; explicit for
+# future-proofing).
+*.parquet binary
+*.png binary
+*.jpg binary

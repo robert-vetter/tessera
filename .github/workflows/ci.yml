@@ -57,3 +57,40 @@ jobs:
 
       - name: Secret scan
         run: uv run pre-commit run gitleaks --all-files
+
+  # The bundle-determinism matrix (spec 0137): trust bundles must emit
+  # byte-identically and re-derive to the same verdicts on every platform a
+  # stranger might run `tessera verify` on — one spurious mismatch on someone's
+  # laptop would sink the whole re-execution claim. Scoped to the bundle test
+  # subset so it stays fast; the full gate above stays a single ubuntu job.
+  bundle-matrix:
+    name: bundle-determinism (${{ matrix.os }}, py${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen --python ${{ matrix.python }}
+
+      # Byte-identical emission + 100% re-derivation across OS/Python: the
+      # bundle, benchmark-adjacent, and Auditability-Floor test subset.
+      - name: Bundle determinism
+        run: >
+          uv run pytest -q
+          tests/test_bundle_serde.py
+          tests/test_bundle_format.py
+          tests/test_bundle_verify.py
+          tests/test_bundle_signing.py
+          tests/test_bundle_action.py
+          tests/test_auditability.py
