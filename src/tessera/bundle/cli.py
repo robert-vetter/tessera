@@ -44,16 +44,44 @@ def _parser() -> argparse.ArgumentParser:
         default="answer.tsb",
         help="output path (default: answer.tsb)",
     )
+    parser.add_argument(
+        "--sign",
+        action="store_true",
+        help="sign the bundle's root with the Ed25519 key (needs the 'sign' extra)",
+    )
+    parser.add_argument(
+        "--key",
+        type=Path,
+        default=None,
+        help="signing key path (default: var/keys/bundle_signing.key)",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    # `tessera bundle keygen …` is a sibling verb, not a question. The front
+    # door always passes an explicit argv list (spec 0117 dispatch).
+    if argv and argv[0] == "keygen":
+        return keygen_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         bundle = build_bundle(args.domain, args.question)
     except ValueError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
+
+    if args.sign:
+        from tessera.bundle.signing import (
+            DEFAULT_KEY_PATH,
+            SigningUnavailableError,
+            sign_bundle,
+        )
+
+        try:
+            bundle = sign_bundle(bundle, args.key or DEFAULT_KEY_PATH)
+        except (SigningUnavailableError, FileNotFoundError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
 
     size = write_bundle(bundle, Path(args.out))
 
@@ -72,7 +100,43 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"outcome: grounded — {verified}/{len(claims)} claim(s) verified")
     print(f"root:    {integrity['root']}")
+    signature = bundle.get("signature")
+    if isinstance(signature, dict):
+        print(f"signed:  key {signature['public_key']}")
     print(f"wrote:   {args.out} ({size:,} bytes)")
+    return 0
+
+
+# --- tessera bundle keygen --------------------------------------------------------
+
+
+def keygen_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle keygen",
+        description="Generate an Ed25519 signing keypair (needs the 'sign' extra).",
+    )
+    parser.add_argument(
+        "--key",
+        type=Path,
+        default=None,
+        help="key path (default: var/keys/bundle_signing.key; .pub alongside)",
+    )
+    args = parser.parse_args(argv)
+
+    from tessera.bundle.signing import (
+        DEFAULT_KEY_PATH,
+        SigningUnavailableError,
+        generate_keypair,
+    )
+
+    path = args.key or DEFAULT_KEY_PATH
+    try:
+        public_hex = generate_keypair(path)
+    except (SigningUnavailableError, FileExistsError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+    print(f"wrote:      {path} (0600) and {path}.pub")
+    print(f"public key: {public_hex}")
     return 0
 
 
@@ -102,6 +166,11 @@ def _verify_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="emit the machine-readable report instead of the human one",
+    )
+    parser.add_argument(
+        "--require-signed",
+        action="store_true",
+        help="treat an unsigned bundle as a failure (exit 4)",
     )
     return parser
 
@@ -139,7 +208,7 @@ def verify_main(argv: list[str] | None = None) -> int:
         return 4
 
     try:
-        report = verify_bundle(bundle)
+        report = verify_bundle(bundle, require_signed=args.require_signed)
     except BundleFormatError as error:
         print(f"error: {error}", file=sys.stderr)
         return 4

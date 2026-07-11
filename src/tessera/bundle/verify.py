@@ -46,6 +46,7 @@ from tessera.agent.grounded import (
     serialize_answer,
 )
 from tessera.bundle.canonical import canonical_bytes
+from tessera.bundle.ed25519 import verify as ed25519_verify
 from tessera.bundle.emit import engine_version, shape_identifiers
 from tessera.bundle.format import (
     CLOSURE_FULL_SNAPSHOT,
@@ -100,6 +101,11 @@ class ClaimCheck:
         }
 
 
+UNSIGNED = "UNSIGNED"
+SIGNED = "SIGNED"
+ed25519_ALGORITHM = "ed25519"
+
+
 @dataclass(frozen=True)
 class VerifyReport:
     """The full two-layer verification result of one bundle."""
@@ -110,11 +116,20 @@ class VerifyReport:
     taxonomy: str
     taxonomy_reason: str | None
     integrity_problems: tuple[str, ...]
+    signature_status: str
+    signature_public_key: str | None
+    signature_problems: tuple[str, ...]
     structural_problems: tuple[str, ...]
     claims: tuple[ClaimCheck, ...]
     answer_rederives: bool | None
     answer_cause: str | None
     refused: bool
+
+    @property
+    def envelope_problems(self) -> tuple[str, ...]:
+        """The envelope layer: integrity (the file is the file) plus signature
+        (origin). Either broken is a tamper-level failure (exit 4)."""
+        return self.integrity_problems + self.signature_problems
 
     @property
     def semantic_problems(self) -> tuple[str, ...]:
@@ -137,7 +152,7 @@ class VerifyReport:
 
     @property
     def exit_code(self) -> int:
-        if self.integrity_problems:
+        if self.envelope_problems:
             return 4
         if self.semantic_problems:
             return 2
@@ -157,6 +172,11 @@ class VerifyReport:
             "taxonomy": self.taxonomy,
             "taxonomy_reason": self.taxonomy_reason,
             "integrity_problems": list(self.integrity_problems),
+            "signature": {
+                "status": self.signature_status,
+                "public_key": self.signature_public_key,
+                "problems": list(self.signature_problems),
+            },
             "structural_problems": list(self.structural_problems),
             "claims": [c.to_dict() for c in self.claims],
             "answer_rederives": self.answer_rederives,
@@ -176,6 +196,74 @@ def _section(bundle: dict[str, object], key: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise BundleFormatError(f"missing or malformed bundle section {key!r}")
     return value
+
+
+def _verify_signature(
+    bundle: dict[str, object], *, require_signed: bool
+) -> tuple[str, str | None, tuple[str, ...]]:
+    """Check the optional Ed25519 signature over ``integrity.root`` with the
+    pure-Python verifier (no extra needed). Returns
+    ``(status, public_key, problems)``: an absent signature is ``UNSIGNED``
+    with no problem (unless ``require_signed``); a present-but-invalid or
+    malformed signature is a named envelope failure (exit 4). Binds the bundle
+    to *the holder of this key* — the report carries the key so a consumer can
+    compare it to one they trust; key distribution is out of scope (ADR 0032).
+    """
+    signature = bundle.get("signature")
+    if signature is None:
+        if require_signed:
+            return (
+                UNSIGNED,
+                None,
+                ("the bundle is unsigned, but --require-signed was set",),
+            )
+        return UNSIGNED, None, ()
+    if not isinstance(signature, dict):
+        raise BundleFormatError("the signature section is not an object")
+
+    algorithm = signature.get("algorithm")
+    public_key_hex = signature.get("public_key")
+    signature_hex = signature.get("signature")
+    if algorithm != ed25519_ALGORITHM:
+        raise BundleFormatError(
+            f"unsupported signature algorithm {algorithm!r} (expected "
+            f"{ed25519_ALGORITHM!r})"
+        )
+    if not isinstance(public_key_hex, str) or not isinstance(signature_hex, str):
+        raise BundleFormatError("signature.public_key / signature must be hex strings")
+    try:
+        public_key = bytes.fromhex(public_key_hex)
+        sig = bytes.fromhex(signature_hex)
+    except ValueError as error:
+        raise BundleFormatError(f"signature is not valid hex: {error}") from error
+    if len(public_key) != 32 or len(sig) != 64:
+        raise BundleFormatError(
+            "signature has the wrong length "
+            f"(public_key {len(public_key)}B, signature {len(sig)}B; "
+            "expected 32B / 64B)"
+        )
+
+    integrity = bundle.get("integrity")
+    if not isinstance(integrity, dict) or not isinstance(integrity.get("root"), str):
+        # No sealed root to verify against — the integrity layer already
+        # reports this; the signature simply cannot be checked.
+        return (
+            SIGNED,
+            public_key_hex,
+            ("the signature cannot be checked: the bundle carries no sealed root",),
+        )
+    root_bytes = integrity["root"].encode("utf-8")
+    if ed25519_verify(public_key, root_bytes, sig):
+        return SIGNED, public_key_hex, ()
+    return (
+        SIGNED,
+        public_key_hex,
+        (
+            "the signature does not verify against the sealed root — the root was "
+            "re-sealed by someone who does not hold this key, or the signature was "
+            "altered",
+        ),
+    )
 
 
 def _check_format(bundle: dict[str, object]) -> None:
@@ -374,9 +462,12 @@ def _answer_rederivation(
 # --- the verifier ------------------------------------------------------------------
 
 
-def verify_bundle(bundle: dict[str, object]) -> VerifyReport:
+def verify_bundle(
+    bundle: dict[str, object], *, require_signed: bool = False
+) -> VerifyReport:
     """Verify one parsed bundle, both layers. Raises
-    :class:`BundleFormatError` when the envelope is unreadable."""
+    :class:`BundleFormatError` when the envelope is unreadable. With
+    ``require_signed``, an unsigned bundle is an envelope failure (exit 4)."""
     _check_format(bundle)
     engine = _section(bundle, "engine")
     closure = _section(bundle, "evidence_closure")
@@ -385,6 +476,10 @@ def verify_bundle(bundle: dict[str, object]) -> VerifyReport:
         integrity = tuple(integrity_mismatches(bundle))
     except ValueError as error:
         raise BundleFormatError(str(error)) from error
+
+    signature_status, signature_public_key, signature_problems = _verify_signature(
+        bundle, require_signed=require_signed
+    )
 
     domain_name = engine.get("domain")
     if not isinstance(domain_name, str):
@@ -505,6 +600,9 @@ def verify_bundle(bundle: dict[str, object]) -> VerifyReport:
         taxonomy=taxonomy,
         taxonomy_reason=reason,
         integrity_problems=integrity,
+        signature_status=signature_status,
+        signature_public_key=signature_public_key,
+        signature_problems=signature_problems,
         structural_problems=tuple(structural),
         claims=claims,
         answer_rederives=answer_rederives,
@@ -529,6 +627,20 @@ def render_report(report: VerifyReport, *, source: str) -> str:
         lines.extend(f"  ! {p}" for p in report.integrity_problems)
     else:
         lines.append("integrity: intact — every leaf and the root re-computed")
+
+    if report.signature_status == UNSIGNED and not report.signature_problems:
+        lines.append(
+            "signature: UNSIGNED — integrity proves the file is the file, "
+            "not who made it"
+        )
+    elif report.signature_problems:
+        lines.append("signature: BROKEN")
+        lines.extend(f"  ! {p}" for p in report.signature_problems)
+    else:
+        lines.append(
+            f"signature: valid — signed by key {report.signature_public_key} "
+            "(compare it to a key you trust)"
+        )
 
     if report.taxonomy != RE_DERIVED:
         lines.append(f"semantic:  {report.taxonomy} — {report.taxonomy_reason}")

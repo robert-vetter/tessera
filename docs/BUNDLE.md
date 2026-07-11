@@ -180,11 +180,23 @@ corpora: business 404,168 bytes, devex 150,534, github_actions 35,273.
 
 ## Honest limits
 
-- **Unsigned bundles prove integrity and re-derivability, not origin.**
-  Anyone can produce a valid bundle over their own corpus; signatures
-  (Milestone 21) bind a bundle to a keyholder. What no attacker can do,
-  signed or not, is make a *false* claim re-derive from evidence that
-  contradicts it.
+- **Signing binds a bundle to a key, not to an identity.** A bundle may
+  carry an Ed25519 signature over its root (`tessera bundle … --sign`,
+  after `tessera bundle keygen`; needs the optional `sign` extra).
+  Verification stays stdlib-only — a pure-Python RFC 8032 check, no extra
+  required — so a stranger still verifies offline with nothing installed.
+  A signature closes the re-seal gap: a content tamperer can recompute
+  the manifest and root, but cannot produce the keyholder's signature
+  over the new root, so a re-sealed signed bundle fails (exit 4). What a
+  signature proves is only *the holder of this key made this*: the report
+  prints the public key so you can compare it to one you trust; key
+  distribution, transparency, and rotation are out of scope for this
+  work. `--require-signed` rejects unsigned bundles for consumers whose
+  policy demands origin.
+- **Unsigned bundles still prove integrity and re-derivability, not
+  origin.** Anyone can produce a valid unsigned bundle over their own
+  corpus. What no attacker can do, signed or not, is make a *false* claim
+  re-derive from evidence that contradicts it.
 - **Verdicts are functions of the engine version.** Bundles pin the
   tessera version and the claim-grammar identifiers; `verify` under a
   different version reports `NOT-EVALUABLE` naming both sides rather

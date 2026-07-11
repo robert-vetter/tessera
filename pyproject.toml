@@ -40,6 +40,12 @@ salt = ["pyarrow>=17"]
 # tests/test_agent.py and tests/test_mcp_server.py). The grounded-tool
 # substance (tessera.agent.grounded) carries no MCP dependency (ADR 0022).
 agent = ["mcp>=1.0"]
+# Ed25519 signing for trust bundles — OPT-IN: `uv sync --extra sign`. Imported
+# lazily only by tessera.bundle.signing (emit side + keygen, spec 0135).
+# VERIFICATION never needs it: tessera.bundle.ed25519 is a pure-Python RFC 8032
+# verifier, so `tessera verify` stays stdlib-only on a clean clone (guarded by
+# tests/test_bundle_signing.py::test_verify_path_pulls_no_nacl).
+sign = ["pynacl>=1.5"]
 
 [build-system]
 requires = ["hatchling"]
