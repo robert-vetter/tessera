@@ -105,6 +105,14 @@ module = ["mcp.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# The optional Ed25519 signing library (PyNaCl) is imported lazily and only under
+# the 'sign' extra (ADR 0032); CI verifies with the pure-Python RFC 8032 module and
+# never installs it, so its absence must not fail the gate. Verification never
+# touches nacl (tests/test_bundle_signing.py::test_verify_path_pulls_no_nacl).
+module = ["nacl.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 # The MCP server's tool decorators are FastMCP's. Under the base graph (no 'agent'
 # extra) the SDK is Any (ignore_missing_imports above), which makes those decorators
 # "untyped" under strict mode; the thin wiring is contract-tested where the SDK is
