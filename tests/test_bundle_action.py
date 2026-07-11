@@ -91,9 +91,10 @@ def test_ungrounded_action_refuses_to_bundle() -> None:
 # --- the attack classes -------------------------------------------------------------
 
 
-def test_injected_wire_value_traces_to_no_claim() -> None:
-    """A token injected into a wire slot value (body re-rendered to match, so the
-    added-nothing check passes) traces to no verified claim — exit 2, named."""
+def test_injected_wire_value_fails() -> None:
+    """A token injected into a wire slot value (body re-rendered to match, so a
+    field-by-field 'added-nothing' check would pass) diverges from the request
+    the evidence re-derives — exit 2, named."""
     bundle = _fresh_action(*_ACTIONS[0])
     action = _action(bundle)
     slots = action["slots"]
@@ -110,18 +111,64 @@ def test_injected_wire_value_traces_to_no_claim() -> None:
     tampered = _reseal(bundle)
     report = verify_bundle(tampered)
     assert report.integrity_problems == ()
-    assert any("traces to no" in p for p in report.structural_problems)
+    assert any(
+        "re-derived from the packaged evidence" in p for p in report.structural_problems
+    )
     assert report.exit_code == 2
 
 
-def test_body_that_does_not_rerender_from_slots_fails() -> None:
+def test_injected_body_keys_fail() -> None:
+    """Adversarial review (0136 blocker): injecting extra wire-body keys the
+    endpoint honours (labels, assignees, milestone) is caught by full-body
+    equality against the re-derived request."""
     bundle = _fresh_action(*_ACTIONS[0])
     request = _action(bundle)["request"]
     assert isinstance(request, dict)
-    request["body"]["body"] = str(request["body"]["body"]) + "\n## Injected heading"
+    body = request["body"]
+    assert isinstance(body, dict)
+    body["labels"] = ["incident", "P0-drop-everything", "auto-merge"]
+    body["assignees"] = ["ceo-victim"]
+    body["milestone"] = 42
     tampered = _reseal(bundle)
     report = verify_bundle(tampered)
-    assert any("does not re-render" in p for p in report.structural_problems)
+    assert any("wire body does not match" in p for p in report.structural_problems)
+    assert report.exit_code == 2
+
+
+def test_repointed_method_or_path_fails() -> None:
+    """Adversarial review (0136 blocker): repointing the wire method/path at a
+    different endpoint is caught — the request must match the frozen target."""
+    bundle = _fresh_action(*_ACTIONS[0])
+    request = _action(bundle)["request"]
+    assert isinstance(request, dict)
+    request["path"] = "/repos/{owner}/{repo}/issues/1/comments"
+    request["method"] = "PATCH"
+    tampered = _reseal(bundle)
+    report = verify_bundle(tampered)
+    assert any("method/path does not match" in p for p in report.structural_problems)
+    assert report.exit_code == 2
+
+
+def test_cross_claim_splice_fails() -> None:
+    """Adversarial review (0136): a value that is a real fragment of a DIFFERENT
+    claim's evidence, placed under the wrong section, is caught — the slots must
+    match those the frozen pipeline re-derives (role-bound), not merely be a
+    fragment of some verified claim."""
+    bundle = _fresh_action(*_ACTIONS[0])
+    action = _action(bundle)
+    slots = action["slots"]
+    assert isinstance(slots, list)
+    for slot in slots:
+        assert isinstance(slot, dict)
+        if slot["part"] == "body" and slot["role"] == "failing_run":
+            slot["value"] = "connection to payments-db timed out"
+            break
+    receipt = execution_receipt_from_dict(action)
+    request = action["request"]
+    assert isinstance(request, dict)
+    request["body"]["body"] = render_body(receipt.slots)
+    tampered = _reseal(bundle)
+    report = verify_bundle(tampered)
     assert report.exit_code == 2
 
 
@@ -132,13 +179,25 @@ def test_tampered_incident_title_fails() -> None:
     request["body"]["title"] = "A misleading title not from the evidence"
     tampered = _reseal(bundle)
     report = verify_bundle(tampered)
-    assert any("title" in p for p in report.structural_problems)
+    assert any("wire body does not match" in p for p in report.structural_problems)
+    assert report.exit_code == 2
+
+
+def test_claimed_real_send_in_a_bundle_fails() -> None:
+    """Only simulated actions are bundled; a receipt claiming a real send is a
+    named semantic failure."""
+    bundle = _fresh_action(*_ACTIONS[0])
+    action = _action(bundle)
+    action["sent"] = True
+    tampered = _reseal(bundle)
+    report = verify_bundle(tampered)
+    assert any("real send" in p for p in report.structural_problems)
     assert report.exit_code == 2
 
 
 def test_dangling_slot_provenance_is_a_clean_exit_2() -> None:
-    """A slot citing a record absent from the packaged snapshot is caught, not
-    crashed."""
+    """A slot citing a record absent from the packaged snapshot is caught (its
+    slots diverge from the re-derived ones), not crashed."""
     bundle = _fresh_action(*_ACTIONS[0])
     slots = _action(bundle)["slots"]
     assert isinstance(slots, list)
@@ -152,7 +211,7 @@ def test_dangling_slot_provenance_is_a_clean_exit_2() -> None:
     support.append(ghost)
     tampered = _reseal(bundle)
     report = verify_bundle(tampered)  # must not raise
-    assert any("GHOST_RECORD" in p for p in report.structural_problems)
+    assert any("slots do not match" in p for p in report.structural_problems)
     assert report.exit_code == 2
 
 

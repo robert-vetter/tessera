@@ -33,24 +33,26 @@ fail.
    already demonstrated by the answer-refusal bundle (M20) and a
    withheld-action bundle is named future work. No real send is ever
    bundled here (the one recorded real send stays the M15 fixture).
-3. **Verify re-derives the action from the packaged evidence**, three
-   deterministic checks, all pure functions over the file's content:
-   - **Request reconstruction (added-nothing).** Re-render the wire body
-     from the receipt's own slots with the engine's own `render_body`
-     (a pure template) and require it to equal the recorded body; for an
-     incident, the recorded `title` must equal the title slot's value;
-     for a PR comment, the recorded path must carry the resource slot's
-     value. A body that adds anything beyond its slots fails.
-   - **Slot-to-claim binding.** Every wire slot's value must be faithful
-     to a **re-derived, verified** claim — identical to a claim's text,
-     or a normalized-containment fragment of one of that claim's cited
-     records (exactly the frozen `_field` faithfulness rule, re-run
-     here against the re-derived claims, not the recorded ones). A slot
-     value backed by no verified claim is a fabricated wire value and
-     fails.
-   - **Referential.** Every slot's cited evidence id resolves to a
-     packaged node (the M20 referential rule, extended to slots) — no
-     dangling wire provenance, no crash.
+3. **Verify re-derives the WHOLE action from the packaged evidence** —
+   the action-layer analogue of the answer re-derivation (b). Re-run the
+   frozen drafting + rendering pipeline (`actions._draft_fields` +
+   `payloads.render_payload`) over the **re-derived** `result` (bound to
+   the packaged evidence by check (b)) and require the recorded receipt's
+   `method`, `path`, the **entire** `body` dict, and the `slots` to equal
+   it exactly. Because the pipeline is a deterministic function of the
+   answer, one equality check binds every wire detail at once: the
+   method, the endpoint template, every body key (including `labels` and
+   anything an attacker might inject), the per-slot value→claim→role
+   attribution, and the slot order. A receipt claiming a real send
+   (`sent=true`) is rejected — only simulated actions are bundled.
+   **(Design note: the adversarial pre-merge review found that an
+   earlier field-by-field version — re-rendering only `body['body']` and
+   the title, binding slot values to *any* verified claim — let three
+   attacks pass: injected `labels`/`assignees`/`milestone` body keys, a
+   repointed method/path, and a cross-claim value splice under the wrong
+   section. Reconstructing the entire request through the frozen pipeline
+   and requiring full equality closes all three by construction; the
+   receipt cannot add or alter anything the evidence does not produce.)**
 4. **Failures are semantic (exit 2), named per slot.** Action problems
    join `structural_problems`, so the existing exit precedence
    (4 > 2 > 3 > 0) and the signature/integrity envelope are unchanged.

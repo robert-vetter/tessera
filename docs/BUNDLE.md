@@ -160,12 +160,16 @@ wrote:   action.tsb
 ```
 
 `tessera verify` then re-derives the action too, from the packaged
-evidence: the wire body must **reconstruct from its own slots** (it adds
-nothing beyond its grounded values), and every wire value must trace to a
-**re-derived, verified** claim. Inject an ungrounded token into the
-request body and re-seal, and verify fails it — the injected value traces
-to no verified claim (exit 2, named), the action-layer analogue of the
-flip-a-byte catch. What a re-executed action bundle proves is that every
+evidence: it re-runs the deterministic drafting-and-rendering pipeline
+over the re-derived answer and requires the recorded request — the
+method, the endpoint path, the **entire** body (every key), and the
+grounded slots — to equal what the evidence produces. Because the request
+is a deterministic function of the answer, this binds everything at once:
+inject an extra body field (a `labels` or `assignees` the endpoint would
+honour), repoint the method or path, or splice one claim's evidence under
+another's section, and even after re-sealing the request no longer matches
+what the evidence re-derives — exit 2, named. That is the action-layer
+analogue of the flip-a-byte catch. What a re-executed action bundle proves is that every
 value that would go on the wire was grounded and the request adds nothing;
 it does not assert that a send happened (simulated bundles record
 `sent: false` by construction — the one recorded real send is the

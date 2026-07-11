@@ -40,7 +40,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from tessera.agent.grounded import (
-    GroundedClaim,
     GroundedResult,
     available_domains,
     domain,
@@ -463,32 +462,27 @@ def _answer_rederivation(
 # --- action re-derivation (spec 0136) ----------------------------------------------
 
 
-def _value_is_backed(value: str, verified_claims: tuple[GroundedClaim, ...]) -> bool:
-    """The frozen ``_field`` faithfulness rule, re-run here: a wire value is
-    grounded iff it is identical to a verified claim's text, or a
-    normalized-containment fragment of one of that claim's cited records."""
-    from tessera.resolution import normalize
-
-    needle = normalize(value)
-    for claim in verified_claims:
-        if value == claim.text:
-            return True
-        if needle and any(needle in normalize(e.text) for e in claim.support):
-            return True
-    return False
-
-
 def _action_problems(
     action_section: dict[str, object],
     result: GroundedResult,
-    claim_checks: tuple[ClaimCheck, ...],
-    node_ids: set[str],
 ) -> tuple[str, ...]:
-    """Re-derive the wire action from the packaged evidence (spec 0136): the
-    request must reconstruct from its own slots, and every wire value must
-    trace to a re-derived, verified claim. Pure functions over the file's
-    content — the frozen actuator is never re-run."""
-    from tessera.agent.payloads import render_body
+    """Re-derive the WHOLE wire action from the re-derived answer (spec 0136).
+
+    The strong check — the action-layer analogue of the answer re-derivation
+    (b): re-run the frozen drafting + rendering pipeline over the re-derived
+    ``result`` (bound to the packaged evidence by check (b)) and require the
+    recorded receipt's request and slots to equal it **exactly**. Because the
+    frozen pipeline is a deterministic function of the answer, this binds the
+    method, path, the *entire* body dict (every key — labels, and anything an
+    attacker might inject), the per-slot value→claim→role attribution, and the
+    slot order all at once. Anything the receipt added or altered beyond what
+    the evidence produces diverges and fails. Pure over the file's content;
+    the actuator and network are never touched (the adversarial review of
+    unit 0136 found the earlier field-by-field check let injected body keys,
+    a repointed method/path, and cross-claim splices pass — this closes them).
+    """
+    from tessera.agent.actions import _CATALOG, ActionProposal, _draft_fields
+    from tessera.agent.payloads import render_payload
     from tessera.bundle.serde import execution_receipt_from_dict
 
     try:
@@ -497,53 +491,81 @@ def _action_problems(
         return (f"the action section is malformed: {error}",)
 
     problems: list[str] = []
+    if receipt.sent:
+        problems.append(
+            "the bundled action claims a real send (sent=true); only simulated "
+            "actions are ever bundled"
+        )
     if receipt.domain != result.domain or receipt.question != result.question:
         problems.append(
             "the action records a different domain/question than the answer it rests on"
         )
-    if not receipt.slots:
-        problems.append("the action bundle carries no wire slots to re-derive")
-        return tuple(problems)
 
-    # (1) Request reconstruction: the body re-renders from the slots, adding
-    # nothing; the incident title / PR path carry their slot's value.
-    rerendered = render_body(receipt.slots)
-    recorded_body = receipt.body.get("body")
-    if recorded_body != rerendered:
-        problems.append(
-            "the wire body does not re-render from its slots — the request adds "
-            "content beyond its grounded values"
+    kind = _CATALOG.get(receipt.kind)
+    if kind is None:
+        return tuple(
+            dict.fromkeys([*problems, f"unknown action kind {receipt.kind!r}"])
         )
-    title_slots = [s for s in receipt.slots if s.part == "title"]
-    if title_slots and receipt.body.get("title") != title_slots[0].value:
-        problems.append("the wire title does not match the grounded title slot")
-    path_slots = [s for s in receipt.slots if s.part == "path"]
-    for slot in path_slots:
-        if slot.value not in receipt.path:
-            problems.append(
-                f"the grounded path value {slot.value!r} is not in the wire path"
+    if result.domain not in kind.domains:
+        return tuple(
+            dict.fromkeys(
+                [
+                    *problems,
+                    f"the {receipt.kind!r} action does not apply to "
+                    f"domain {result.domain!r}",
+                ]
             )
+        )
+    if result.route_kind != kind.required_route:
+        return tuple(
+            dict.fromkeys(
+                [
+                    *problems,
+                    f"the {receipt.kind!r} action requires route "
+                    f"{kind.required_route!r}, but the answer routed to "
+                    f"{result.route_kind!r}",
+                ]
+            )
+        )
 
-    # (2) Slot-to-claim binding: every wire value traces to a verified,
-    # re-derived claim. Use the RE-DERIVED verdicts, not the recorded ones.
-    verified_claims = tuple(
-        claim
-        for claim, check in zip(result.claims, claim_checks, strict=True)
-        if check.rederived
+    # Re-derive the exact wire request the frozen pipeline produces from this
+    # answer, then require the recorded receipt to match it.
+    proposal = ActionProposal(
+        kind=receipt.kind,
+        domain=result.domain,
+        question=result.question,
+        route_kind=result.route_kind,
+        route_reason=result.route_reason,
+        grounded=True,
+        refused=False,
+        refusal=None,
+        fields=tuple(_draft_fields(kind, result)),
     )
-    for slot in receipt.slots:
-        if not _value_is_backed(slot.value, verified_claims):
-            problems.append(
-                f"wire {slot.part} value {slot.value[:60]!r} traces to no "
-                "re-derived, verified claim — a fabricated wire value"
-            )
-        # (3) Referential: slot provenance resolves to packaged nodes.
-        for evidence in slot.support:
-            if evidence.id not in node_ids:
-                problems.append(
-                    f"a wire slot cites record {evidence.id!r}, absent from the "
-                    "packaged evidence snapshot"
-                )
+    expected = render_payload(proposal)
+    if not expected.rendered:
+        problems.append(
+            "the packaged evidence does not re-derive a grounded wire request "
+            "for this action (the frozen pipeline withholds it)"
+        )
+        return tuple(dict.fromkeys(problems))
+    if receipt.method != expected.method or receipt.path != expected.path:
+        problems.append(
+            "the wire method/path does not match the request re-derived from "
+            "the packaged evidence"
+        )
+    if receipt.body != expected.body:
+        problems.append(
+            "the wire body does not match the request re-derived from the "
+            "packaged evidence — it adds or alters content beyond the grounded "
+            "values"
+        )
+    if tuple(s.to_dict() for s in receipt.slots) != tuple(
+        s.to_dict() for s in expected.slots
+    ):
+        problems.append(
+            "the wire slots do not match those re-derived from the packaged "
+            "evidence (a value, its provenance, or its role was altered)"
+        )
     return tuple(dict.fromkeys(problems))
 
 
@@ -671,10 +693,7 @@ def verify_bundle(
                 # An action bundle also re-derives its wire request (spec 0136).
                 action_section = bundle.get("action")
                 if isinstance(action_section, dict):
-                    node_ids = {node.id for node in graph.nodes}
-                    structural.extend(
-                        _action_problems(action_section, result, claims, node_ids)
-                    )
+                    structural.extend(_action_problems(action_section, result))
             except Exception as error:  # noqa: BLE001 - backstop, see below
                 # Defensive backstop: re-execution must never escape as an
                 # uncaught exception (the command runs on strangers' machines).
