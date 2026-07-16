@@ -23,6 +23,7 @@ An open, deterministic **evidence layer for AI agents**. Every answer is built f
 **▶ Try it live** (no signup, read-only): <https://robert-vetter-tessera.hf.space> — ask a question, see each claim's verifier chip, click through to the evidence, watch a refusal, run an action to a receipt.
 **📊 The benchmark** — evidence-gated vs. the same engine *ungated*, same corpus and verifier, no LLM judge: [docs/BENCHMARK.md](docs/BENCHMARK.md).
 **🔌 MCP-native** — plug it in as your agent's evidence oracle: `uv run tessera-mcp`.
+**🕵️ The challenge** — two bundles ship in this repo, one honest and one a cryptographically perfect fake; every signature-checker passes both, one offline command tells them apart: [docs/CHALLENGE.md](docs/CHALLENGE.md).
 
 > *A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture — which is what this system does with enterprise data.*
 
