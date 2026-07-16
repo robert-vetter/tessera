@@ -2755,3 +2755,48 @@ verification + format + docs only). Post-close hardening — tags
 the forged-bundle challenge + RAGAS one-shot, the write-up/arXiv report;
 Q1/Q2/Q3 already answered yes). The `anchor` refusal is the honest seam
 0138 will open.
+
+---
+
+## 2026-07-16 — Autonomous feature session: `explain` + the forged-bundle challenge
+
+Fully autonomous session (maintainer away). Verified every existing
+feature works, shipped two new ones on the trust-bundle base, and drafted
+a Z Fellows update. Discipline unchanged (spec → gate → PR → CI → merge).
+
+**Health check — all green:** gate (692→715 tests), six eval lines
+byte-identical, benchmark direction holds, Auditability Floor 25/25 +
+16/16, bundle emit+verify PASS, MCP imports, BYO doors (ingest/ask,
+ambiguity refuses), live demo up.
+
+**Shipped:**
+- **`tessera bundle explain <file>`** (spec 0142, #175) — a read-only,
+  human-legible rendering of a bundle's chain (question → claims with
+  re-derived verdicts → cited evidence → action + per-slot provenance).
+  Shows verify's verdict first, so a tampered bundle renders FAIL with the
+  broken claim UNSUPPORTED — explain never launders a bad bundle.
+  `--json`/`--full`; stdlib-only.
+- **The forged-bundle challenge** (spec 0140, #176) — committed
+  `data/challenge/{honest,forged}.tsb` (synthetic only). The forgery
+  inflates a total by EUR 3,500, evidence untouched, re-sealed. The foil
+  (integrity) reports BOTH intact; only re-execution separates them
+  (honest PASS, forged FAIL). `scripts/forge_challenge_bundle.py` is
+  committed + deterministic (byte-identity test pins no drift).
+  `docs/CHALLENGE.md` + README pointer.
+- **LLM-judge one-shot (Q2)** — ran Claude as a faithfulness judge on the
+  forged bundle and reported the result **honestly**: with a fair context
+  a capable model re-summed the small aggregates correctly (the naive
+  "LLM is fooled" slogan does not hold at toy scale), but the same claim
+  earned opposite verdicts under different framing and rejected a true
+  claim at 0.95 confidence — so the durable point is non-determinism +
+  prompt-framing dependence + no re-runnable recomputation. Never in CI.
+
+**Deliberately NOT done (maintainer away):** the live public Rekor post
+(spec 0138) — the one irreversible, identity-bearing act; it stays for a
+session with the maintainer present. Also deferred: COMPLIANCE.md (0139),
+the write-up (0141), a drop-in GitHub Action for CI verification — all
+reversible, queued.
+
+**State of the tree:** `main` green (a66f575); `tessera/bundle/` now also
+carries `explain`; `data/challenge/` committed; no open unit branches.
+Z Fellows update drafted locally (launch/zfellows/, gitignored).
