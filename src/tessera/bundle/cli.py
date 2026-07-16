@@ -72,10 +72,12 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    # `tessera bundle keygen …` is a sibling verb, not a question. The front
-    # door always passes an explicit argv list (spec 0117 dispatch).
+    # `tessera bundle keygen …` / `… explain …` are sibling verbs, not a
+    # question. The front door always passes an explicit argv list (spec 0117).
     if argv and argv[0] == "keygen":
         return keygen_main(argv[1:])
+    if argv and argv[0] == "explain":
+        return explain_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -160,6 +162,61 @@ def keygen_main(argv: list[str] | None = None) -> int:
         return 2
     print(f"wrote:      {path} (0600) and {path}.pub")
     print(f"public key: {public_hex}")
+    return 0
+
+
+# --- tessera bundle explain -------------------------------------------------------
+
+
+def _load_bundle(path: Path) -> dict[str, object] | None:
+    """Read + parse a .tsb file, or print an error and return None."""
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as error:
+        print(f"error: cannot read {path}: {error}", file=sys.stderr)
+        return None
+    try:
+        bundle = json.loads(raw)
+    except json.JSONDecodeError as error:
+        print(f"error: {path} is not JSON: {error}", file=sys.stderr)
+        return None
+    if not isinstance(bundle, dict):
+        print(f"error: {path} is not a JSON object", file=sys.stderr)
+        return None
+    return bundle
+
+
+def explain_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle explain",
+        description="Render a trust bundle's chain (question → claims → "
+        "evidence → action) legibly. The verdict shown is verify's, so a "
+        "failing bundle is shown as failing.",
+    )
+    parser.add_argument("bundle", type=Path, help="path to the .tsb file")
+    parser.add_argument("--json", action="store_true", help="structured output")
+    parser.add_argument(
+        "--full", action="store_true", help="do not truncate snippets/bodies"
+    )
+    args = parser.parse_args(argv)
+
+    bundle = _load_bundle(args.bundle)
+    if bundle is None:
+        return 4
+
+    from tessera.bundle.explain import explain_bundle, render_text
+    from tessera.bundle.verify import BundleFormatError
+
+    try:
+        explanation = explain_bundle(bundle, full=args.full)
+    except BundleFormatError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 4
+
+    if args.json:
+        print(json.dumps(explanation.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(render_text(explanation, source=str(args.bundle)))
     return 0
 
 

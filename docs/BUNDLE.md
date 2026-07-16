@@ -51,6 +51,30 @@ the same `is_supported` the CI-gated eval runs, and re-routes the
 question over the packaged corpus. It works identically on a machine in
 airplane mode.
 
+## Reading a bundle
+
+`verify` proves a bundle re-derives; `tessera bundle explain <file>`
+shows a person *what it says* — the question, each claim with its
+re-derived verdict, the evidence each claim cites (source, locator,
+snippet), and, for an action bundle, the wire request with its per-slot
+provenance:
+
+```console
+$ uv run tessera bundle explain answer.tsb
+verdict:  PASS — RE-DERIVED
+Q: Compare Müller Logistik and Nordwind Logistik totals.
+
+[✓ re-derived] claim 0: 'Nordwind Logistik GmbH': total net order value across 3 order(s): EUR 84,500.00.
+    ↳ salt_synthetic/I_SalesDocument.csv (table I_SalesDocument, row 50) — "Sales document 0000500050: … net value EUR 24,000.00 …"
+    …
+evidence: 8 record(s) cited of 363 packaged in the closure
+```
+
+It is a read-only projection of what `verify` computes — the verdict is
+rendered first, so a tampered bundle is shown as `FAIL` with the broken
+claim marked `UNSUPPORTED`; `explain` never dresses a failing bundle as
+sound. `--json` emits the structured view; `--full` disables truncation.
+
 ## The flip-a-byte walkthrough
 
 Tamper one digit of one packaged sales row **that a claim cites**, then
