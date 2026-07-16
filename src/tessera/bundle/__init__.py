@@ -34,4 +34,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.mutations` — the deterministic tamper battery the
   Auditability Floor (``tessera.eval.auditability``, spec 0137) measures
   against, so the verifier's teeth are a CI-pinned number.
+- :mod:`tessera.bundle.explain` — a read-only, human-legible rendering of
+  a bundle's chain (question → claims → evidence → action), showing
+  verify's verdict first (spec 0142).
 """
