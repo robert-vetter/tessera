@@ -59,6 +59,27 @@ then the phase tags are the releases.
   doing exactly that; fixed and pinned pre-merge). A broken envelope cannot
   be audited (exit 4); a DEGRADED bundle reports "not re-executed here"
   rather than a count. `docs/COMPLIANCE.md` + README pointer; stdlib-only.
+- **Chained trust bundles — the audit trail for agent pipelines** (spec 0143,
+  ADR 0033, #180). A verified bundle becomes first-class evidence for the
+  next answer: `tessera bundle chain` derives the new corpus exclusively
+  from upstream bundles' verifier-passing claims (a non-PASS upstream
+  refuses to chain, named — try the challenge's forgery), embeds the
+  upstreams whole, and commits to them by root in the integrity manifest (a
+  hash-DAG; cycles impossible by construction). One offline `tessera verify`
+  then re-executes the **entire chain**: every embedded upstream re-verified
+  recursively — recorded verdicts are never trusted — every derived record
+  byte-matched to the upstream claim it cites, the chain answer re-derived.
+  The theorem is test-pinned: a fully self-consistent deep forgery (re-sealed
+  at every level, every reference rewritten) still FAILS, caught by the
+  recursion alone. Closure kind `chain-snapshot` at format minor 1.1 as a
+  per-file feature level (single-decision bundles keep declaring 1.0, so the
+  committed challenge artifacts stay byte-stable); one declared chain claim
+  grammar (verbatim citation); frozen core and agent chain byte-identical.
+  Committed deterministic demo `data/chain/brief.tsb` (a DevEx root-cause
+  receipt + the challenge's honest business bundle → one cross-vertical
+  brief), byte-identity pinned; the 3-OS determinism matrix now covers the
+  chain tests. `docs/CHAIN.md` + README pointer; ROADMAP3's stale
+  pre-Omnibus compliance date corrected to the deferred timeline.
 
 ## [milestone-21] — 2026-07-11
 
