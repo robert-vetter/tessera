@@ -37,4 +37,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.explain` — a read-only, human-legible rendering of
   a bundle's chain (question → claims → evidence → action), showing
   verify's verdict first (spec 0142).
+- :mod:`tessera.bundle.audit` — a decision record mapping a bundle to the
+  EU AI Act record-keeping/human-oversight concepts (spec 0139); a mapping
+  and documentation aid, never a compliance attestation.
 """
