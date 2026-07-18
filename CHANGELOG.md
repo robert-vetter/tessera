@@ -31,6 +31,34 @@ then the phase tags are the releases.
   (sizes, root, the `signature:` line), a new honest limit (a PASS is not a
   recency/anti-replay claim), ADR 0031's leaf list corrected, ADRs 0031/0032
   added to the docs nav, and the vestigial `serde` Claim pair removed.
+- **`tessera bundle explain` — a bundle made legible to a human** (spec 0142,
+  #175). A read-only rendering of a bundle's whole chain — question → claims
+  with their re-derived verdicts → the cited evidence records → the action
+  receipt with per-slot provenance — that shows `verify`'s verdict *first*,
+  so a tampered bundle renders FAIL with the broken claim named: explain
+  never launders a bad bundle. `--json` / `--full`; stdlib-only.
+- **The forged-bundle challenge — spot the lie offline** (spec 0140, #176).
+  Two committed bundles, `data/challenge/{honest,forged}.tsb` (synthetic data
+  only): the forgery inflates a total by EUR 3,500, leaves the evidence
+  untouched, and is re-sealed, so integrity tooling reports BOTH intact; only
+  re-execution separates them (honest PASS, forged FAIL). The forge script is
+  committed and deterministic (a byte-identity test pins no drift).
+  `docs/CHALLENGE.md` + README pointer. *(This and the `explain` entry are
+  backfilled from the 2026-07-16 session, which shipped them without
+  CHANGELOG entries — drift repaired.)*
+- **`tessera bundle audit` — the decision record for an auditor** (spec 0139,
+  #178). From any trust bundle, the record a compliance or engineering buyer
+  actually needs: the verification verdict first, then a mapping of the
+  bundle's contents to the record-keeping (Art. 12) and human-oversight
+  (Art. 14) *concepts* named in the EU AI Act — a documentation aid, never a
+  compliance attestation, with the disclaimer and the corrected deferred
+  timeline (2 Dec 2027) pinned by tests so an overclaiming edit fails the
+  build. Never a rubber stamp: the forged challenge bundle records **FAILED**
+  with 1/3 claims re-deriving — counted from the verifier's re-execution,
+  never from the bundle's own recorded flags (the demo run caught a first cut
+  doing exactly that; fixed and pinned pre-merge). A broken envelope cannot
+  be audited (exit 4); a DEGRADED bundle reports "not re-executed here"
+  rather than a count. `docs/COMPLIANCE.md` + README pointer; stdlib-only.
 
 ## [milestone-21] — 2026-07-11
 

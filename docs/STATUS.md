@@ -2800,3 +2800,69 @@ reversible, queued.
 **State of the tree:** `main` green (a66f575); `tessera/bundle/` now also
 carries `explain`; `data/challenge/` committed; no open unit branches.
 Z Fellows update drafted locally (launch/zfellows/, gitignored).
+
+---
+
+## 2026-07-18 — `tessera bundle audit`: the decision record a buyer needs (spec 0139, #178)
+
+**The strategy this unit embodies (recorded, per the maintainer's ask):**
+after the 2026-07-07 Show HN landed at the category median (~2 points,
+2 stars), the maintainer deliberately did **not** escalate publicity — no
+LinkedIn broadcast, no re-posts, no star-chasing. The launch was a cheap
+measurement of the channel and it measured as modeled: broadcast pays out
+browsing-developer attention, while the buyer for audit infrastructure
+adopts through 1:1 conversations with an artifact in hand. Publicity is
+postponed until there is a pilot story to broadcast; the build time went
+into the artifact instead. This unit is that artifact — spec 0139's own
+problem statement ("depth over publicity") made runnable.
+
+**Done this session**
+- **Unit 0139 — `tessera bundle audit`** (#178, spec 0139; the in-flight
+  working tree from the prior session finished, hardened, and shipped).
+  From any trust bundle: the verification verdict first, then a grounded
+  mapping to the record-keeping (Art. 12) and human-oversight (Art. 14)
+  concepts named in the EU AI Act, plus `docs/COMPLIANCE.md` (mapping
+  table, the corrected deferred timeline — Annex III obligations
+  2 Dec 2027, only Art. 50 from Aug 2026 — and the "bought by
+  engineering, not deadline panic" position per MARKET §3).
+  - **Honesty guardrails pinned by tests:** the disclaimer verbatim (not
+    an attestation / not legal advice / standards are drafts) + the
+    deferred date, so a stale or overclaiming edit fails the build; the
+    forged challenge bundle records **FAILED** (never a rubber stamp); a
+    broken envelope cannot be audited (exit 4 — provably the TAMPERED
+    condition, so that verdict is unreachable in the renderer); a
+    DEGRADED (engine-pin-mismatch) bundle says "not re-executed here".
+  - **A real overclaim caught by running the demo, fixed pre-merge:** the
+    first cut counted the bundle's own recorded `verified` flags — the
+    forger's flags — so the forged record said "3/3 re-derived" beside
+    its FAILED verdict. The count now comes from the verifier's
+    re-execution only: forged records **1/3** (the inflated total drags
+    down the conclusion built on it). Pinned across all three reachable
+    verdicts; COMPLIANCE.md snippet made literal.
+- **CHANGELOG drift repaired:** the 2026-07-16 session shipped `explain`
+  (#175) and the challenge (#176) without CHANGELOG entries; both
+  backfilled alongside this unit's entry (noted in the entries).
+- **Z Fellows weekly update drafted** (local `launch/zfellows/
+  UPDATE-2026-07-18.md`, supersedes the unsent 07-16 draft): leads with
+  the honest launch miss, states the no-publicity decision and its
+  reasoning briefly, presents `bundle audit` as the evidence for the path
+  change, scoreboard with verified numbers (2★/0 forks, 171 merged PRs,
+  725 tests), and the design-partner ask. Send-checklist included.
+
+**Eval:** six lines byte-identical (business 11/53 all 1.0; devex
+1.0/0.950/0.889; gha 1.0/0.833/0.800); gate green **twice** (725 tests,
++10; before and after the honesty fix); mkdocs strict green; CI green
+incl. the 6-way bundle-determinism matrix; frozen core untouched
+(additive: CLI dispatch + docs nav only).
+
+**Next**
+- **0138 — Rekor anchoring:** the one irreversible, identity-bearing act;
+  stays for a session with the maintainer present (unchanged).
+- **0141 — the write-up + arXiv-ready report** closes Milestone 22.
+- The maintainer's outreach wave, now with `audit` as the opener artifact
+  (the update mail's own conclusion: "talking to buyers now").
+- Standing: demo video, Pages toggle, BTP, dependabot #59/#133.
+
+**State of the tree:** `main` green (de0807d); `tessera/bundle/` now
+carries `audit`; tags through `milestone-21` (M22 in progress); no open
+unit branches.
