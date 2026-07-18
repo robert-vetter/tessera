@@ -80,6 +80,8 @@ def main(argv: list[str] | None = None) -> int:
         return explain_main(argv[1:])
     if argv and argv[0] == "audit":
         return audit_main(argv[1:])
+    if argv and argv[0] == "chain":
+        return chain_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -126,6 +128,102 @@ def main(argv: list[str] | None = None) -> int:
         request = action.get("request")
         method = request["method"] if isinstance(request, dict) else "?"
         print(f"action:  {action['kind']} — {method} ({n} grounded slot(s))")
+    print(f"root:    {integrity['root']}")
+    signature = bundle.get("signature")
+    if isinstance(signature, dict):
+        print(f"signed:  key {signature['public_key']}")
+    print(f"wrote:   {args.out} ({size:,} bytes)")
+    return 0
+
+
+# --- tessera bundle chain ---------------------------------------------------------
+
+
+def chain_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle chain",
+        description="Chain trust bundles (spec 0143): derive a new bundle's "
+        "evidence exclusively from other bundles' verifier-passing claims. "
+        "Every upstream is fully re-verified first — a bundle that does not "
+        "PASS refuses to chain — and the upstreams travel embedded, so "
+        "`tessera verify` re-executes the whole chain offline from the one "
+        "file.",
+    )
+    parser.add_argument("question", help="the question to answer over the chain")
+    parser.add_argument(
+        "bundles",
+        nargs="+",
+        type=Path,
+        help="upstream .tsb files whose verifier-passing claims become evidence",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        default="chain.tsb",
+        help="output path (default: chain.tsb)",
+    )
+    parser.add_argument(
+        "--sign",
+        action="store_true",
+        help="sign the chain bundle's root (needs the 'sign' extra)",
+    )
+    parser.add_argument(
+        "--key",
+        type=Path,
+        default=None,
+        help="signing key path (default: var/keys/bundle_signing.key)",
+    )
+    args = parser.parse_args(argv)
+
+    from tessera.bundle.chain import ChainError, build_chain_bundle
+
+    upstreams: list[dict[str, object]] = []
+    for path in args.bundles:
+        upstream = _load_bundle(path)
+        if upstream is None:
+            return 4
+        upstreams.append(upstream)
+
+    try:
+        bundle = build_chain_bundle(upstreams, args.question)
+    except ChainError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+    if args.sign:
+        from tessera.bundle.signing import (
+            DEFAULT_KEY_PATH,
+            SigningUnavailableError,
+            sign_bundle,
+        )
+
+        try:
+            bundle = sign_bundle(bundle, args.key or DEFAULT_KEY_PATH)
+        except (SigningUnavailableError, FileNotFoundError, ValueError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+
+    size = write_bundle(bundle, Path(args.out))
+
+    result = bundle["result"]
+    assert isinstance(result, dict)
+    integrity = bundle["integrity"]
+    assert isinstance(integrity, dict)
+    claims = result["claims"]
+    assert isinstance(claims, list)
+    closure = bundle["evidence_closure"]
+    assert isinstance(closure, dict)
+    upstream_list = closure["upstream"]
+    assert isinstance(upstream_list, list)
+
+    if result["refused"]:
+        print(f"outcome: refusal — {result['refusal']}")
+    else:
+        verified = sum(
+            1 for claim in claims if isinstance(claim, dict) and claim["verified"]
+        )
+        print(f"outcome: grounded — {verified}/{len(claims)} claim(s) verified")
+    print(f"chain:   {len(upstream_list)} upstream bundle(s) embedded, re-verified")
     print(f"root:    {integrity['root']}")
     signature = bundle.get("signature")
     if isinstance(signature, dict):

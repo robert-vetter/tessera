@@ -35,6 +35,9 @@ Trust bundles (Milestones 20–22):
   tessera verify <file>.tsb               re-execute its verification, offline
   tessera bundle explain <file>.tsb       render its chain legibly for a human
   tessera bundle audit <file>.tsb         decision record (EU AI Act mapping)
+  tessera bundle chain "<q>" <a.tsb> ...  chain bundles: verified answers
+                                          become evidence; verify re-executes
+                                          the whole chain from one file
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"

@@ -20,11 +20,32 @@ FORMAT_NAME = "tessera-trust-bundle"
 FORMAT_MAJOR = 1
 FORMAT_MINOR = 0
 
-# The only evidence-closure kind format major 1 emits (spec 0131 D4): the
+# The minor a CHAIN bundle declares (ADR 0033): minor 1.1 adds the
+# `chain-snapshot` closure kind with its `upstream` section. The minor is a
+# per-file feature level — a single-decision bundle uses no 1.1 feature and
+# keeps declaring 1.0, so the committed challenge artifacts (whose roots are
+# public identity) stay byte-stable. Verification never gates on minor; an
+# older verifier meeting the unknown closure kind degrades, never
+# false-PASSes (the spec-0134 content-not-label rule).
+CHAIN_FORMAT_MINOR = 1
+
+# The evidence-closure kind single-decision bundles emit (spec 0131 D4): the
 # bundle carries the whole corpus, so whole-graph shapes and omission
 # attacks are handled by construction. A verifier that meets an unknown
 # kind can only degrade, never upgrade to a re-derived verdict.
 CLOSURE_FULL_SNAPSHOT = "full-graph-snapshot"
+
+# The chain closure kind (spec 0143, ADR 0033; format minor 1.1): the corpus
+# is derived from other bundles' verifier-passing claims, and those upstream
+# bundles are EMBEDDED whole under ``evidence_closure.upstream`` so the file
+# stays self-contained. The manifest gains one leaf per upstream, named by
+# its root — the chain root commits to the upstream set *and* bytes.
+CLOSURE_CHAIN = "chain-snapshot"
+
+# The bundle-native domain name a chain bundle is sealed under. Lives here
+# (the format contract) so the emitter and the verifier share it without a
+# circular import; the GroundedDomain registry never learns it.
+CHAIN_DOMAIN = "chain"
 
 # Sections that are attestations OVER the sealed root (added after sealing)
 # and therefore structurally excluded from the manifest they attest.
@@ -48,7 +69,14 @@ _TOP_LEVEL_KEYS = frozenset(
     }
 )
 _CLOSURE_KEYS = frozenset({"kind", "graph", "kb"})
+_CHAIN_CLOSURE_KEYS = frozenset({"kind", "graph", "kb", "upstream"})
 _GRAPH_KEYS = frozenset({"nodes", "edges", "resolutions", "mentions"})
+
+
+def _closure_keys_for(kind: object) -> frozenset[str]:
+    """The exact closure key set a kind may carry — ``upstream`` exists only
+    on chain closures, so a full-snapshot bundle cannot smuggle one along."""
+    return _CHAIN_CLOSURE_KEYS if kind == CLOSURE_CHAIN else _CLOSURE_KEYS
 
 
 def _dict(value: object, key: str) -> dict[str, object]:
@@ -107,6 +135,24 @@ def leaf_manifest(bundle: dict[str, object]) -> dict[str, str]:
         if leaf in leaves:
             raise ValueError(f"duplicate node id {record_id!r} in the graph snapshot")
         leaves[leaf] = digest(node)
+    if _get(closure, "kind") == CLOSURE_CHAIN:
+        # One leaf per embedded upstream bundle, NAMED by its sealed root
+        # (spec 0143 D2): the manifest commits to the upstream set by root and
+        # to each upstream's full bytes — the chain is a depth-1 hash-DAG.
+        for i, item in enumerate(
+            _list(_get(closure, "upstream"), "evidence_closure.upstream")
+        ):
+            upstream = _dict(item, f"upstream[{i}]")
+            integrity = _dict(_get(upstream, "integrity"), f"upstream[{i}].integrity")
+            root = _get(integrity, "root")
+            if not isinstance(root, str):
+                raise ValueError(f"expected a string root at upstream[{i}]")
+            leaf = f"upstream:{root}"
+            if leaf in leaves:
+                raise ValueError(
+                    f"duplicate upstream root {root!r} in the chain closure"
+                )
+            leaves[leaf] = digest(upstream)
     return leaves
 
 
@@ -192,7 +238,7 @@ def _section_set_problems(bundle: dict[str, object]) -> list[str]:
         )
     closure = bundle.get("evidence_closure")
     if isinstance(closure, dict):
-        extra_closure = set(closure) - _CLOSURE_KEYS
+        extra_closure = set(closure) - _closure_keys_for(closure.get("kind"))
         if extra_closure:
             problems.append(
                 f"unexpected evidence_closure key(s) {sorted(extra_closure)}"
