@@ -69,7 +69,11 @@ class AuditRecord:
     refused: bool
     signed_by: str | None
     claim_count: int
-    verified_claim_count: int
+    #: Claims whose verdict RE-DERIVES from the packaged evidence — counted
+    #: from the verifier's re-execution, never from the bundle's own recorded
+    #: flags (a forger controls those). ``None`` when the bundle was not
+    #: re-executed here (a degraded bundle has no honest count to report).
+    verified_claim_count: int | None
     has_action: bool
     mapping: tuple[MappingRow, ...]
     disclaimer: str = DISCLAIMER
@@ -184,15 +188,16 @@ def audit_record(bundle: dict[str, object]) -> AuditRecord:
         else True
     )
 
-    verified = sum(
-        1 for c in claims if isinstance(c, dict) and c.get("verified") is True
-    )
+    # The honest count comes from the verifier's re-execution (a forger
+    # controls the bundle's recorded flags, so those are never counted).
+    re_derivable = report.taxonomy == "RE-DERIVED"
+    verified = sum(1 for c in report.claims if c.rederived) if re_derivable else None
 
     return AuditRecord(
         domain=report.domain,
         question=question,
         verdict=report.verdict,
-        re_derivable=report.taxonomy == "RE-DERIVED",
+        re_derivable=re_derivable,
         refused=report.refused,
         signed_by=report.signature_public_key,
         claim_count=len(claims),
@@ -224,13 +229,15 @@ def render_text(record: AuditRecord) -> str:
         f"verdict:  {record.verdict} — {_VERDICT_LINE.get(record.verdict, '')}"
     )
     lines.append(f"domain:   {record.domain}")
+    kind = " · action bundle" if record.has_action else " · answer only"
     if record.refused:
         lines.append("decision: an explicit refusal (the system declined to answer).")
+    elif record.verified_claim_count is None:
+        lines.append(f"decision: claim(s) not re-executed here (see mapping){kind}")
     else:
         lines.append(
             f"decision: {record.verified_claim_count}/{record.claim_count} "
-            "claim(s) re-derived"
-            + (" · action bundle" if record.has_action else " · answer only")
+            f"claim(s) re-derive from the packaged evidence{kind}"
         )
     origin = (
         f"signed by {record.signed_by}"

@@ -33,17 +33,25 @@ def test_honest_bundle_records_pass_and_the_mapping() -> None:
     record = audit_record(_load(HONEST))
     assert record.verdict == "PASS"
     assert record.re_derivable and not record.refused
+    assert record.verified_claim_count == record.claim_count == 3
     articles = {row.article for row in record.mapping}
     assert "Art. 12" in articles and "Art. 14" in articles
 
 
 def test_forged_bundle_records_failed_never_a_rubber_stamp() -> None:
-    """The whole honesty point: an audit record of a failing decision says so."""
+    """The whole honesty point: an audit record of a failing decision says so —
+    and its claim count comes from the RE-EXECUTION, never from the bundle's
+    own recorded flags (the forger controls those; all 3 read verified=true)."""
     record = audit_record(_load(FORGED))
     assert record.verdict == "FAIL"
+    assert record.claim_count == 3
+    # The inflated total fails AND the comparison conclusion built on it fails:
+    # only the untouched claim re-derives. (Recorded flags would say 3/3.)
+    assert record.verified_claim_count == 1
     text = render_text(record)
     assert "FAILED re-verification" in text
     assert "do NOT re-derive" in text
+    assert "1/3 claim(s) re-derive" in text
 
 
 def test_action_bundle_records_human_oversight() -> None:
@@ -77,10 +85,13 @@ def test_degraded_bundle_records_not_re_derivable() -> None:
     record = audit_record(engine_version_spoof(_load(HONEST)).bundle)
     assert record.verdict == "DEGRADED"
     assert not record.re_derivable
+    assert record.verified_claim_count is None  # no re-execution → no count
     why = next(r for r in record.mapping if r.article == "Art. 12 (purpose)")
     assert not why.carried
     assert "cannot re-derive" in why.detail
-    assert "not re-executed to a pass" in render_text(record)
+    text = render_text(record)
+    assert "not re-executed to a pass" in text
+    assert "not re-executed here" in text
 
 
 def test_broken_envelope_cannot_be_audited() -> None:

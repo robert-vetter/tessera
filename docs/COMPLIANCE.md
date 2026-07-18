@@ -45,14 +45,21 @@ re-verification produces a record that says so — never a rubber stamp).
 ```console
 $ uv run tessera bundle audit data/challenge/honest.tsb
 verdict:  PASS — the decision RE-VERIFIED: every claim re-derives from its evidence.
+domain:   business
+decision: 3/3 claim(s) re-derive from the packaged evidence · answer only
 …
   [✓] Art. 12 · Record-keeping / traceability
   [✓] Art. 12 (purpose) · Reconstructing why an output was produced
-  [—] Art. 14 · Human oversight   (answer-only bundle — an action bundle carries one)
+  [—] Art. 14 · Human oversight
 
 $ uv run tessera bundle audit data/challenge/forged.tsb
 verdict:  FAIL — the decision FAILED re-verification: its claims do NOT re-derive …
+decision: 1/3 claim(s) re-derive from the packaged evidence · answer only
 ```
+
+The count is computed from the verifier's **re-execution**, never from the
+bundle's own recorded flags — the forged bundle's flags all read
+`verified=true`, and the record ignores them.
 
 `--json` emits the structured record. A bundle whose envelope is broken
 cannot be audited (exit 4) — you cannot produce an audit record from a file
