@@ -30,9 +30,11 @@ Bring-your-own-data (Milestone 18):
   tessera ask <owner>/<repo>|<dir> "<q>"  answer over a repo or a directory
   tessera smoke <owner>/<repo>            check the trust contract holds on it
 
-Trust bundles (Milestone 20):
+Trust bundles (Milestones 20–22):
   tessera bundle "<q>" --domain <d>       emit a sealed, portable trust bundle
   tessera verify <file>.tsb               re-execute its verification, offline
+  tessera bundle explain <file>.tsb       render its chain legibly for a human
+  tessera bundle audit <file>.tsb         decision record (EU AI Act mapping)
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"

@@ -78,6 +78,8 @@ def main(argv: list[str] | None = None) -> int:
         return keygen_main(argv[1:])
     if argv and argv[0] == "explain":
         return explain_main(argv[1:])
+    if argv and argv[0] == "audit":
+        return audit_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -217,6 +219,41 @@ def explain_main(argv: list[str] | None = None) -> int:
         print(json.dumps(explanation.to_dict(), indent=2, ensure_ascii=False))
     else:
         print(render_text(explanation, source=str(args.bundle)))
+    return 0
+
+
+# --- tessera bundle audit ---------------------------------------------------------
+
+
+def audit_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle audit",
+        description="Produce a decision record from a trust bundle: the "
+        "verification verdict plus a mapping to the record-keeping (Art. 12) "
+        "and human-oversight (Art. 14) concepts of the EU AI Act. A mapping "
+        "and documentation aid, not a compliance attestation.",
+    )
+    parser.add_argument("bundle", type=Path, help="path to the .tsb file")
+    parser.add_argument("--json", action="store_true", help="structured output")
+    args = parser.parse_args(argv)
+
+    bundle = _load_bundle(args.bundle)
+    if bundle is None:
+        return 4
+
+    from tessera.bundle.audit import audit_record, render_text
+    from tessera.bundle.verify import BundleFormatError
+
+    try:
+        record = audit_record(bundle)
+    except BundleFormatError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 4
+
+    if args.json:
+        print(json.dumps(record.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(render_text(record))
     return 0
 
 
