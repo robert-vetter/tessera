@@ -39,11 +39,15 @@ The scoped novelty claim, its mandatory caveats, and every load-bearing
 design decision are fixed in [spec 0131](https://github.com/robert-vetter/tessera/blob/main/specs/0131-verifiable-audit-plan.md)
 — public copy may not exceed them.
 
-The timing is dated: the EU AI Act's high-risk record-keeping and
-human-oversight obligations (Articles 12 and 14) apply from
-**2026-08-02**, with both candidate technical standards still drafts.
-Act 3 ships a field-level **mapping** to those articles — a mapping,
-never a compliance claim.
+The timing is real but not a cliff — and this plan's original date here
+was stale (corrected 2026-07-18, the honest-timeline rule of spec 0139):
+the **Digital Omnibus deferred** the Annex III high-risk obligations —
+Art. 12 record-keeping and Art. 14 human oversight — to **2 December
+2027**; only Art. 50 transparency applies from 2026-08-02, and both
+candidate technical standards are still drafts ([MARKET.md §3](MARKET.md),
+[COMPLIANCE.md](COMPLIANCE.md)). Act 3 ships a field-level **mapping**
+to those articles — a mapping, never a compliance claim — and the demand
+it serves is engineering-driven, with the regulation as tailwind.
 
 **Positioning (Act 2's line, extended one clause):**
 

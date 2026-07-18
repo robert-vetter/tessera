@@ -40,4 +40,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.audit` — a decision record mapping a bundle to the
   EU AI Act record-keeping/human-oversight concepts (spec 0139); a mapping
   and documentation aid, never a compliance attestation.
+- :mod:`tessera.bundle.chain` — chained bundles (spec 0143, ADR 0033): a
+  verified bundle becomes evidence for the next answer; upstreams travel
+  embedded and `verify` re-executes the whole chain recursively, offline.
 """

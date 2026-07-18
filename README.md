@@ -24,6 +24,7 @@ An open, deterministic **evidence layer for AI agents**. Every answer is built f
 **📊 The benchmark** — evidence-gated vs. the same engine *ungated*, same corpus and verifier, no LLM judge: [docs/BENCHMARK.md](docs/BENCHMARK.md).
 **🔌 MCP-native** — plug it in as your agent's evidence oracle: `uv run tessera-mcp`.
 **🕵️ The challenge** — two bundles ship in this repo, one honest and one a cryptographically perfect fake; every signature-checker passes both, one offline command tells them apart: [docs/CHALLENGE.md](docs/CHALLENGE.md).
+**🔗 Chained bundles** — the audit trail for agent pipelines: a verified answer becomes evidence for the next one, upstream receipts travel embedded, and one offline `tessera verify` re-executes the *whole chain* recursively — forge any link at any depth and the exact upstream is named: [docs/CHAIN.md](docs/CHAIN.md).
 **🧾 Audit-ready** — turn any decision into a record mapped to EU AI Act record-keeping (Art. 12) and human-oversight (Art. 14) concepts: `tessera bundle audit <file>` · [docs/COMPLIANCE.md](docs/COMPLIANCE.md).
 
 > *A `tessera` is a single tile in a mosaic: many small, heterogeneous pieces assembled into one coherent, verifiable picture — which is what this system does with enterprise data.*

@@ -49,6 +49,8 @@ from tessera.bundle.canonical import canonical_bytes
 from tessera.bundle.ed25519 import verify as ed25519_verify
 from tessera.bundle.emit import engine_version, shape_identifiers
 from tessera.bundle.format import (
+    CHAIN_DOMAIN,
+    CLOSURE_CHAIN,
     CLOSURE_FULL_SNAPSHOT,
     FORMAT_MAJOR,
     FORMAT_NAME,
@@ -101,6 +103,20 @@ class ClaimCheck:
         }
 
 
+@dataclass(frozen=True)
+class UpstreamCheck:
+    """One embedded upstream bundle's recursive verification (spec 0143): its
+    sealed root, the verdict its own full re-verification produced *here*
+    (recorded verdicts are never trusted), and the named cause on non-PASS."""
+
+    root: str
+    verdict: str
+    cause: str | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {"root": self.root, "verdict": self.verdict, "cause": self.cause}
+
+
 UNSIGNED = "UNSIGNED"
 SIGNED = "SIGNED"
 ed25519_ALGORITHM = "ed25519"
@@ -124,6 +140,9 @@ class VerifyReport:
     answer_rederives: bool | None
     answer_cause: str | None
     refused: bool
+    #: Chain bundles only (spec 0143): one entry per embedded upstream, from
+    #: its recursive re-verification here. Empty for single-decision bundles.
+    upstreams: tuple[UpstreamCheck, ...] = ()
 
     @property
     def envelope_problems(self) -> tuple[str, ...]:
@@ -182,6 +201,7 @@ class VerifyReport:
             "answer_rederives": self.answer_rederives,
             "answer_cause": self.answer_cause,
             "refused": self.refused,
+            "upstreams": [u.to_dict() for u in self.upstreams],
             "semantic_problems": list(self.semantic_problems),
             "verdict": self.verdict,
             "exit_code": self.exit_code,
@@ -426,6 +446,41 @@ def _answer_rederivation(
         question=result.question,
         route=route,
     )
+    return _fresh_divergence(stored_result, result, fresh)
+
+
+def _chain_answer_rederivation(
+    stored_result: dict[str, object],
+    result: GroundedResult,
+    graph: KnowledgeGraph,
+    kb: KnowledgeBase,
+) -> tuple[bool, str | None]:
+    """Check (b) for chain bundles (spec 0143 D5): re-run the deterministic
+    chain route — the frozen core's lexical retrieval over the derived claim
+    records — over the packaged corpus; equality rules identical to the
+    domain check."""
+    from tessera.bundle.chain import CHAIN_CLAIM_SHAPES, chain_route
+
+    route, answer = chain_route(result.question, graph, kb)
+    fresh = serialize_answer(
+        answer,
+        graph,
+        CHAIN_CLAIM_SHAPES,
+        domain=CHAIN_DOMAIN,
+        question=result.question,
+        route=route,
+    )
+    return _fresh_divergence(stored_result, result, fresh)
+
+
+def _fresh_divergence(
+    stored_result: dict[str, object],
+    result: GroundedResult,
+    fresh: GroundedResult,
+) -> tuple[bool, str | None]:
+    """The shared equality rule for check (b): canonical-bytes equality, then
+    the first divergence named (mode, refusal, claim texts, metadata, or a
+    fabricated derived/display field)."""
     if canonical_bytes(stored_result) == canonical_bytes(fresh.to_dict()):
         return True, None
     # Name the first divergence — the packaged corpus does not yield this answer.
@@ -614,6 +669,121 @@ def _action_problems(
     return tuple(dict.fromkeys(problems))
 
 
+# --- the chain layer (spec 0143) ---------------------------------------------------
+
+
+def _short_root(root: str) -> str:
+    """A readable root prefix for named causes: ``sha256:`` + 12 hex chars."""
+    return root[:19] + "…" if len(root) > 20 else root
+
+
+def _chain_problems(
+    closure: dict[str, object], kb: KnowledgeBase
+) -> tuple[tuple[UpstreamCheck, ...], tuple[str, ...]]:
+    """The chain checks (spec 0143 D5, ADR 0033): recursively re-verify every
+    embedded upstream with the FULL verifier — recorded verdicts are never
+    trusted — then require every derived record to byte-match the upstream
+    claim it cites, and that claim to have re-derived in the upstream's own
+    re-execution. Every failure is a named semantic problem (exit 2)."""
+    problems: list[str] = []
+    checks: list[UpstreamCheck] = []
+    passing: dict[str, tuple[dict[str, object], VerifyReport]] = {}
+
+    raw = closure.get("upstream")
+    if not isinstance(raw, list):
+        problems.append("the chain closure carries no upstream list")
+        raw = []
+
+    for position, item in enumerate(raw):
+        if not isinstance(item, dict):
+            problems.append(f"upstream[{position}] is not a bundle object")
+            continue
+        integrity = item.get("integrity")
+        root = integrity.get("root") if isinstance(integrity, dict) else None
+        root_name = root if isinstance(root, str) else f"upstream[{position}]"
+        try:
+            sub = verify_bundle(item)
+        except BundleFormatError as error:
+            problems.append(
+                f"embedded upstream {_short_root(root_name)} cannot be "
+                f"verified: {error}"
+            )
+            checks.append(
+                UpstreamCheck(root=root_name, verdict="TAMPERED", cause=str(error))
+            )
+            continue
+        cause: str | None = None
+        if sub.verdict == "PASS":
+            passing[root_name] = (item, sub)
+        else:
+            cause = (
+                sub.taxonomy_reason
+                or next(iter(sub.semantic_problems), None)
+                or next(iter(sub.envelope_problems), None)
+                or sub.verdict
+            )
+            problems.append(
+                f"embedded upstream {_short_root(root_name)} does not "
+                f"re-verify ({sub.verdict}): {cause}"
+            )
+        checks.append(UpstreamCheck(root=root_name, verdict=sub.verdict, cause=cause))
+
+    for record in kb.records:
+        locator = record.origin.locator
+        parts = dict(locator.parts)
+        cited_root = parts.get("bundle")
+        cited_index = parts.get("claim")
+        if locator.kind != "bundle-claim" or cited_root is None or cited_index is None:
+            problems.append(
+                f"chain record {record.id!r} does not cite an upstream claim "
+                "(a chain corpus may contain nothing else)"
+            )
+            continue
+        if cited_root not in passing:
+            problems.append(
+                f"chain record {record.id!r} cites upstream "
+                f"{_short_root(cited_root)}, which is not embedded-and-passing "
+                "in this bundle"
+            )
+            continue
+        upstream, sub = passing[cited_root]
+        result_section = upstream.get("result")
+        claims_raw = (
+            result_section.get("claims") if isinstance(result_section, dict) else None
+        )
+        claims_list = claims_raw if isinstance(claims_raw, list) else []
+        index = int(cited_index) if cited_index.isdigit() else -1
+        if not 0 <= index < len(claims_list):
+            problems.append(
+                f"chain record {record.id!r} cites claim {cited_index!r} of "
+                f"{_short_root(cited_root)}, which does not exist"
+            )
+            continue
+        upstream_claim = claims_list[index]
+        claim_dict = upstream_claim if isinstance(upstream_claim, dict) else {}
+        if claim_dict.get("text") != record.text:
+            problems.append(
+                f"chain record {record.id!r} does not match upstream claim "
+                f"{index} of {_short_root(cited_root)} — the cited text was "
+                "altered"
+            )
+            continue
+        if claim_dict.get("verified") is not True:
+            problems.append(
+                f"chain record {record.id!r} cites upstream claim {index} of "
+                f"{_short_root(cited_root)}, which is not a verifier-passing "
+                "claim"
+            )
+            continue
+        if index >= len(sub.claims) or not sub.claims[index].rederived:
+            problems.append(
+                f"chain record {record.id!r} cites upstream claim {index} of "
+                f"{_short_root(cited_root)}, which does not re-derive from its "
+                "own packaged evidence"
+            )
+    return tuple(checks), tuple(problems)
+
+
 # --- the verifier ------------------------------------------------------------------
 
 
@@ -623,6 +793,10 @@ def verify_bundle(
     """Verify one parsed bundle, both layers. Raises
     :class:`BundleFormatError` when the envelope is unreadable. With
     ``require_signed``, an unsigned bundle is an envelope failure (exit 4)."""
+    # Bundle-native chain grammars (spec 0143); imported here, not at module
+    # level, to keep the bundle-layer import graph acyclic and shallow.
+    from tessera.bundle.chain import CHAIN_CLAIM_SHAPES
+
     _check_format(bundle)
     # The anchor section is reserved for transparency-log anchoring (unit 0138)
     # and has no verifier yet. It is an attestation OVER the root, so it is not
@@ -667,14 +841,17 @@ def verify_bundle(
         )
 
     # --- taxonomy: can the installed engine honestly judge this bundle? ---
+    # The chain domain is bundle-native (spec 0143 D5): it never enters the
+    # GroundedDomain registry, declares no claim shapes, and re-executes via
+    # the chain route — so its gate replaces registry membership only.
     taxonomy = RE_DERIVED
     reason: str | None = None
-    if domain_name not in available_domains():
+    if domain_name != CHAIN_DOMAIN and domain_name not in available_domains():
         taxonomy, reason = (
             NOT_EVALUABLE,
             (
                 f"unknown domain {domain_name!r} — this engine knows "
-                f"{', '.join(available_domains())}"
+                f"{', '.join(available_domains())} and chain bundles"
             ),
         )
     elif sealed_under != installed:
@@ -689,7 +866,11 @@ def verify_bundle(
         )
     else:
         recorded_shapes = engine.get("claim_shapes")
-        installed_shapes = shape_identifiers(domain(domain_name).claim_shapes)
+        installed_shapes = shape_identifiers(
+            CHAIN_CLAIM_SHAPES
+            if domain_name == CHAIN_DOMAIN
+            else domain(domain_name).claim_shapes
+        )
         if recorded_shapes != installed_shapes:
             taxonomy, reason = (
                 NOT_EVALUABLE,
@@ -713,6 +894,7 @@ def verify_bundle(
             )
 
     claims: tuple[ClaimCheck, ...] = ()
+    upstreams: tuple[UpstreamCheck, ...] = ()
     answer_rederives: bool | None = None
     answer_cause: str | None = None
     if taxonomy == RE_DERIVED:
@@ -722,15 +904,17 @@ def verify_bundle(
         except ValueError as error:
             raise BundleFormatError(f"malformed evidence closure: {error}") from error
         # A full re-derivable graph is present, so re-execution runs regardless
-        # of the kind label. If the label nonetheless claims a partial closure,
-        # that inconsistency is itself a semantic failure — the downgrade
-        # attack (relabel to suppress the check) is caught, not silently obeyed.
-        if closure.get("kind") != CLOSURE_FULL_SNAPSHOT:
+        # of the kind label. If the label nonetheless claims a different
+        # closure, that inconsistency is itself a semantic failure — the
+        # downgrade attack (relabel to suppress a check) is caught, not obeyed.
+        expected_kind = (
+            CLOSURE_CHAIN if domain_name == CHAIN_DOMAIN else CLOSURE_FULL_SNAPSHOT
+        )
+        if closure.get("kind") != expected_kind:
             structural.append(
-                f"the closure kind {closure.get('kind')!r} claims a partial "
-                f"closure, but a full re-derivable graph is packaged (expected "
-                f"{CLOSURE_FULL_SNAPSHOT!r}) — the label cannot suppress "
-                "re-execution"
+                f"the closure kind {closure.get('kind')!r} does not match the "
+                f"sealed domain (expected {expected_kind!r}) — the label "
+                "cannot suppress re-execution"
             )
         referential = _referential_problems(result, graph)
         if referential:
@@ -739,12 +923,22 @@ def verify_bundle(
             # a referentially-consistent graph.
             structural.extend(referential)
         else:
-            dom = domain(domain_name)
             try:
-                claims = _claim_checks(result, graph, dom.claim_shapes)
-                answer_rederives, answer_cause = _answer_rederivation(
-                    _section(bundle, "result"), result, graph, kb, domain_name
-                )
+                if domain_name == CHAIN_DOMAIN:
+                    # The chain layer: recursive upstream re-verification plus
+                    # the record↔upstream-claim cross-checks (spec 0143 D5).
+                    upstreams, chain_problems = _chain_problems(closure, kb)
+                    structural.extend(chain_problems)
+                    claims = _claim_checks(result, graph, CHAIN_CLAIM_SHAPES)
+                    answer_rederives, answer_cause = _chain_answer_rederivation(
+                        _section(bundle, "result"), result, graph, kb
+                    )
+                else:
+                    dom = domain(domain_name)
+                    claims = _claim_checks(result, graph, dom.claim_shapes)
+                    answer_rederives, answer_cause = _answer_rederivation(
+                        _section(bundle, "result"), result, graph, kb, domain_name
+                    )
                 # An action bundle also re-derives its wire request (spec 0136).
                 action_section = bundle.get("action")
                 if isinstance(action_section, dict):
@@ -777,6 +971,7 @@ def verify_bundle(
         answer_rederives=answer_rederives,
         answer_cause=answer_cause,
         refused=result.refused,
+        upstreams=upstreams,
     )
 
 
@@ -826,6 +1021,19 @@ def render_report(report: VerifyReport, *, source: str) -> str:
                 mark = "ok" if check.matches and check.rederived else "!!"
                 state = "supported" if check.rederived else "UNSUPPORTED"
                 lines.append(f"  [{mark}] claim {check.index}: {state} — {check.text}")
+        if report.upstreams:
+            passing = sum(1 for u in report.upstreams if u.verdict == "PASS")
+            lines.append(
+                f"chain:     {passing}/{len(report.upstreams)} embedded "
+                "upstream bundle(s) re-verified recursively"
+            )
+            for upstream in report.upstreams:
+                mark = "ok" if upstream.verdict == "PASS" else "!!"
+                suffix = f" — {upstream.cause}" if upstream.cause else ""
+                lines.append(
+                    f"  [{mark}] upstream {_short_root(upstream.root)}: "
+                    f"{upstream.verdict}{suffix}"
+                )
         if report.answer_rederives:
             lines.append(
                 "answer:    re-derives — the packaged corpus yields exactly "
