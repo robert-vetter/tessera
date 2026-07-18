@@ -2866,3 +2866,93 @@ incl. the 6-way bundle-determinism matrix; frozen core untouched
 **State of the tree:** `main` green (de0807d); `tessera/bundle/` now
 carries `audit`; tags through `milestone-21` (M22 in progress); no open
 unit branches.
+
+---
+
+## 2026-07-18 — Autonomous session: chained trust bundles (spec 0143, ADR 0033, #180)
+
+**Mode note:** fully autonomous from the maintainer's kickoff ("find the
+feature the audience would rate highest, then ship it end to end").
+Discipline unchanged: spec 0143 + ADR 0033 before code, branch, gate, PR
+#180, CI green (incl. the 6-OS/Py matrix), squash-merge; the candidate
+scan and the decision rationale are recorded in the spec's Problem
+section (CI action, Space verify pane, drift-diffing considered and
+recorded as future work; chaining won on: extends the confirmed-empty
+re-execution slot transitively to multi-agent pipelines, offline,
+additive, one-command demo).
+
+**The feature.** A verified bundle becomes first-class **evidence** for
+the next answer, and one offline `tessera verify` re-executes the whole
+chain:
+- *Cite only what re-verifies* — emission fully re-verifies every
+  upstream (non-PASS refuses, named; the challenge's forgery is the
+  pinned refusal case); only verifier-passing claims become records
+  (verbatim, upstream root + claim index in the locator).
+- *Embed, don't reference* (ADR 0033) — upstreams travel whole; the
+  manifest gains one `upstream:<root>` leaf per link (a hash-DAG; cycles
+  impossible: no bundle can contain its own root). Closure kind
+  `chain-snapshot`, format minor 1.1 as a **per-file feature level** —
+  single-decision bundles keep declaring 1.0, so the committed challenge
+  artifacts (public roots) stayed byte-stable. That choice was forced by
+  a real break: a global minor bump invalidated the challenge
+  byte-identity test; per-file declaration is the honest fix.
+- *Recursion, never trust* — verify re-verifies every embedded upstream
+  with the full verifier, byte-matches every derived record to the cited
+  upstream claim (which must itself re-derive), re-runs the chain route
+  (frozen core lexical retrieval, called not modified) with
+  canonical-bytes equality. Report/JSON carry per-upstream verdicts.
+- *One declared chain grammar* (verbatim citation, ADR 0011 pattern) —
+  surfaced by the first live run: generic shared-fragment grammar
+  re-argued upstream claims against the chain corpus (UNSUPPORTED);
+  the citation grammar owns those verdicts honestly, and the deeper
+  truth is re-established one level down, where the evidence lives.
+
+**The theorem, test-pinned** (`test_deep_forge_is_caught_by_recursion_alone`):
+the strongest attacker — full re-seal powers at every level, the
+challenge's internally-consistent forgery swapped in, every chain-level
+reference rewritten — produces a chain whose own answer re-derives and
+whose citations all byte-match, and it still FAILS, named, by the
+recursive re-execution alone. Also pinned: cited-text tamper under full
+internal consistency, upstream swap/removal, byte-flip inside an
+embedded upstream (exit 4), `upstream`-key smuggling into full-snapshot
+bundles (exit 4), refusal-only upstreams refuse to chain, chain-of-chain
+depth 2, hash-seed byte-determinism (Windows-safe env pattern — a bare
+PATH broke the matrix, fixed), stdlib leak-guard, audit/explain render
+chains.
+
+**Committed demo:** `data/chain/brief.tsb` — a DevEx RCA receipt + the
+challenge's honest business bundle chained into one cross-vertical brief
+(573 KB), built by `scripts/build_chain_demo.py`, byte-identity pinned
+(the 0140 pattern). `docs/CHAIN.md` (walkthrough, forgery theorem,
+honest limits); README + mkdocs pointers; the determinism matrix now
+runs the chain tests on all 3 OS.
+
+**Drift repaired in passing:** ROADMAP3 still said the Art. 12/14
+obligations "apply from 2026-08-02" — corrected to the deferred
+timeline (2 Dec 2027; only Art. 50 from Aug 2026) per spec 0139's
+honest-timeline rule.
+
+**Eval:** six lines byte-identical; gate green (745 tests, +20); mypy
+strict; mkdocs strict; frozen core AND agent chain empty-diff vs main
+(all changes in `tessera/bundle/` + front-door help + docs).
+
+**Z Fellows update v3 drafted** (local `launch/zfellows/UPDATE-2026-07-18.md`,
+supersedes v2): headlined by the chain feature, audit records as the
+supporting act, the launch-test/KPI-replacement paragraph per the
+maintainer's professional-register feedback, three asks (design partner,
+multi-agent-orchestration intro, GRC teardown). Send-checklist: only
+after the wrap PR merges + numbers re-verified.
+
+**Next**
+- 0138 Rekor (maintainer-present only) and 0141 write-up close M22; the
+  write-up should now cover chains (and the WRITEUP addendum is where
+  the chain's honest limits get their prose form).
+- Named future work from 0143: floor extension with cross-bundle
+  mutation classes; MCP exposure of chain emission; cross-bundle
+  aggregation (explicitly not smuggled in).
+- The maintainer's outreach wave with `brief.tsb` + the audit record as
+  the two opener artifacts.
+
+**State of the tree:** `main` green (ed68e30); `tessera/bundle/` now
+carries `chain`; `data/chain/` committed; tags through `milestone-21`
+(M22 in progress); no open unit branches.
