@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -437,12 +438,15 @@ def test_chain_bytes_stable_across_hash_seeds() -> None:
     )
     digests = set()
     for seed in ("0", "1", "42"):
+        # Copy the real environment and vary only PYTHONHASHSEED — a bare env
+        # breaks subprocess launching on Windows (needs SystemRoot etc.).
+        env = {**os.environ, "PYTHONHASHSEED": seed}
         proc = subprocess.run(
             [sys.executable, "-c", script],
             capture_output=True,
             text=True,
             check=True,
-            env={"PYTHONHASHSEED": seed, "PATH": "/usr/bin:/bin"},
+            env=env,
         )
         digests.add(proc.stdout.strip())
     assert len(digests) == 1

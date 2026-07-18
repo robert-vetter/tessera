@@ -93,4 +93,5 @@ jobs:
           tests/test_bundle_verify.py
           tests/test_bundle_signing.py
           tests/test_bundle_action.py
+          tests/test_bundle_chain.py
           tests/test_auditability.py
