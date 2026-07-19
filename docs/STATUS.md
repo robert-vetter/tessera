@@ -2956,3 +2956,73 @@ after the wrap PR merges + numbers re-verified.
 **State of the tree:** `main` green (ed68e30); `tessera/bundle/` now
 carries `chain`; `data/chain/` committed; tags through `milestone-21`
 (M22 in progress); no open unit branches.
+
+---
+
+## 2026-07-18 — Autonomous session 2: trust policies (spec 0144, ADR 0034, #182)
+
+**Mode note:** fully autonomous from the maintainer's kickoff ("the
+feature an SAP/Joule-shaped enterprise audience would rate highest").
+Candidate scan recorded in the spec (HANA bundle storage = plumbing/
+tier-gated; delegation key hierarchies = crypto surface ADR 0032 scoped
+out; CI action = packaging); **policies won**: they speak the buyer's
+native vocabulary (controls), compose with every shipped artifact, and
+stay deterministic, offline, additive, one-command demonstrable.
+
+**The feature.** A trust policy is a small, versioned JSON rule file the
+verifying party owns; `tessera verify <file> --policy rules.json`
+re-executes every rule against the sealed bundle + the verifier's own
+report — PASS/VIOLATED per rule, named detail, offline, over chains
+recursively. Load-bearing decisions (ADR 0034):
+- **Policy-at-verify, never policy-in-bundle** — self-attested
+  compliance is a rubber stamp; zero format change, every existing
+  bundle (challenge pair, chain brief) immediately policy-checkable.
+- **Fail-closed parsing** — unknown rule / malformed value / unreadable
+  file refuses evaluation, named (pinned: a typo'd guardrail never
+  silently passes). Also fail-closed at evaluation: upstream signer
+  rules on a chain whose recursion did not run are VIOLATED ("could not
+  be checked"), never vacuous.
+- **Closed rule vocabulary, not a policy language** — expressive power
+  buys audit opacity; rejected alternatives recorded.
+- **Exit 5, precedence 4 > 2 > 5 > 3 > 0** — a policy can never upgrade
+  a broken or lying bundle (pinned: forged + any policy → 2).
+- **Scoped verdict, pinned verbatim:** "COMPLIANT means: this policy,
+  these rules, this file — not correctness, not legal compliance, not
+  certification."
+- Rule vocabulary v1: require_signed / allowed_signers /
+  require_rederived / forbid_unverified_claims /
+  allowed_evidence_sources (fnmatchcase — a verdict must not depend on
+  the verifier's OS; fnmatch is case-insensitive on Windows) / actions
+  (allow, require_approval_gate, forbid_real_send) / chain (max_depth,
+  require_signed_upstreams, allowed_upstream_signers — read from the
+  recursion; `UpstreamCheck` gained signature_status/signer, additive).
+
+**Shipped with it:** three committed example policies (`policies/`:
+read-only agent, four-eyes drafted actions, signed chain — used verbatim
+by docs and tests); `docs/POLICY.md`; SAP_ALIGNMENT addendum mapping the
+vocabulary to the controls it mirrors (four-eyes, SoD-flavored
+read-only, system-of-record allowlists — mapping language only, no
+integration claim); policy tests in the 3-OS matrix; CHAIN.md quickstart
+root refreshed to the current fresh-build value (post minor-revert
+doc-truthfulness).
+
+**Eval:** six lines byte-identical; gate green (763 tests, +18); mypy
+strict; mkdocs strict; frozen core AND agent chain empty-diff vs main.
+
+**Z Fellows update v4 drafted** (local, supersedes v3): the
+governance-stack story — receipts → chains → policies → audit records —
+with policies as the closer; professional register per the recorded
+tone preference; send only after this wrap merges + numbers re-verified.
+
+**Next**
+- 0138 Rekor (maintainer-present only) + 0141 write-up close M22 — the
+  write-up should now cover chains AND policies.
+- Named future work: audit records cross-referencing the policy hash
+  ("verified under policy Y"); floor cross-bundle mutation classes; MCP
+  chain/policy exposure; emission-side policy convenience.
+- The maintainer's outreach wave: brief.tsb + a policy file + the audit
+  record = the three-command governance demo.
+
+**State of the tree:** `main` green (730fa46); `tessera/bundle/` now
+carries `policy`; `policies/` committed; tags through `milestone-21`
+(M22 in progress); no open unit branches.
