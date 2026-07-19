@@ -1,0 +1,13 @@
+{
+  "name": "four-eyes-drafted-actions",
+  "version": 1,
+  "rules": {
+    "require_rederived": true,
+    "forbid_unverified_claims": true,
+    "actions": {
+      "allow": true,
+      "require_approval_gate": true,
+      "forbid_real_send": true
+    }
+  }
+}
