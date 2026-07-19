@@ -81,6 +81,30 @@ then the phase tags are the releases.
   chain tests. `docs/CHAIN.md` + README pointer; ROADMAP3's stale
   pre-Omnibus compliance date corrected to the deferred timeline.
 
+- **Trust policies — governance as code, re-executed by the verifier**
+  (spec 0144, ADR 0034, #182). A policy is a small, versioned JSON rule
+  file a verifying party owns: `tessera verify <file> --policy rules.json`
+  re-executes every rule against the sealed bundle and the verifier's own
+  re-execution report — PASS or VIOLATED per rule with a named detail,
+  offline, over chains recursively where the rule says so. The two
+  load-bearing properties: the policy lives with the VERIFIER, never
+  inside the bundle (self-attested compliance is a rubber stamp; zero
+  format change — every existing bundle is immediately policy-checkable),
+  and parsing is FAIL-CLOSED (an unknown rule, malformed value, or
+  unreadable file refuses evaluation, named — a typo'd guardrail must
+  never silently pass). Rule vocabulary v1: signature/signer allowlists,
+  re-derivation, per-claim verdicts, cited-evidence source allowlists
+  (`fnmatchcase` — verdicts must not depend on the verifier's OS), action
+  approval-gate rules, chain depth/signed-upstream/signer rules (read
+  from the recursion; `UpstreamCheck` gains signature status/signer,
+  additive). Exit code 5 for the policy layer, precedence 4 > 2 > 5 > 3 >
+  0 — a policy can never upgrade a broken or lying bundle. "COMPLIANT
+  means: this policy, these rules, this file — not correctness, not legal
+  compliance, not certification" is printed verbatim and test-pinned.
+  Three committed example policies (`policies/`); `docs/POLICY.md`;
+  SAP_ALIGNMENT addendum (enterprise-controls mapping, mapping language
+  only); the 3-OS matrix runs the policy tests.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
