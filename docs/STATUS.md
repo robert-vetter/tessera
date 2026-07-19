@@ -3026,3 +3026,67 @@ tone preference; send only after this wrap merges + numbers re-verified.
 **State of the tree:** `main` green (730fa46); `tessera/bundle/` now
 carries `policy`; `policies/` committed; tags through `milestone-21`
 (M22 in progress); no open unit branches.
+
+---
+
+## 2026-07-18 — Autonomous session 3: verifiable approvals (spec 0145, ADR 0035, #184)
+
+**Mode note:** fully autonomous from the maintainer's kickoff ("a
+feature both an SAP-shaped enterprise audience and Z Fellows would rate
+highest"). Candidate scan recorded in the spec (policy-gated emission =
+sanctioned convenience; decision-diff = named future work; local ledger
+= overlaps the reserved Rekor unit); **approvals won**: they complete
+the product's own tagline — "only do what you approve" was a boolean
+until today — and they speak the enterprise approval-workflow vocabulary
+with the property those workflows lack: binding to exact bytes.
+
+**The feature.** An approval is a DETACHED signed artifact (Ed25519 over
+a canonical payload carrying the bundle's sealed root): `tessera bundle
+approve <file> --key k [--note] [--at]` → `<file>.approval.json`;
+`tessera verify <file> --approval a.json` (repeatable) checks each
+against the RECOMPUTED root — so a tampered-and-re-sealed bundle
+invalidates prior approvals automatically, and the forged challenge
+bundle cannot borrow the honest one's approval (pinned, named). Policy
+rule group `approvals` (fail-closed like all of spec 0144): `require: N`
+valid approvals, `distinct_approvers` (a duplicate key counts once —
+the same pair of eyes twice is not four eyes), `allowed_approvers`;
+verify without approvals against such a policy → violation, never
+vacuous. Load-bearing decisions (ADR 0035): detached-never-embedded
+(embedding would re-seal the very root being approved and cap the
+approver count); approvals INFORM, policies ENFORCE (an approval never
+changes the bundle's verdict — approved lies are still lies, exit
+precedence pinned); identity-not-time (the optional `at` is a signed
+CLAIM; proving time honestly is the reserved transparency-log unit); a
+key is not a person (ADR 0032 scope restated). Creating needs the
+`sign` extra; CHECKING is pure stdlib (leak-guarded), so `tessera
+verify` stays dependency-free.
+
+**Shipped with it:** `docs/APPROVAL.md` (exact-bytes demo incl. the
+forged-bundle refusal, the four-eyes policy, honest limits); POLICY.md
+rule-table rows; SAP_ALIGNMENT governance clause ("that is not what I
+approved" becomes machine-decidable — mapping language only); front-door
+help; the 3-OS matrix runs the approval tests (crypto e2e skip-marked
+like spec 0135).
+
+**Eval:** six lines byte-identical; gate green (777 tests, +14); mypy
+strict; mkdocs strict; frozen core AND agent chain empty-diff vs main.
+
+**The day in one line:** four autonomous sessions shipped `bundle audit`
+(#178), chained bundles (#180), trust policies (#182), and verifiable
+approvals (#184) — the stack is now receipts → chains → policies →
+approvals → audit records, and both halves of the positioning line are
+cryptographic. Z Fellows update v5 drafted locally (the tagline frame),
+send after this wrap + number re-verification.
+
+**Next**
+- 0138 Rekor (maintainer-present only; now also the honest home for
+  approval timestamps) + 0141 write-up close M22 — the write-up must
+  cover chains, policies, AND approvals.
+- Named future work: approval revocation artifacts; audit records citing
+  policy hash + approvals; floor cross-bundle classes; MCP exposure.
+- The maintainer's outreach wave: the three-command governance demo
+  (verify a chain → enforce a policy → check a four-eyes approval).
+
+**State of the tree:** `main` green (55e8646); `tessera/bundle/` now
+carries `approval`; tags through `milestone-21` (M22 in progress); no
+open unit branches.

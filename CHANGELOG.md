@@ -105,6 +105,25 @@ then the phase tags are the releases.
   SAP_ALIGNMENT addendum (enterprise-controls mapping, mapping language
   only); the 3-OS matrix runs the policy tests.
 
+- **Verifiable approvals — the sign-off as a cryptographic artifact**
+  (spec 0145, ADR 0035, #184). `tessera bundle approve` signs a DETACHED
+  approval artifact bound to the bundle's sealed root — proof of WHO (a
+  key) approved WHAT (these exact bytes): change one digit and re-seal,
+  and every prior approval reads INVALID with the mismatch named (the
+  forged challenge bundle cannot borrow the honest one's approval —
+  pinned). `tessera verify --approval a.json` (repeatable) checks each
+  artifact against the RECOMPUTED root and reports it, never altering the
+  bundle's own verdict (approved lies are still lies; exit precedence
+  pinned); the fail-closed `approvals` policy rule group makes four-eyes
+  one line (require N, distinct keys — a duplicate counts once — and
+  allowed-approver lists; verify without approvals against such a policy
+  violates, never passes vacuously). Detached by design (ADR 0035):
+  embedding would re-seal the very root being approved. Creating needs
+  the `sign` extra; checking is pure stdlib (leak-guarded). Honesty
+  stated where it matters: a key is not a person; the optional `at` is a
+  signed claim, not proof of time. `docs/APPROVAL.md`; POLICY.md rule
+  table + SAP_ALIGNMENT clause extended; the 3-OS matrix runs the tests.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
