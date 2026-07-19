@@ -134,6 +134,12 @@ platform/governance team can run:
   that one concrete decision satisfied the team's own named rules, and
   can be re-proven offline forever. Mapping language only, as
   throughout: this describes conceptual fit, not a product integration.
+- **Verifiable approvals ([APPROVAL.md](APPROVAL.md))** close the loop
+  on the release-strategy/four-eyes vocabulary: an approval is a
+  detached, signed artifact bound to the decision's *exact sealed
+  bytes* — "that is not what I approved" becomes machine-decidable —
+  and `approvals.require: 2` with named keys is the four-eyes control
+  as one policy line, checkable offline forever.
 
 The maintainer's application material lives outside the public
 repository (see `launch/README.md`).

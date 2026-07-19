@@ -58,6 +58,7 @@ nav:
   - The Challenge: CHALLENGE.md
   - Chained bundles: CHAIN.md
   - Trust policies: POLICY.md
+  - Verifiable approvals: APPROVAL.md
   - Audit records (EU AI Act): COMPLIANCE.md
   - Real SALT data (S1): SALT_REAL.md
   - Engineering: ENGINEERING.md

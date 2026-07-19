@@ -82,6 +82,8 @@ def main(argv: list[str] | None = None) -> int:
         return audit_main(argv[1:])
     if argv and argv[0] == "chain":
         return chain_main(argv[1:])
+    if argv and argv[0] == "approve":
+        return approve_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -229,6 +231,83 @@ def chain_main(argv: list[str] | None = None) -> int:
     if isinstance(signature, dict):
         print(f"signed:  key {signature['public_key']}")
     print(f"wrote:   {args.out} ({size:,} bytes)")
+    return 0
+
+
+# --- tessera bundle approve -------------------------------------------------------
+
+
+def approve_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle approve",
+        description="Approve a trust bundle (spec 0145): sign a detached "
+        "approval artifact bound to the bundle's sealed root — proof of WHO "
+        "(a key) approved WHAT (these exact bytes). Change one digit of the "
+        "decision and re-seal: the approval no longer applies. Creating an "
+        "approval needs the 'sign' extra; checking one never does "
+        "(`tessera verify <file> --approval <artifact>`).",
+    )
+    parser.add_argument("bundle", type=Path, help="path to the .tsb file")
+    parser.add_argument(
+        "--key",
+        type=Path,
+        default=None,
+        help="approver's Ed25519 key (default: var/keys/bundle_signing.key; "
+        "generate with `tessera bundle keygen --key <path>`)",
+    )
+    parser.add_argument(
+        "--note", default=None, help="optional note, signed into the artifact"
+    )
+    parser.add_argument(
+        "--at",
+        default=None,
+        help="optional date string — the approver's signed CLAIM, not proof "
+        "(proving time needs a transparency log)",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        type=Path,
+        default=None,
+        help="output path (default: <bundle>.approval.json; never overwrites)",
+    )
+    args = parser.parse_args(argv)
+
+    bundle = _load_bundle(args.bundle)
+    if bundle is None:
+        return 4
+
+    from tessera.bundle.approval import build_approval
+    from tessera.bundle.canonical import canonical_bytes
+    from tessera.bundle.signing import DEFAULT_KEY_PATH, SigningUnavailableError
+
+    out = args.out or args.bundle.with_suffix(args.bundle.suffix + ".approval.json")
+    if out.exists():
+        print(
+            f"error: {out} already exists — approvals are additive, write a "
+            "new file (-o)",
+            file=sys.stderr,
+        )
+        return 2
+
+    try:
+        artifact = build_approval(
+            bundle, args.key or DEFAULT_KEY_PATH, note=args.note, at=args.at
+        )
+    except (SigningUnavailableError, FileNotFoundError, ValueError) as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+    out.write_bytes(canonical_bytes(artifact) + b"\n")
+    approver = artifact["approver"]
+    assert isinstance(approver, dict)
+    print(f"approved: root {artifact['approves_root']}")
+    print(f"by key:   {approver['public_key']}")
+    print(f"wrote:    {out}")
+    print(
+        "note:     this binds a key to these exact bytes; check it with "
+        f"`tessera verify {args.bundle} --approval {out}`"
+    )
     return 0
 
 
@@ -400,6 +479,15 @@ def _verify_parser() -> argparse.ArgumentParser:
         help="evaluate a trust-policy JSON file against the verified bundle "
         "(spec 0144); non-compliance exits 5",
     )
+    parser.add_argument(
+        "--approval",
+        type=Path,
+        action="append",
+        default=None,
+        help="a detached approval artifact to check against this bundle's "
+        "recomputed root (spec 0145); repeatable — approvals inform, "
+        "policies enforce (approvals.require / allowed_approvers)",
+    )
     return parser
 
 
@@ -435,8 +523,30 @@ def verify_main(argv: list[str] | None = None) -> int:
         print(f"error: {path} is not a JSON object", file=sys.stderr)
         return 4
 
+    approval_artifacts: list[dict[str, object]] = []
+    for approval_path in args.approval or []:
+        try:
+            parsed = json.loads(approval_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            print(
+                f"error: cannot read approval {approval_path}: {error}",
+                file=sys.stderr,
+            )
+            return 4
+        if not isinstance(parsed, dict):
+            print(
+                f"error: approval {approval_path} is not a JSON object",
+                file=sys.stderr,
+            )
+            return 4
+        approval_artifacts.append(parsed)
+
     try:
-        report = verify_bundle(bundle, require_signed=args.require_signed)
+        report = verify_bundle(
+            bundle,
+            require_signed=args.require_signed,
+            approvals=approval_artifacts or None,
+        )
     except BundleFormatError as error:
         print(f"error: {error}", file=sys.stderr)
         return 4

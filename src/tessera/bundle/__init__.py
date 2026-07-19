@@ -46,4 +46,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.policy` — trust policies (spec 0144, ADR 0034):
   the auditor's rule file, re-executed at verify time against the sealed
   evidence; fail-closed, offline, never a self-attested compliance stamp.
+- :mod:`tessera.bundle.approval` — verifiable approvals (spec 0145, ADR
+  0035): detached signed artifacts binding an approver's key to the exact
+  sealed root; approvals inform, policies enforce (four-eyes in one rule).
 """
