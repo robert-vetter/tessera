@@ -1,0 +1,9 @@
+{
+  "name": "read-only-agent",
+  "version": 1,
+  "rules": {
+    "require_rederived": true,
+    "forbid_unverified_claims": true,
+    "actions": {"allow": false}
+  }
+}

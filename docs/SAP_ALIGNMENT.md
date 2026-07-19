@@ -114,5 +114,26 @@ favor, and one of its recommendations is now simply *done*:
   Triple Store — so its own recorded run awaits a paid-tier instance, a
   spend decision; spec 0129, DEPLOYMENT.md.)
 
+## Addendum (2026-07-18, specs 0143/0144) — the governance layer
+
+Two additions sharpen the "SAP asserts trust at platform level; Tessera
+measures it at claim level" asymmetry into an operational story a
+platform/governance team can run:
+
+- **Chained bundles ([CHAIN.md](CHAIN.md))** carry provenance across
+  agent hand-offs — the shape a Joule-style landscape actually has
+  (agents consuming agents' outputs across systems) — with the whole
+  chain re-executable offline from one file.
+- **Trust policies ([POLICY.md](POLICY.md))** express the controls an
+  enterprise already governs by — four-eyes approval gates, read-only
+  (segregation-of-duties-flavored) agents, system-of-record evidence
+  allowlists, signed origin, bounded delegation depth — as a small,
+  versioned rule file the **verifier re-executes** against any decision,
+  including every link of a chain. Where an agent-hub badge *asserts*
+  that an agent is trustworthy in general, a policy verdict *proves*
+  that one concrete decision satisfied the team's own named rules, and
+  can be re-proven offline forever. Mapping language only, as
+  throughout: this describes conceptual fit, not a product integration.
+
 The maintainer's application material lives outside the public
 repository (see `launch/README.md`).

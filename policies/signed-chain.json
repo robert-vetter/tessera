@@ -1,0 +1,9 @@
+{
+  "name": "signed-chain",
+  "version": 1,
+  "rules": {
+    "require_signed": true,
+    "require_rederived": true,
+    "chain": {"require_signed_upstreams": true, "max_depth": 3}
+  }
+}

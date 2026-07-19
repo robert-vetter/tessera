@@ -23,7 +23,7 @@ chain:   2 upstream bundle(s) embedded, re-verified
 $ uv run tessera verify brief.tsb
 …
 chain:     2/2 embedded upstream bundle(s) re-verified recursively
-  [ok] upstream sha256:6d8018c5b3d2…: PASS
+  [ok] upstream sha256:0ecaeaff0deb…: PASS
   [ok] upstream sha256:5cc23099dccc…: PASS
 answer:    re-derives — the packaged corpus yields exactly this answer for this question
 verdict:   PASS (exit 0)

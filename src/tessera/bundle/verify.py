@@ -107,14 +107,24 @@ class ClaimCheck:
 class UpstreamCheck:
     """One embedded upstream bundle's recursive verification (spec 0143): its
     sealed root, the verdict its own full re-verification produced *here*
-    (recorded verdicts are never trusted), and the named cause on non-PASS."""
+    (recorded verdicts are never trusted), the named cause on non-PASS, and
+    the upstream's signature status/signer (spec 0144: chain signer policies
+    read the recursion the verifier already performs)."""
 
     root: str
     verdict: str
     cause: str | None
+    signature_status: str = "UNSIGNED"
+    signer: str | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {"root": self.root, "verdict": self.verdict, "cause": self.cause}
+        return {
+            "root": self.root,
+            "verdict": self.verdict,
+            "cause": self.cause,
+            "signature_status": self.signature_status,
+            "signer": self.signer,
+        }
 
 
 UNSIGNED = "UNSIGNED"
@@ -726,7 +736,15 @@ def _chain_problems(
                 f"embedded upstream {_short_root(root_name)} does not "
                 f"re-verify ({sub.verdict}): {cause}"
             )
-        checks.append(UpstreamCheck(root=root_name, verdict=sub.verdict, cause=cause))
+        checks.append(
+            UpstreamCheck(
+                root=root_name,
+                verdict=sub.verdict,
+                cause=cause,
+                signature_status=sub.signature_status,
+                signer=sub.signature_public_key,
+            )
+        )
 
     for record in kb.records:
         locator = record.origin.locator

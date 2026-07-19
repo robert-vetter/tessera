@@ -43,4 +43,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.chain` — chained bundles (spec 0143, ADR 0033): a
   verified bundle becomes evidence for the next answer; upstreams travel
   embedded and `verify` re-executes the whole chain recursively, offline.
+- :mod:`tessera.bundle.policy` — trust policies (spec 0144, ADR 0034):
+  the auditor's rule file, re-executed at verify time against the sealed
+  evidence; fail-closed, offline, never a self-attested compliance stamp.
 """

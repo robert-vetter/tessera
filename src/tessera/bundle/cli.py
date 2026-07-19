@@ -365,8 +365,14 @@ the recorded answer for the recorded question. Integrity (hashes) and
 semantics (truth of the record) are reported separately — a re-sealed
 tampered file passes the first and fails the second.
 
-Exit codes: 0 pass · 2 semantic failure · 3 degraded (visibly not
-re-derivable) · 4 envelope unreadable or hashes broken.
+With --policy, a trust-policy file (spec 0144) is additionally evaluated
+against the verified bundle: every rule PASS or VIOLATED with a named
+detail. Policy non-compliance — or an unusable policy file — exits 5.
+
+Exit codes (precedence 4 > 2 > 5 > 3 > 0): 0 pass · 2 semantic failure ·
+3 degraded (visibly not re-derivable) · 4 envelope unreadable or hashes
+broken · 5 policy layer (non-compliant, or the policy cannot be
+evaluated).
 """
 
 
@@ -386,6 +392,13 @@ def _verify_parser() -> argparse.ArgumentParser:
         "--require-signed",
         action="store_true",
         help="treat an unsigned bundle as a failure (exit 4)",
+    )
+    parser.add_argument(
+        "--policy",
+        type=Path,
+        default=None,
+        help="evaluate a trust-policy JSON file against the verified bundle "
+        "(spec 0144); non-compliance exits 5",
     )
     return parser
 
@@ -428,8 +441,43 @@ def verify_main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 4
 
+    policy_report = None
+    if args.policy is not None:
+        from tessera.bundle.policy import (
+            PolicyError,
+            evaluate_policy,
+            load_policy,
+            render_policy,
+        )
+
+        try:
+            policy_report = evaluate_policy(load_policy(args.policy), bundle, report)
+        except PolicyError as error:
+            # Fail-closed: an unusable policy is the policy layer's failure
+            # (exit 5) — unless the bundle itself is broken/lying, which
+            # keeps its stronger verdict.
+            print(render_report(report, source=str(path)))
+            print(f"error: policy: {error}", file=sys.stderr)
+            return report.exit_code if report.exit_code in (2, 4) else 5
+
     if args.json:
-        print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False))
+        payload: dict[str, object] = report.to_dict()
+        if policy_report is not None:
+            payload = {"verify": report.to_dict(), "policy": policy_report.to_dict()}
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         print(render_report(report, source=str(path)))
+        if policy_report is not None:
+            print()
+            print(render_policy(policy_report))
+
+    # Exit precedence 4 > 2 > 5 > 3 > 0: a broken or lying bundle keeps its
+    # verdict; a sound bundle that violates policy exits 5; a compliant
+    # degraded bundle stays 3.
+    if (
+        policy_report is not None
+        and not policy_report.compliant
+        and report.exit_code not in (2, 4)
+    ):
+        return 5
     return report.exit_code

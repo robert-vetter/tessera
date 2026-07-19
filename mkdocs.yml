@@ -57,6 +57,7 @@ nav:
   - Auditability Floor: AUDITABILITY.md
   - The Challenge: CHALLENGE.md
   - Chained bundles: CHAIN.md
+  - Trust policies: POLICY.md
   - Audit records (EU AI Act): COMPLIANCE.md
   - Real SALT data (S1): SALT_REAL.md
   - Engineering: ENGINEERING.md
