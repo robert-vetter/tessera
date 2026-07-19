@@ -45,6 +45,11 @@ from tessera.agent.grounded import (
     domain,
     serialize_answer,
 )
+from tessera.bundle.approval import (
+    ApprovalCheck,
+    ApprovalFormatError,
+    check_approval,
+)
 from tessera.bundle.canonical import canonical_bytes
 from tessera.bundle.ed25519 import verify as ed25519_verify
 from tessera.bundle.emit import engine_version, shape_identifiers
@@ -54,7 +59,9 @@ from tessera.bundle.format import (
     CLOSURE_FULL_SNAPSHOT,
     FORMAT_MAJOR,
     FORMAT_NAME,
+    compute_root,
     integrity_mismatches,
+    leaf_manifest,
 )
 from tessera.bundle.serde import (
     claim_from_grounded,
@@ -153,6 +160,10 @@ class VerifyReport:
     #: Chain bundles only (spec 0143): one entry per embedded upstream, from
     #: its recursive re-verification here. Empty for single-decision bundles.
     upstreams: tuple[UpstreamCheck, ...] = ()
+    #: Detached approval artifacts passed to verify (spec 0145), each checked
+    #: against the RECOMPUTED root. Approvals inform; policies enforce — an
+    #: invalid approval never changes the bundle's own verdict.
+    approvals: tuple[ApprovalCheck, ...] = ()
 
     @property
     def envelope_problems(self) -> tuple[str, ...]:
@@ -212,6 +223,7 @@ class VerifyReport:
             "answer_cause": self.answer_cause,
             "refused": self.refused,
             "upstreams": [u.to_dict() for u in self.upstreams],
+            "approvals": [a.to_dict() for a in self.approvals],
             "semantic_problems": list(self.semantic_problems),
             "verdict": self.verdict,
             "exit_code": self.exit_code,
@@ -806,11 +818,17 @@ def _chain_problems(
 
 
 def verify_bundle(
-    bundle: dict[str, object], *, require_signed: bool = False
+    bundle: dict[str, object],
+    *,
+    require_signed: bool = False,
+    approvals: list[dict[str, object]] | None = None,
 ) -> VerifyReport:
     """Verify one parsed bundle, both layers. Raises
     :class:`BundleFormatError` when the envelope is unreadable. With
-    ``require_signed``, an unsigned bundle is an envelope failure (exit 4)."""
+    ``require_signed``, an unsigned bundle is an envelope failure (exit 4).
+    ``approvals`` are detached approval artifacts (spec 0145), each checked
+    against the RECOMPUTED root and reported — never altering the bundle's
+    own verdict (enforcement is the policy layer's job)."""
     # Bundle-native chain grammars (spec 0143); imported here, not at module
     # level, to keep the bundle-layer import graph acyclic and shallow.
     from tessera.bundle.chain import CHAIN_CLAIM_SHAPES
@@ -837,6 +855,28 @@ def verify_bundle(
     signature_status, signature_public_key, signature_problems = _verify_signature(
         bundle, require_signed=require_signed
     )
+
+    # Approvals (spec 0145) check against the root RECOMPUTED from content —
+    # never a stored claim — so an approval detaches from any tampered-and-
+    # re-sealed descendant automatically. A malformed artifact becomes a
+    # named invalid entry, not a crash.
+    approval_checks: list[ApprovalCheck] = []
+    if approvals:
+        recomputed_root = compute_root(leaf_manifest(bundle))
+        for artifact in approvals:
+            try:
+                approval_checks.append(check_approval(artifact, recomputed_root))
+            except ApprovalFormatError as error:
+                approval_checks.append(
+                    ApprovalCheck(
+                        approves_root="?",
+                        approver="?",
+                        valid=False,
+                        problem=f"malformed approval artifact: {error}",
+                        note=None,
+                        at=None,
+                    )
+                )
 
     domain_name = engine.get("domain")
     if not isinstance(domain_name, str):
@@ -990,6 +1030,7 @@ def verify_bundle(
         answer_cause=answer_cause,
         refused=result.refused,
         upstreams=upstreams,
+        approvals=tuple(approval_checks),
     )
 
 
@@ -1023,6 +1064,21 @@ def render_report(report: VerifyReport, *, source: str) -> str:
             f"signature: valid — signed by key {report.signature_public_key} "
             "(compare it to a key you trust)"
         )
+
+    if report.approvals:
+        valid = sum(1 for a in report.approvals if a.valid)
+        lines.append(
+            f"approvals: {valid}/{len(report.approvals)} valid — each binds a "
+            "key to this exact sealed root"
+        )
+        for a in report.approvals:
+            mark = "ok" if a.valid else "!!"
+            if a.problem:
+                extra = f" — {a.problem}"
+            else:
+                parts = [p for p in (a.note, a.at) if p]
+                extra = f" ({'; '.join(parts)})" if parts else ""
+            lines.append(f"  [{mark}] approved by key {a.approver}{extra}")
 
     if report.taxonomy != RE_DERIVED:
         lines.append(f"semantic:  {report.taxonomy} — {report.taxonomy_reason}")

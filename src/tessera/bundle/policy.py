@@ -46,9 +46,11 @@ _RULE_KEYS = (
     "allowed_evidence_sources",
     "actions",
     "chain",
+    "approvals",
 )
 _ACTION_KEYS = ("allow", "require_approval_gate", "forbid_real_send")
 _CHAIN_KEYS = ("max_depth", "require_signed_upstreams", "allowed_upstream_signers")
+_APPROVAL_KEYS = ("require", "allowed_approvers", "distinct_approvers")
 
 
 class PolicyError(ValueError):
@@ -172,6 +174,21 @@ def validate_policy(policy: object) -> dict[str, object]:
             )
         _validate_bool(chain, "require_signed_upstreams")
         _validate_str_list(chain, "allowed_upstream_signers")
+
+    approvals = rules.get("approvals")
+    if approvals is not None:
+        _require(isinstance(approvals, dict), "rule 'approvals' must be an object")
+        assert isinstance(approvals, dict)
+        unknown_ap = set(approvals) - set(_APPROVAL_KEYS)
+        _require(not unknown_ap, f"unknown approvals rule(s) {sorted(unknown_ap)}")
+        if "require" in approvals:
+            count = approvals["require"]
+            _require(
+                isinstance(count, int) and not isinstance(count, bool) and count >= 1,
+                "approvals rule 'require' must be a positive integer",
+            )
+        _validate_str_list(approvals, "allowed_approvers")
+        _validate_bool(approvals, "distinct_approvers")
     return policy
 
 
@@ -426,6 +443,46 @@ def evaluate_policy(
                         )
                     ),
                 )
+
+    approval_rules = rules.get("approvals")
+    if isinstance(approval_rules, dict):
+        # Approvals inform; this rule group enforces (spec 0145). Only VALID
+        # approvals count — and only allowed ones when the list is given.
+        valid = [a for a in report.approvals if a.valid]
+        allowed_keys = approval_rules.get("allowed_approvers")
+        if isinstance(allowed_keys, list):
+            outsiders = sorted(
+                {a.approver for a in valid if a.approver not in allowed_keys}
+            )
+            add(
+                "approvals.allowed_approvers",
+                not outsiders,
+                (
+                    "every valid approval is from an allowed key"
+                    if not outsiders
+                    else "approval(s) from key(s) outside the allowed list: "
+                    + repr(outsiders)
+                ),
+            )
+            counted = [a for a in valid if a.approver in allowed_keys]
+        else:
+            counted = valid
+        if "require" in approval_rules:
+            needed = approval_rules["require"]
+            assert isinstance(needed, int)
+            keys = [a.approver for a in counted]
+            if approval_rules.get("distinct_approvers"):
+                effective = len(set(keys))
+                counting = "distinct valid"
+            else:
+                effective = len(keys)
+                counting = "valid"
+            add(
+                "approvals.require",
+                effective >= needed,
+                f"{effective} {counting} approval(s) of this exact root "
+                f"(need {needed})",
+            )
 
     name = policy["name"]
     version = policy["version"]

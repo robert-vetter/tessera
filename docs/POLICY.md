@@ -70,6 +70,9 @@ re-execution — no rule introduces new evidence semantics.
 | `chain.max_depth` | embedded-upstream nesting is bounded |
 | `chain.require_signed_upstreams` | every embedded upstream is signed (checked on the recursion) |
 | `chain.allowed_upstream_signers` | every upstream's signer is on the list |
+| `approvals.require` | at least N **valid** [approval artifacts](APPROVAL.md) of this exact root |
+| `approvals.allowed_approvers` | every valid approval is from a listed key (outsiders never count) |
+| `approvals.distinct_approvers` | a duplicate key counts once — four eyes means four eyes |
 
 Exit codes compose with the verifier's, precedence **4 > 2 > 5 > 3 > 0**:
 a broken or lying bundle keeps its stronger verdict (a policy can never
