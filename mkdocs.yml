@@ -63,6 +63,7 @@ nav:
   - Trust policies: POLICY.md
   - Verifiable approvals: APPROVAL.md
   - Verifiable redaction: REDACTION.md
+  - The issuance ledger: LEDGER.md
   - Audit records (EU AI Act): COMPLIANCE.md
   - Real SALT data (S1): SALT_REAL.md
   - Engineering: ENGINEERING.md
@@ -111,6 +112,7 @@ nav:
       - 0038 A portable second verifier: adr/0038-portable-second-verifier.md
       - 0039 Verifiable redaction: adr/0039-verifiable-redaction.md
       - 0040 Verify in the browser: adr/0040-verify-in-the-browser.md
+      - 0041 The issuance ledger: adr/0041-issuance-ledger.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

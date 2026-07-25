@@ -310,6 +310,93 @@ function signatureProblems(bundle) {
   };
 }
 
+// --- issuance-log proofs (spec 0151, ADR 0041) -----------------------------------
+//
+// The completeness axis: every other check answers "is this receipt honest?";
+// an inclusion proof answers "is it in the issuer's log, at the head YOU
+// already hold?". Domain-separated hashing (RFC 6962) so a leaf can never be
+// replayed as an interior node.
+
+const LEAF_PREFIX = new Uint8Array([0]);
+const NODE_PREFIX = new Uint8Array([1]);
+
+function concatBytes(...parts) {
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.length;
+  }
+  return out;
+}
+
+const hexToBytes = (hex) =>
+  new Uint8Array(hex.match(/.{2}/g)?.map((b) => parseInt(b, 16)) ?? []);
+const bytesToHex = (bytes) =>
+  [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+
+export function ledgerLeafHash(value) {
+  return hexToBytes(sha256(concatBytes(LEAF_PREFIX, UTF8.encode(value))));
+}
+
+function ledgerNodeHash(left, right) {
+  return hexToBytes(sha256(concatBytes(NODE_PREFIX, left, right)));
+}
+
+/** Recompute a log head from a leaf and its audit path (spec 0151). */
+export function verifyInclusion(leaf, index, size, path, head) {
+  if (!(index >= 0 && index < size)) return false;
+  let computed = leaf;
+  let node = index;
+  let last = size - 1;
+  for (const sibling of path) {
+    if (node % 2 === 1 || node === last) {
+      computed = ledgerNodeHash(sibling, computed);
+      while (node % 2 === 0 && node !== 0) {
+        node = Math.floor(node / 2);
+        last = Math.floor(last / 2);
+      }
+    } else {
+      computed = ledgerNodeHash(computed, sibling);
+    }
+    node = Math.floor(node / 2);
+    last = Math.floor(last / 2);
+  }
+  return node === 0 && bytesToHex(computed) === bytesToHex(head);
+}
+
+/** Check a detached inclusion proof against a head the CALLER supplies —
+ *  never one the artifact supplies, which would be self-attestation. */
+export function checkInclusionProof(artifact, bundleRoot, headText) {
+  const proof = plain(artifact);
+  if (proof?.format?.name !== "tessera-inclusion-proof") {
+    return "not an inclusion-proof artifact";
+  }
+  if (proof.format.major !== 1) return `unsupported proof major ${proof.format.major}`;
+  if (proof.proves_root !== bundleRoot) {
+    return `the proof is for ${proof.proves_root}, not for this bundle's root`;
+  }
+  const [sizeText, ...rest] = String(headText).split(":");
+  const headDigest = rest.join(":");
+  const size = Number(sizeText);
+  if (!Number.isInteger(size) || !headDigest.startsWith("sha256:")) {
+    return "malformed head — expected '<size>:sha256:…'";
+  }
+  if (proof.size !== size) {
+    return `the proof is against a log of size ${proof.size}, but your head is size ${size}`;
+  }
+  const path = (proof.path ?? []).map((node) => hexToBytes(String(node).slice(7)));
+  const ok = verifyInclusion(
+    ledgerLeafHash(bundleRoot),
+    proof.index,
+    proof.size,
+    path,
+    hexToBytes(headDigest.slice(7))
+  );
+  return ok ? null : "the audit path does not reconstruct the head you supplied";
+}
+
 // --- detached approvals (ADR 0035) -----------------------------------------------
 
 function checkApproval(rawArtifact, recomputedRoot) {

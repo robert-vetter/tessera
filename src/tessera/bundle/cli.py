@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from tessera.agent.grounded import available_domains
@@ -86,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         return approve_main(argv[1:])
     if argv and argv[0] == "redact":
         return redact_main(argv[1:])
+    if argv and argv[0] == "attest":
+        return attest_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -384,6 +387,68 @@ def redact_main(argv: list[str] | None = None) -> int:
     return 0
 
 
+# --- tessera bundle attest --------------------------------------------------------
+
+
+def attest_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle attest",
+        description="Record a receipt in the append-only issuance log and emit "
+        "a DETACHED inclusion proof (spec 0151). Ten layers answer 'is this "
+        "receipt honest?'; the log answers 'is this all of them?'. The bundle "
+        "is not touched — no root moves, no signature or approval is "
+        "invalidated. What the log proves is bounded and stated: inclusion "
+        "against a head YOU already have, and that history was not rewritten.",
+    )
+    parser.add_argument("bundle", type=Path, help="path to the .tsb file")
+    parser.add_argument(
+        "--ledger",
+        type=Path,
+        default=Path("var/ledger/issued.log"),
+        help="the append-only log file (default: var/ledger/issued.log)",
+    )
+    parser.add_argument(
+        "-o",
+        "--out",
+        type=Path,
+        default=None,
+        help="inclusion-proof path (default: <bundle>.inclusion.json)",
+    )
+    args = parser.parse_args(argv)
+
+    bundle = _load_bundle(args.bundle)
+    if bundle is None:
+        return 4
+    integrity = bundle.get("integrity")
+    root = integrity.get("root") if isinstance(integrity, dict) else None
+    if not isinstance(root, str):
+        print("error: cannot attest an unsealed bundle", file=sys.stderr)
+        return 2
+
+    from tessera.bundle.canonical import canonical_bytes
+    from tessera.ledger.store import Ledger, LedgerError
+
+    log = Ledger(args.ledger)
+    try:
+        index = log.append(root)
+    except LedgerError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+    proof = log.prove(root)
+    out = args.out or args.bundle.with_suffix(args.bundle.suffix + ".inclusion.json")
+    out.write_bytes(canonical_bytes(proof) + b"\n")
+
+    head = log.head()
+    print(f"recorded: entry {index} of {head.size} in {args.ledger}")
+    print(f"head:     {head}")
+    print(f"wrote:    {out}")
+    print(
+        "note:     a verifier checks this against a head they already had — "
+        "the proof never vouches for its own head."
+    )
+    return 0
+
+
 # --- tessera bundle keygen --------------------------------------------------------
 
 
@@ -553,6 +618,18 @@ def _verify_parser() -> argparse.ArgumentParser:
         "(spec 0144); non-compliance exits 5",
     )
     parser.add_argument(
+        "--inclusion",
+        type=Path,
+        default=None,
+        help="a detached issuance-log inclusion proof (spec 0151); needs --head",
+    )
+    parser.add_argument(
+        "--head",
+        default=None,
+        help="the log head you already trust, as '<size>:sha256:…' — never "
+        "taken from the file being checked",
+    )
+    parser.add_argument(
         "--approval",
         type=Path,
         action="append",
@@ -562,6 +639,12 @@ def _verify_parser() -> argparse.ArgumentParser:
         "policies enforce (approvals.require / allowed_approvers)",
     )
     return parser
+
+
+def report_root(bundle: dict[str, object]) -> object:
+    """The bundle's sealed root — what an inclusion proof must be about."""
+    integrity = bundle.get("integrity")
+    return integrity.get("root") if isinstance(integrity, dict) else None
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -624,6 +707,24 @@ def verify_main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 4
 
+    inclusion: str | None = None
+    if args.inclusion is not None:
+        from tessera.ledger.store import Head, LedgerError, check_inclusion, load_proof
+
+        try:
+            artifact = load_proof(args.inclusion)
+            if args.head is None:
+                inclusion = "not checked: no --head supplied to check against"
+            else:
+                problem = check_inclusion(
+                    artifact, str(report_root(bundle)), Head.parse(args.head)
+                )
+                inclusion = "included" if problem is None else problem
+        except LedgerError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 4
+        report = replace(report, inclusion=inclusion)
+
     policy_report = None
     if args.policy is not None:
         from tessera.bundle.policy import (
@@ -650,6 +751,12 @@ def verify_main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
         print(render_report(report, source=str(path)))
+        if inclusion is not None:
+            print(
+                f"ledger:    {inclusion}"
+                if inclusion != "included"
+                else "ledger:    included in the issuance log at the head you supplied"
+            )
         if policy_report is not None:
             print()
             print(render_policy(policy_report))

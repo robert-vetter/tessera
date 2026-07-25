@@ -166,6 +166,10 @@ class VerifyReport:
     #: against the RECOMPUTED root. Approvals inform; policies enforce — an
     #: invalid approval never changes the bundle's own verdict.
     approvals: tuple[ApprovalCheck, ...] = ()
+    #: The issuance-log inclusion check (spec 0151), when the verifier
+    #: supplied a proof AND a head. ``None`` means it was not checked — a
+    #: completeness claim is never implied, only reported.
+    inclusion: str | None = None
     #: Content withheld by redaction (spec 0149): record ids and section
     #: names whose commitments remain but whose content was not shared. Any
     #: redaction forces the degraded path — a redacted bundle proves less.
@@ -233,6 +237,7 @@ class VerifyReport:
             "upstreams": [u.to_dict() for u in self.upstreams],
             "approvals": [a.to_dict() for a in self.approvals],
             "withheld": list(self.withheld),
+            "inclusion": self.inclusion,
             "semantic_problems": list(self.semantic_problems),
             "verdict": self.verdict,
             "exit_code": self.exit_code,
