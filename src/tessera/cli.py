@@ -46,6 +46,9 @@ The Verification Gap benchmark (Milestone 22):
   tessera conformance                     grade the published verification
                                           methods against an attack battery,
                                           under two named threat models
+  tessera proof                           machine-check the bounded soundness
+                                          theorem: over every state of a
+                                          bounded universe, no false PASS
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
@@ -73,6 +76,10 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.conformance.cli import main as conformance_main
 
         return conformance_main(args[1:])
+    if args and args[0] == "proof":
+        from tessera.proof.cli import main as proof_main
+
+        return proof_main(args[1:])
     if args and args[0] in _BYO_COMMANDS:
         from tessera.connect.cli import main as connect_main
 

@@ -57,6 +57,7 @@ nav:
   - Auditability Floor: AUDITABILITY.md
   - The Challenge: CHALLENGE.md
   - The Verification Gap (benchmark): CONFORMANCE.md
+  - The soundness proof: PROOF.md
   - Chained bundles: CHAIN.md
   - Trust policies: POLICY.md
   - Verifiable approvals: APPROVAL.md
