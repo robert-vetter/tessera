@@ -41,6 +41,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      # The independent JavaScript verifier (spec 0148) runs inside the gate's
+      # test suite: a cross-implementation disagreement must fail the build
+      # like any other red test. Node >= 21 is required for JSON source-text
+      # access (ADR 0031 addendum).
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+
       # Format, lint, type-check, tests — via the shared gate script that the
       # local /verify command also runs, so the two can never disagree.
       - name: Gate (format, lint, type-check, tests)

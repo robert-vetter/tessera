@@ -223,7 +223,9 @@ report.
 ## The file, briefly
 
 Canonical JSON (`tessera-canonical-json-1` — deliberately *not* RFC 8785;
-ADR 0031 records why), sections `format` / `engine` / `result` /
+ADR 0031 records why, and its 2026-07-18 addendum states the number rule
+an independent implementation needs: canonical bytes preserve a number's
+**lexical form**, so `1.0` stays `1.0`), sections `format` / `engine` / `result` /
 `evidence_closure` / `integrity` / `action` / `signature`, plus `anchor`
 reserved for transparency anchoring (a later unit). `action` (the wire
 request) and `signature` (the Ed25519 signature over the root) both ship
