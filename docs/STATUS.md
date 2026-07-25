@@ -3090,3 +3090,78 @@ send after this wrap + number re-verification.
 **State of the tree:** `main` green (55e8646); `tessera/bundle/` now
 carries `approval`; tags through `milestone-21` (M22 in progress); no
 open unit branches.
+
+---
+
+## 2026-07-18 — Autonomous session 4: the Verification Gap benchmark (spec 0146, ADR 0036, #188)
+
+**Mode note:** fully autonomous from the maintainer's kickoff — "not
+another feature; something that makes the cohort say *this is the person
+we're looking for*", with explicit instruction to research first.
+
+**Research done before any code.** Z Fellows' own profile (MARKET §6,
+re-verified): they celebrate *working artifacts + execution speed*, and
+the recorded 4-week evidence list names — third, after traction and
+design partners — **"a benchmark artifact others cite"**. That is the one
+item on the list that does not depend on anyone else's attention, so it
+became the unit. Then the primary sources on receipt verification were
+read in full (recorded in MARKET §9): the IETF ASQAV signed-receipt
+draft; Microsoft's Agent Governance Toolkit proposal (whose own text says
+the verifier confirms consistent *signing*, not that the decision was
+correct); and **Proof of Execution** (Rhodes & Kang, arXiv:2607.05397) —
+the closest adjacent work, read carefully and found **complementary**:
+its validator checks invariants the paper itself calls syntactic,
+envelope closure is scoped to the *declared* envelope with undeclared
+dependencies explicitly outside it, and deterministic replay is a
+deployment-assumption guarantee, not a claim-vs-evidence recomputation.
+
+**The unit.** `tessera conformance` grades 5 methods × 21 attacks × 2
+threat models. The methods are our own, committed, steelmanned
+implementations of published methods; no vendor is named in a score.
+Threat models: **T1 outside tamperer** (printed FIRST — signatures detect
+everything there, re-execution adds nothing: 19/20 vs 20/21) and **T2 the
+issuer itself**, the model that actually applies to an agent's own
+receipt. Under T2: **0 of 15** semantic/action/chain forgeries detected by
+any non-re-executing method; 15/15 by re-execution. Structural, not an
+implementation weakness.
+
+**What makes it credible — the cells that don't flatter us, all pinned:**
+- `stale_contract_replay` (honest receipt, expired mandate) is **MISSED by
+  re-execution by design** — a PASS is not a recency claim, BUNDLE.md's
+  own recorded limit — and DETECTED by the runtime-attestation method.
+- `policy_swap` → **NOT-APPLICABLE** for Tessera (policy lives outside the
+  artifact, ADR 0034); N/A never counts as a win.
+- **Measured against my own spec's prediction and kept:** all four
+  baselines miss `extra_top_section` (a signature over a Merkle root does
+  not commit to the section set), so the envelope column is 2/3, not 3/3.
+  The spec was corrected to the measurement, not the other way round.
+- No method may flag an honest bundle (false-positive pin); every method
+  must detect the byte-level tampering it targets (anti-strawman pin).
+
+**Two real engineering faults found and fixed in-session:** the first cut
+ran **17 minutes** (O(n²) manifest recomputation inside the leaf loop, and
+forging once per *cell* instead of once per *attack*); after the fix it
+runs in **~1 second** with identical results. A stray non-English
+identifier slipped into a dataclass and was removed.
+
+**Honesty consequence for the public claim:** ROADMAP3's novelty paragraph
+and MARKET.md now credit the adjacent work by name and state Tessera's
+axis narrowly (claim-vs-evidence re-execution, not execution attestation).
+Overclaiming here would have been both wrong and unnecessary.
+
+**Eval:** six lines byte-identical; gate green (793 tests, +16); mypy
+strict; mkdocs strict; **frozen core, agent chain AND the entire bundle
+layer empty-diff** — the unit is a new package plus one dispatch line.
+
+**Z Fellows update v6 drafted** (local): the benchmark as the headline,
+with the losing cell in the mail itself.
+
+**Next**
+- 0138 Rekor (maintainer-present only) + 0141 write-up close M22; the
+  write-up now has a real comparative result to carry.
+- Named future work: publish the adapter protocol so others can grade
+  their own system; add methods/attacks as the literature moves.
+
+**State of the tree:** `main` green (945fce2); new package
+`tessera/conformance/`; scorecard committed; tags through `milestone-21`
+(M22 in progress); dependabot #186 open (actions/checkout 7.0.1).
