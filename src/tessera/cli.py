@@ -43,6 +43,9 @@ Trust bundles (Milestones 20–22):
                                           verify --approval (+ policy rules)
   tessera bundle redact <file>.tsb        withhold evidence, keep the root —
                                           share the receipt, not the data
+  tessera bundle attest <file>.tsb        record it in the issuance log
+  tessera ledger head|prove|check         "is this all of them?" — inclusion
+                                          and consistency proofs, offline
 
 The Verification Gap benchmark (Milestone 22):
   tessera conformance                     grade the published verification
@@ -78,6 +81,10 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.conformance.cli import main as conformance_main
 
         return conformance_main(args[1:])
+    if args and args[0] == "ledger":
+        from tessera.ledger.cli import main as ledger_main
+
+        return ledger_main(args[1:])
     if args and args[0] == "proof":
         from tessera.proof.cli import main as proof_main
 

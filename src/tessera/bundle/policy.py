@@ -48,11 +48,13 @@ _RULE_KEYS = (
     "chain",
     "approvals",
     "redaction",
+    "ledger",
 )
 _ACTION_KEYS = ("allow", "require_approval_gate", "forbid_real_send")
 _CHAIN_KEYS = ("max_depth", "require_signed_upstreams", "allowed_upstream_signers")
 _APPROVAL_KEYS = ("require", "allowed_approvers", "distinct_approvers")
 _REDACTION_KEYS = ("allow", "max_withheld")
+_LEDGER_KEYS = ("require_inclusion",)
 
 
 class PolicyError(ValueError):
@@ -205,6 +207,14 @@ def validate_policy(policy: object) -> dict[str, object]:
                 isinstance(limit, int) and not isinstance(limit, bool) and limit >= 0,
                 "redaction rule 'max_withheld' must be a non-negative integer",
             )
+
+    ledger = rules.get("ledger")
+    if ledger is not None:
+        _require(isinstance(ledger, dict), "rule 'ledger' must be an object")
+        assert isinstance(ledger, dict)
+        unknown_l = set(ledger) - set(_LEDGER_KEYS)
+        _require(not unknown_l, f"unknown ledger rule(s) {sorted(unknown_l)}")
+        _validate_bool(ledger, "require_inclusion")
     return policy
 
 
@@ -524,6 +534,20 @@ def evaluate_policy(
                 withheld <= limit,
                 f"{withheld} item(s) withheld (limit {limit})",
             )
+
+    ledger_rules = rules.get("ledger")
+    if isinstance(ledger_rules, dict) and ledger_rules.get("require_inclusion"):
+        # Completeness is a control too: "show me it is in your log, against a
+        # head I already had" (spec 0151). Fail-closed — not supplying a proof
+        # is not the same as passing.
+        add(
+            "ledger.require_inclusion",
+            report.inclusion == "included",
+            {
+                "included": "the receipt is in the issuance log at the head supplied",
+                None: "no inclusion proof was checked (supply --inclusion and --head)",
+            }.get(report.inclusion, f"inclusion not established: {report.inclusion}"),
+        )
 
     name = policy["name"]
     version = policy["version"]
