@@ -58,6 +58,7 @@ nav:
   - The Challenge: CHALLENGE.md
   - The Verification Gap (benchmark): CONFORMANCE.md
   - The soundness proof: PROOF.md
+  - Two implementations (portable verifier): PORTABLE.md
   - Chained bundles: CHAIN.md
   - Trust policies: POLICY.md
   - Verifiable approvals: APPROVAL.md

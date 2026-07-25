@@ -154,3 +154,31 @@ module-private engine cache; a consistency test pins fresh == cached.
 - Full-closure bundles are larger than cited-only bundles would be —
   accepted deliberately; the sizes are measured and recorded, and any
   future slimming is a visible format event.
+
+## Addendum (2026-07-18, spec 0148) — numbers in `tessera-canonical-json-1`
+
+Writing an **independent verifier** (ADR 0038) immediately found a defect
+in this recipe: it was under-specified for numbers, and the gap is not
+theoretical — it changed two leaf digests and therefore the root.
+
+The producer is Python, where `json.dumps` writes a float `1.0` as `1.0`
+and an int `1` as `1`. A language without that type distinction cannot
+reproduce the canonical bytes from a **parsed** document: `JSON.parse`
+turns both into the same number and re-emits `1`. The resolution and
+mention sections carry float confidence scores, so any portable
+implementation that re-serialises a parsed bundle computes different
+hashes and reports a false TAMPERED.
+
+**The rule, now explicit:** canonical bytes preserve the **lexical form**
+in which a number appeared. An implementation must emit a number's source
+text verbatim rather than re-format it (in Node, via the `JSON.parse`
+reviver's `context.source`); an implementation that cannot recover the
+lexical form must **refuse to verify** rather than guess — guessing
+produces false TAMPERED verdicts, the worst possible failure mode for a
+trust tool.
+
+Nothing about the emitted bytes changes: this addendum states what the
+producer already does, so every committed artifact and every recorded root
+stays byte-identical. What changes is that the recipe is now
+*implementable from the document*, which is the property that makes a
+format portable rather than a description of one program.
