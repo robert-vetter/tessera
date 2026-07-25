@@ -3457,3 +3457,68 @@ completely untouched** — this unit adds no Python to the engine.
 **State of the tree:** `main` green (b1e7b5c); new `verifier/web/`; the
 verifier split into core + CLI; tags through `milestone-21` (M22 in
 progress); dependabot #186 open.
+
+---
+
+## 2026-07-18 — Autonomous session 10: the issuance ledger (spec 0151, ADR 0041, #198)
+
+**Mode note:** autonomous. The unit was chosen by naming the question the
+stack could not answer. Ten layers answer *"is this receipt honest?"*
+extremely well — and every one of them concerns a receipt you were
+**given**. An operator who simply never shows you a decision defeats all
+ten at once, by omission rather than by breaking anything. That is the
+completeness axis, and transparency logs exist precisely for it.
+
+**Shipped.** An append-only Merkle log of issued receipt roots, built as
+Certificate Transparency builds one (RFC 6962), with the two proofs that
+make a log worth keeping: **inclusion** (this receipt is in the log at the
+head *you already hold*) and **consistency** (this head extends an earlier
+one with nothing rewritten). `tessera bundle attest` records a receipt and
+emits a detached proof; `tessera ledger head|prove|consistency|check`
+operates the log; `tessera verify --inclusion … --head …` checks it.
+
+**Decisions, all about not overclaiming:**
+- **Detached, never in the bundle** (the approval pattern, ADR 0035): no
+  byte moves, no root changes, every signature/approval/committed artifact
+  stays valid; the reserved `anchor` section stays reserved for 0138.
+- **The head comes from the verifier, never from the file** — a proof that
+  vouches for its own head is self-attestation, the exact failure mode this
+  project answers. `--inclusion` without `--head` reports *not checked*.
+- **Domain-separated hashing** (0x00 leaves / 0x01 nodes) so a leaf cannot
+  be replayed as an interior node.
+- **Fail-closed governance**: `ledger: {require_inclusion: true}`.
+- **Both implementations**: inclusion verification in the shared JS core
+  with a differential test — a protocol addition only one implementation
+  understood would undo ADR 0038/0040.
+
+**Correctness was established exhaustively, and it mattered.** Merkle
+proofs are easy to get subtly wrong, so the battery covers **every entry
+of every log size and every consistency pair up to 40**, plus rewrite,
+deletion, truncated-proof, padded-proof and unrecorded-receipt attacks.
+My first cut of the consistency *verifier* failed **64 of those pairs** —
+inclusion was already perfect, which is exactly the kind of partial
+correctness a spot check would have blessed. The corrected version writes
+out RFC 6962's two ascent phases explicitly.
+
+**The bound travels with the guarantee**, in the docs, the CLI help and
+the policy detail text: an operator who keeps **two** logs can show two
+parties two heads, and no offline check detects that split view. Closing
+it needs heads to be unforgeably public — the reserved, maintainer-present
+transparency-log unit (0138). Until then the honest framing is that
+**every head anyone has ever seen constrains the operator from that moment
+on**, which makes publishing a head periodically a meaningful act.
+
+**Eval:** six lines byte-identical; gate green (868 tests, +17); mypy
+strict; mkdocs strict; frozen core and agent chain untouched. The browser
+page's drift-pin caught its own stale build when the shared core gained
+the ledger functions — regenerated, along with the conformance kit.
+
+**Next**
+- 0138 Rekor and 0141 the write-up close M22. The ledger makes 0138 an
+  *upgrade path* rather than a prerequisite, which is a better position
+  than the act started with.
+- Named future work: head input in the browser page's UI; publishing heads
+  on a cadence; a third implementation.
+
+**State of the tree:** `main` green; new package `tessera/ledger/`; tags
+through `milestone-21` (M22 in progress); dependabot #186 open.

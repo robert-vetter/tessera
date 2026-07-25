@@ -246,6 +246,30 @@ then the phase tags are the releases.
   bundles are embedded, so even "try an example" is not a request.
   Published under `docs/`, served by the existing Pages workflow.
 
+- **The issuance ledger — answering "is this all of them?"** (spec 0151,
+  ADR 0041, #198). Ten layers prove a receipt is *honest*; every one of them
+  concerns a receipt you were **given**, so an operator who never shows you a
+  decision defeats them all by omission. This adds the missing axis: an
+  append-only Merkle log of issued receipt roots built as Certificate
+  Transparency builds one (RFC 6962), with **inclusion** proofs (this receipt
+  is in the log at the head *you already hold*) and **consistency** proofs
+  (this head extends an earlier one with nothing rewritten). An unrecorded
+  decision has no inclusion proof; a rewritten history cannot produce a
+  consistency proof. The proof is **detached** like an approval — no byte
+  moves, no root changes, every signature and approval stays valid — and the
+  **head comes from the verifier, never from the file**, because a proof that
+  vouches for its own head is self-attestation; `--inclusion` without
+  `--head` reports *not checked* rather than passing. Domain-separated
+  hashing; fail-closed `ledger: {require_inclusion: true}` policy rule;
+  inclusion verification in the shared JS core with a differential test.
+  Correctness is exhaustive rather than sampled — every entry of every log
+  size and every consistency pair up to 40, plus rewrite, deletion,
+  truncation, padding and unrecorded-receipt attacks (the battery caught 64
+  failing pairs in the first cut of the consistency verifier). The bound
+  travels with the guarantee: an operator keeping **two** logs can show two
+  heads and no offline check detects that split view — closing it needs the
+  reserved public transparency log. `docs/LEDGER.md`.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
