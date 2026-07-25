@@ -42,6 +42,11 @@ Trust bundles (Milestones 20–22):
                                           the exact sealed bytes; check with
                                           verify --approval (+ policy rules)
 
+The Verification Gap benchmark (Milestone 22):
+  tessera conformance                     grade the published verification
+                                          methods against an attack battery,
+                                          under two named threat models
+
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
 
@@ -64,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.bundle.cli import verify_main
 
         return verify_main(args[1:])
+    if args and args[0] == "conformance":
+        from tessera.conformance.cli import main as conformance_main
+
+        return conformance_main(args[1:])
     if args and args[0] in _BYO_COMMANDS:
         from tessera.connect.cli import main as connect_main
 
