@@ -176,6 +176,30 @@ then the phase tags are the releases.
   what the proof does *not* cover, print with every result. Pure stdlib, no
   SMT solver. Certificate committed and pinned; in the 3-OS matrix.
 
+- **A second, independent verifier — the guarantee is the format** (spec
+  0148, ADR 0038, #192). `verifier/js/tessera-verify.mjs`: zero
+  dependencies, Node standard library only, written **from the format
+  contract** rather than translated from the Python. It implements canonical
+  bytes, the leaf manifest and root, the section-set commitment, the
+  reserved-`anchor` refusal, Ed25519 signatures, detached approvals,
+  referential integrity, **claim-level semantic re-execution** and
+  **recursive chain verification**. Honest scope is in the verdict, not a
+  footnote: answer and action re-derivation need the engine, so it **cannot
+  report a full PASS** — its ceiling is `PASS-PARTIAL` and it prints what it
+  did not do every run. The differential contract is asymmetric and enforced
+  per case (it never rejects what the reference accepts; a silent pass
+  alongside a reference failure is allowed only when every named cause is
+  one of the two non-portable checks). Measured over the committed kit:
+  **25 cases · 12 caught by both · 7 declined by design · 0 disagreements**.
+  Writing it was also a specification review and found a real defect:
+  `tessera-canonical-json-1` was under-specified for numbers (Python's float
+  `1.0` re-emits as `1` in a language without an int/float distinction,
+  changing two leaf digests and producing a **false TAMPERED** on an honest
+  bundle). Fixed in the spec, not in one program — the ADR 0031 addendum now
+  requires canonical bytes to preserve a number's lexical form, and an
+  implementation that cannot recover it must refuse rather than guess. No
+  emitted byte changed. CI installs Node and runs the harness.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin

@@ -3242,3 +3242,79 @@ benchmark as setup, both losing cells kept in the mail.
 **State of the tree:** `main` green (f2dfa58); new package
 `tessera/proof/`; certificate committed; tags through `milestone-21` (M22
 in progress); dependabot #186 open.
+
+---
+
+## 2026-07-18 — Autonomous session 6: a second, independent verifier (spec 0148, ADR 0038, #192)
+
+**Mode note:** autonomous from the maintainer's "noch so ein Hammer-Feature"
+kickoff. The unit was chosen by asking what the *strongest remaining
+objection* to Milestones 20–22 is — and it is not about cryptography:
+
+> The benchmark is your implementation of everyone else's methods, the
+> proof is about your model, and the verifier is your Python.
+
+No further work by the same author answers that. A second implementation
+does, which is what every durable format eventually needs.
+
+**Shipped.** `verifier/js/tessera-verify.mjs` — zero dependencies, Node
+standard library only, **written from the format contract** (ADR
+0031/0032/0033/0035 + BUNDLE.md) rather than translated. Covers canonical
+bytes, leaf manifest + root, section-set commitment, reserved-`anchor`
+refusal, Ed25519 signatures, detached approvals, referential integrity,
+**claim-level semantic re-execution** (aggregate, compare, superlative,
+count, refuse-to-sum, shared-fragment, containment, chain citation) and
+**recursive chain verification** of embedded upstreams.
+
+**Honest scope in the verdict, not a footnote.** Answer re-derivation and
+action re-derivation need the engine, so the portable verifier **cannot
+report a full PASS**: its ceiling is `PASS-PARTIAL` and it prints what it
+did not do on every run; an unknown grammar is `NOT-EVALUABLE`, never
+guessed. A silent scope gap would look like agreement while proving
+nothing.
+
+**The differential contract, enforced per case in CI:** `TAMPERED` ⟹
+reference exit 4; `FAIL` ⟹ reference exit 2 or 4 (*it never rejects what
+the reference accepts*); `PASS-PARTIAL` alongside a reference failure only
+when **every** named reference cause is one of the two non-portable checks
+— verified against the reference's own problem strings, not asserted in
+prose. Measured over the committed kit (`data/kit/expectations.json`, the
+committed artifacts crossed with the CI-pinned attack battery): **25 cases
+· 12 caught by both · 7 declined by design · 6 honest baselines passing in
+both · 0 disagreements.** A test pins the declined set so it cannot
+silently grow.
+
+**The finding — an independent implementation is a specification review.**
+Within the hour it exposed a real defect: **`tessera-canonical-json-1` was
+under-specified for numbers.** Python writes a float `1.0` as `1.0`; a
+language without that type distinction re-emits `1` after parsing, and the
+resolution/mention sections carry float confidences — so the portable
+verifier computed different digests and reported a **false TAMPERED on an
+honest bundle**. Fixed in the *specification*: the ADR 0031 addendum now
+requires canonical bytes to preserve a number's **lexical form**, and an
+implementation that cannot recover it must **refuse rather than guess**
+(guessing produces false TAMPERED verdicts — the worst failure mode for a
+trust tool). **No emitted byte changed**; every committed root is
+untouched. What changed is that the recipe is now implementable *from the
+document*.
+
+**Two porting bugs of my own, found and fixed by the harness:** resolution
+edges are `node_a`/`node_b` (I had guessed `left`/`right`, which made every
+entity a singleton and broke the compare grammar), and the approval check
+compared a source-preserving number against a plain `1`.
+
+**Eval:** six lines byte-identical; gate green (823 tests, +10); mypy
+strict; mkdocs strict; **`src/tessera/` completely untouched** — this unit
+adds no Python at all. CI gained a pinned Node step (SHA verified against
+the GitHub API rather than guessed).
+
+**Next**
+- 0138 Rekor (maintainer-present only) + 0141 write-up close M22; the
+  write-up now carries a measured comparison, a machine-checked theorem
+  **and** a cross-implementation result.
+- Named future work: a third implementation (Rust/Go); publishing the
+  format as an RFC-style document so the contract stands alone.
+
+**State of the tree:** `main` green (8c84fe4); new top-level `verifier/`;
+kit committed; tags through `milestone-21` (M22 in progress); dependabot
+#186 open.
