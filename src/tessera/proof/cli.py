@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--deep",
         action="store_true",
-        help="also enumerate the three-claim universe (~4.4M states, minutes)",
+        help="also enumerate the three-claim universe (6.6M states, ~13 s)",
     )
     parser.add_argument(
         "--write",

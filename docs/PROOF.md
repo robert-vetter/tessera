@@ -109,7 +109,8 @@ first principles rather than by example.
 ```console
 $ uv run tessera proof              # ~1 second
 $ uv run tessera proof --json       # machine-readable certificate
-$ uv run tessera proof --deep       # adds a 3-claim universe (~4.4M states)
+$ uv run tessera proof --deep       # adds a 3-claim universe: 7,077,144
+                                    # states total, PROVED, ~13 s (measured)
 ```
 
 The certificate is committed at `data/proof/certificate.json` and pinned

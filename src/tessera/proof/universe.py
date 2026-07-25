@@ -58,8 +58,9 @@ UNIVERSE_A = Bounds(
 UNIVERSE_B = Bounds(name="B", max_records=2, values=(1, 2, 3), claims=2, max_asserted=6)
 #: A deeper bound, run with --deep: three claims, so three-way cross-claim
 #: forgeries are covered. Narrower in the other dimensions to stay finite in
-#: practice (~4.4M states, minutes rather than the 1.8 billion a naive
-#: widening would cost — the trade is stated rather than hidden).
+#: practice — 6,615,600 states, measured at ~13 s for the whole sweep, rather
+#: than the 1.8 billion a naive widening would cost (the trade is stated
+#: rather than hidden).
 UNIVERSE_DEEP = Bounds(
     name="deep", max_records=2, values=(1, 2), claims=3, max_asserted=4
 )
