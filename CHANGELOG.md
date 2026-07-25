@@ -200,6 +200,30 @@ then the phase tags are the releases.
   implementation that cannot recover it must refuse rather than guess. No
   emitted byte changed. CI installs Node and runs the harness.
 
+- **Verifiable redaction — send the receipt without sending the data**
+  (spec 0149, ADR 0039, #194). A trust bundle packages the entire evidence
+  closure, which is why it usually could not leave the building.
+  `tessera bundle redact` withholds content while keeping the artifact
+  verifiable **without moving the root**: a withheld record contributes the
+  commitment it was sealed with, so the manifest and root recompute
+  bit-for-bit identically and a signature or detached approval made over the
+  original **still verifies over the redacted copy**. Measured on the
+  committed challenge bundle: 404,339 → 164,431 bytes, same root, all three
+  claims still re-deriving (the default keeps cited records plus one relation
+  hop). The safety property is pinned adversarially: **redaction can hide,
+  but it can never upgrade a verdict** — a forger who withholds exactly the
+  evidence that exposes the lie gets DEGRADED with every affected claim
+  visibly un-re-derived, never PASS; a claim citing withheld evidence is
+  reported *not re-derivable here* rather than as a mismatch; and any
+  redaction forces the degraded path. The fail-closed policy engine gains
+  `redaction: {allow, max_withheld}`, and the rule is ported to the
+  independent JavaScript verifier in the same unit (a format change only one
+  implementation understands would undo ADR 0038). Recorded correction: the
+  spec's proposed format-minor bump would have moved the root, because
+  `format` is itself a manifest leaf — redaction is self-describing through
+  its markers instead. Committed demo `data/redacted/honest-public.tsb`;
+  `docs/REDACTION.md`; the seven Act-3 ADRs added to the docs nav.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
