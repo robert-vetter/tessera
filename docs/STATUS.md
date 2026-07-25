@@ -3318,3 +3318,78 @@ the GitHub API rather than guessed).
 **State of the tree:** `main` green (8c84fe4); new top-level `verifier/`;
 kit committed; tags through `milestone-21` (M22 in progress); dependabot
 #186 open.
+
+---
+
+## 2026-07-18 — Autonomous session 7: verifiable redaction (spec 0149, ADR 0039, #194)
+
+**Mode note:** autonomous from a "noch so ein Hammer-Feature" kickoff. The
+unit was chosen by asking which problem actually blocks adoption rather
+than which capability is missing — and it is this: **a trust bundle
+carries the evidence, so the receipt cannot leave the building.** Every
+layer of Milestones 20–22 assumed the artifact could be handed over; in a
+real enterprise, customer master data, log lines and ticket text cannot
+be. The strongest artifact the project produces stayed internal, which is
+a product problem wearing a privacy costume.
+
+**The feature.** `tessera bundle redact` withholds evidence while keeping
+the artifact verifiable — and, the property that makes it useful,
+**without moving the root**: a withheld record contributes the commitment
+it was sealed with, so the manifest and root recompute bit-for-bit
+identically and **a signature or detached approval made over the original
+still verifies over the redacted copy**. The auditor checks the same root
+the approver signed. Measured on the committed challenge bundle:
+**404,339 → 164,431 bytes, same root, all three claims still
+re-deriving** (the default keeps cited records plus one relation hop —
+what the entity/aggregate grammars walk).
+
+**The safety property, pinned from the attacker's side:**
+> Redaction can hide, but it can never upgrade a verdict.
+
+A claim citing withheld evidence is reported *not re-derivable here* —
+not as a mismatch, which would read as a lie when the truth is "not
+shared" — and any redaction forces the degraded path, so **a redacted
+bundle can never report PASS** even when every visible claim re-derives.
+Answer re-derivation is not attempted on a deliberately partial corpus
+(re-running the router would read as a forgery). The pinned test: a
+forger who withholds exactly the evidence that exposes the lie gets
+DEGRADED with every affected claim visibly un-re-derived.
+
+**Why taking the stored commitment is safe** (it looks circular, so it is
+argued explicitly in the ADR and the docs): withheld content is
+unverifiable, so no claim can be re-derived from it and no verdict
+improves; and a wrong commitment moves the root and breaks any signature
+or approval. A redacted bundle proves **less**, never more.
+
+**Governance + both implementations.** The fail-closed policy engine
+gained `redaction: {allow, max_withheld}` — a verifier that needs the
+complete corpus says so once, in the same file as every other control.
+The rule was ported to the **independent JavaScript verifier in the same
+unit**, because a format change only one implementation understands would
+undo ADR 0038; both report the same withheld count and exit code, and the
+cross-implementation kit stayed at 25 cases with 0 disagreements.
+
+**A correction recorded rather than dropped:** spec 0149 D2 proposed a
+format-minor bump for redacted bundles. `format` is itself a manifest
+leaf, so touching it **moves the root** — the per-file feature-level trick
+works for chains (which are *new* bundles) but not for a transformation of
+an already-sealed one. Redaction is self-describing through its markers
+instead; the note lives in `format.py` and the ADR.
+
+**Also repaired in passing:** the seven Act-3 ADRs (0033–0039) were
+missing from the docs nav — added.
+
+**Eval:** six lines byte-identical; gate green (842 tests, +19); mypy
+strict; mkdocs strict; CI green incl. the 6-way determinism matrix.
+
+**Next**
+- 0138 Rekor (maintainer-present only) and 0141 write-up close M22; the
+  write-up now carries a measured comparison, a machine-checked theorem, a
+  cross-implementation result **and** a disclosure story.
+- Named future work: a third implementation (Rust/Go); the format as an
+  RFC-style document; re-identification hardening for the ids redaction
+  necessarily leaves visible.
+
+**State of the tree:** `main` green (53e23c1); `tessera/bundle/` now
+carries `redact`; `data/redacted/` committed; tags through `milestone-21`
+(M22 in progress); dependabot #186 open.
