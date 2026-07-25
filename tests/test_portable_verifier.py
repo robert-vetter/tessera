@@ -27,6 +27,7 @@ from tessera.bundle.verify import verify_bundle
 
 REPO = Path(__file__).resolve().parents[1]
 JS = REPO / "verifier" / "js" / "tessera-verify.mjs"
+JS_CORE = REPO / "verifier" / "js" / "verify-core.mjs"
 KIT = REPO / "data" / "kit" / "expectations.json"
 HONEST = REPO / "data" / "challenge" / "honest.tsb"
 FORGED = REPO / "data" / "challenge" / "forged.tsb"
@@ -72,11 +73,23 @@ def test_kit_is_committed_and_describes_the_contract() -> None:
 
 def test_the_two_non_portable_checks_are_named_not_hidden() -> None:
     """The portable verifier must state what it does not do — a silent scope
-    gap would look like agreement while proving nothing."""
-    source = JS.read_text(encoding="utf-8")
+    gap would look like agreement while proving nothing. The scope lives in
+    the core (spec 0150), which is the file both front ends share."""
+    source = JS_CORE.read_text(encoding="utf-8")
     assert "answer re-derivation" in source
     assert "action re-derivation" in source
     assert "PASS-PARTIAL" in source
+
+
+def test_the_core_has_no_imports_so_it_runs_anywhere() -> None:
+    """One implementation, two front ends (spec 0150 D1): the core must stay
+    dependency-free, or the browser build becomes a second implementation."""
+    source = JS_CORE.read_text(encoding="utf-8")
+    assert "\nimport " not in source  # no ES imports at all
+    assert "require(" not in source
+    # ...and specifically nothing from a runtime-only module. ("node:" also
+    # appears as a manifest leaf prefix and in prose, so match the import.)
+    assert 'from "node:' not in source
 
 
 # --- the differential contract, case by case ---------------------------------------

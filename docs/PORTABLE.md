@@ -86,6 +86,22 @@ changed — every committed root is untouched — but the recipe is now
 implementable *from the document*, which is the property that makes a
 format portable instead of a description of one program.
 
+## The same verifier, in a browser tab
+
+Because the core has zero imports, the *same file* runs in a page:
+[**verify.html**](verify.html) — drop a `.tsb` on it and the verdict
+appears in a second. It is generated from `verifier/js/verify-core.mjs`
+(so it cannot drift), ships as **one self-contained file** with no CDN and
+no build step, and — the property that matters for a trust tool —
+**contains no network API at all**: no `fetch`, no `XMLHttpRequest`, no
+form, no external reference. Your file never leaves your device, and that
+sentence is a pinned test rather than a promise. Disconnect your network
+and it still works.
+
+Two example bundles are embedded (honest and forged, ~37 KB each) so the
+demo needs no download either. Ed25519 signature checking is the one thing
+the browser build omits, and it says so when it meets a signed bundle.
+
 ## Reproduce it
 
 ```console
