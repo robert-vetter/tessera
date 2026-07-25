@@ -3393,3 +3393,67 @@ strict; mkdocs strict; CI green incl. the 6-way determinism matrix.
 **State of the tree:** `main` green (53e23c1); `tessera/bundle/` now
 carries `redact`; `data/redacted/` committed; tags through `milestone-21`
 (M22 in progress); dependabot #186 open.
+
+---
+
+## 2026-07-18 — Autonomous session 9: verify in the browser (spec 0150, ADR 0040, #196)
+
+**Mode note:** autonomous. The unit was chosen by naming the *binding
+constraint* rather than the next missing capability. After nine
+guarantees — receipts, chains, policies, approvals, audit records, the
+benchmark, the proof, the second implementation, redaction — the honest
+observation is that **every one of them lived behind `git clone` plus a
+toolchain, and nobody outside the repository had ever run any of them.**
+Depth was no longer the scarce thing; reach was.
+
+**Shipped.** `docs/verify.html` — one self-contained file. Drop a `.tsb`
+and the verdict appears in a second: per-claim re-execution, chain
+upstreams, withheld items from redaction, approvals when a second file is
+dropped, and the honest "not performed here" line. Dropping the committed
+chain brief or the redacted bundle is a tour of M20–M22 in one gesture.
+No install, no account, no build step, no CDN.
+
+**It is deliberately not a second implementation.**
+`verifier/js/verify-core.mjs` now holds every rule with **zero imports**,
+so the *identical file* runs behind the CLI and inside the page;
+`tessera-verify.mjs` became a thin wrapper (filesystem, Ed25519, exit
+codes). The page is generated from the core and pinned byte-identical to a
+fresh build; the cross-implementation kit regenerated unchanged. A page
+that re-implemented the rules would have been a third thing to keep
+correct and would have proven nothing about the format.
+
+**Two supporting decisions, both about honesty:**
+- The core carries its **own SHA-256**, because Node's crypto is absent in
+  a browser and WebCrypto's digest is async — which would make the whole
+  verifier async and therefore no longer the same code the CLI runs. The
+  hand-written hash is **differentially tested against `node:crypto`** over
+  random inputs, so it cannot drift.
+- **Ed25519 is injected by the host.** The CLI supplies it; the browser
+  build does not and *says so* when it meets a signed bundle — the same
+  rule as `PASS-PARTIAL`: never a silent gap.
+
+**"Your file never leaves your device" is a pinned test, not a promise.**
+The generated page contains no `fetch`, `XMLHttpRequest`, `WebSocket`,
+`sendBeacon`, `EventSource`, dynamic `import()`, `<form>`, `<iframe>`,
+`<img>` or `action=`, and no URL anywhere outside the inert example data.
+The two example bundles are embedded, so even "try an example" is not a
+request — disconnect the network and it still works. For a trust tool
+that property should be checkable, not believed.
+
+**Structure note:** the page markup lives in `verifier/web/template.html`
+as real HTML with placeholders, rather than as a long string inside the
+generator — which also removed the only reason to weaken a lint rule.
+
+**Eval:** six lines byte-identical; gate green (851 tests, +9); mypy
+strict; mkdocs strict; CI green incl. the 6-way matrix; **`src/tessera/`
+completely untouched** — this unit adds no Python to the engine.
+
+**Next**
+- 0138 Rekor (maintainer-present only) and 0141 write-up close M22.
+- Named future work: Ed25519 in the browser build; a third implementation
+  (Rust/Go); the format as an RFC-style document.
+- The page is the natural opener for outreach now: a link, not a repo.
+
+**State of the tree:** `main` green (b1e7b5c); new `verifier/web/`; the
+verifier split into core + CLI; tags through `milestone-21` (M22 in
+progress); dependabot #186 open.
