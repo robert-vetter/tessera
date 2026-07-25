@@ -110,6 +110,15 @@ question an auditor asks is not *"did someone else alter this?"* but
 signature answers the first question. Only re-execution answers the
 second.
 
+## The other half: proof
+
+This benchmark *measures* that integrity-only methods detect none of the
+semantic forgeries when the issuer is the forger. [The bounded soundness
+theorem](PROOF.md) proves the complementary half: for the re-executing
+verifier, over 461,544 states enumerated in full, such a forgery **cannot
+exist** in the bounded domain. The trusting verifier refuted there from
+first principles is the same method graded here by example.
+
 ## Honest limits of this benchmark
 
 - It measures **detection of these 21 attacks on this artifact format**.
