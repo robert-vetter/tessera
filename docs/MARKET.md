@@ -234,6 +234,14 @@ design partners → a benchmark artifact others cite → revenue (not expected).
 Frame as a one-axis outlier: *the only agent layer where every claim is
 auditable and every action is approval-gated — and we measure it.*
 
+**Delivered 2026-07-18 (spec 0146):** item 3 on that list — "a benchmark
+artifact others cite" — now exists as
+[the Verification Gap](CONFORMANCE.md): the published verification methods
+of 2026, faithfully re-implemented and graded against 21 attacks under two
+threat models, reproducible in one offline command, including the cells
+Tessera loses. It is the item on the list that does not depend on anyone
+else's attention.
+
 ## 7. SAP (verified where marked)
 
 - ✓ **Sapphire 2026 (May 12):** "Autonomous Enterprise" — SAP Business AI
@@ -286,3 +294,36 @@ documentation level (wedge 3). Primary buyers to court in 4 weeks: DACH
 agent-delivery consultancies; OSS/MCP developers as the traction engine. For
 SAP, the same story told in Sapphire-2026 vocabulary, plus SALT/HANA-KG/BTP
 proof points. For Z Fellows, one live demo and visible velocity.
+
+## 9. Prior art on receipt verification (primary sources, read 2026-07-18)
+
+Read in full for spec 0146; each is implemented as a graded method in
+[CONFORMANCE.md](CONFORMANCE.md).
+
+- **IETF, "Compliance Profile of Signed Action Receipts for AI Agents"**
+  (ASQAV draft, 2026) — receipts bound to EU AI Act obligations (Art. 12
+  record-keeping, Art. 26 deployer duties) and DORA; verification is
+  canonicalize → SHA-256 → Ed25519, checkable offline
+  ([datatracker](https://datatracker.ietf.org/doc/draft-marques-asqav-compliance-receipts/)).
+- **Microsoft Agent Governance Toolkit, "Independently Verifiable
+  Compliance Receipts"** — a deliberately bounded model of three checks:
+  signature validity, chain integrity (`previousReceiptHash`), and policy
+  binding (`covenantHash`). Its own text states the verifier confirms the
+  decision was *signed consistently*, not that it was correct
+  ([proposal](https://microsoft.github.io/agent-governance-toolkit/proposals/verifiable-compliance-receipts/)).
+- **"Proof of Execution: Runtime Verification for Governed AI Agent
+  Actions"**, Rhodes & Kang, Apr 2026
+  ([arXiv:2607.05397](https://arxiv.org/abs/2607.05397)) — the closest
+  adjacent work: execution as a proof-carrying object (contract, causal
+  event stream, replay context) with five validator invariants the paper
+  calls syntactic predicates; envelope closure is scoped to the
+  *declared* envelope, undeclared dependencies are explicitly outside it,
+  and deterministic replay is a guarantee under stated deployment
+  assumptions. **Complementary, not overlapping:** it verifies that an
+  action was authorized, in scope, recorded and replayable; Tessera
+  verifies that the claims in an answer follow from the evidence cited.
+
+**Consequence for positioning:** keep the claim on its own axis
+(claim-vs-evidence re-execution), credit the adjacent work by name, and
+let the benchmark — including the cell Tessera loses — carry the
+comparison. Overclaiming here would be both wrong and unnecessary.

@@ -23,6 +23,19 @@ transcript of hallucinations verifies flawlessly. Integrity is solved;
 agent-governance tools states it verbatim: none performs re-execution
 verification — all rely on signature and hash-chain validation.
 
+**Sharpened 2026-07-18 after reading the primary sources** (spec 0146,
+now measured in [CONFORMANCE.md](CONFORMANCE.md)): the honest form of
+this claim names its axis. Adjacent work is real and good — the IETF
+signed-receipt drafts, Microsoft's verifiable-compliance-receipt proposal
+(whose own text says the verifier confirms consistent signing, not that
+the decision was correct), and *Proof of Execution*
+([arXiv:2607.05397](https://arxiv.org/abs/2607.05397)), which verifies
+authorization, scope, trace integrity and replayability under stated
+assumptions via invariants it calls syntactic. **Tessera's axis is
+different: claim-vs-evidence re-execution.** The benchmark grades every
+method on the axis it targets, and records the case Tessera itself
+misses (replay of an expired mandate).
+
 Tessera owns the missing half already: a deterministic, dependency-free
 verifier that recomputes claims against evidence instead of judging
 them. Act 3 puts that verifier inside a portable artifact:
