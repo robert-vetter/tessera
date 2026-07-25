@@ -224,6 +224,28 @@ then the phase tags are the releases.
   its markers instead. Committed demo `data/redacted/honest-public.tsb`;
   `docs/REDACTION.md`; the seven Act-3 ADRs added to the docs nav.
 
+- **Verify in the browser — ten seconds, no install, nothing uploaded**
+  (spec 0150, ADR 0040, #196). After nine guarantees the binding constraint
+  stopped being depth and became reach: all of them lived behind
+  `git clone` plus a toolchain. `docs/verify.html` is **one self-contained
+  file** — drop a `.tsb` on it and the verdict appears in a second, with
+  per-claim re-execution, chain upstreams, withheld items from redaction,
+  approvals, and the honest "not performed here" line. It is **not a second
+  implementation**: `verifier/js/verify-core.mjs` now holds every rule with
+  ZERO imports so the identical file runs behind the CLI and inside the
+  page, the page is generated from it and pinned byte-identical to a fresh
+  build, and the cross-implementation kit regenerates unchanged. The core
+  carries its own SHA-256 (Node's crypto is absent in a browser and
+  WebCrypto's digest is async, which would make the verifier async and no
+  longer the same code) — differentially tested against `node:crypto` so it
+  cannot drift; Ed25519 is injected by the host, and the browser build says
+  so rather than implying it checked. **"Your file never leaves your
+  device" is a pinned test**: no `fetch`, `XMLHttpRequest`, `WebSocket`,
+  `sendBeacon`, `EventSource`, dynamic `import()`, form, iframe, img or
+  `action=`, and no URL outside the inert example data — the two example
+  bundles are embedded, so even "try an example" is not a request.
+  Published under `docs/`, served by the existing Pages workflow.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
