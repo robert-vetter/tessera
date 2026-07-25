@@ -124,6 +124,31 @@ then the phase tags are the releases.
   signed claim, not proof of time. `docs/APPROVAL.md`; POLICY.md rule
   table + SAP_ALIGNMENT clause extended; the 3-OS matrix runs the tests.
 
+- **The Verification Gap — a conformance benchmark you can re-run**
+  (spec 0146, ADR 0036, #188). `tessera conformance` grades five
+  verification methods against 21 attacks under two named threat models,
+  offline, in about a second — turning the project's central comparative
+  claim from an assertion into a measurement. The methods are *our own*
+  implementations of *published* methods (hash-chained/Merkle receipts;
+  IETF ASQAV-style signed receipts; Microsoft AGT-style policy-bound
+  receipts; Proof-of-Execution-style syntactic validator invariants,
+  arXiv:2607.05397) plus Tessera's re-execution; no third-party product is
+  run, named in a score, or characterised beyond its own published text.
+  **Result:** under the outside-tamperer model — printed first — signatures
+  detect everything and re-execution adds no detection power (19/20 vs
+  20/21). Under the model that applies to an agent's own receipt, where the
+  issuer seals it, no non-re-executing method detects **any** of the 15
+  semantic/action/chain forgeries and re-execution detects all 15.
+  **The parts that don't flatter us are pinned:** `stale_contract_replay`
+  is a cell Tessera loses by design (a PASS is not a recency claim), the
+  runtime-attestation method wins it; `policy_swap` is NOT-APPLICABLE, never
+  a win; all four baselines miss `extra_top_section` (measured, against the
+  spec's own prediction); and no method may flag an honest bundle. Reading
+  the primary sources also sharpened the public claim: Proof of Execution is
+  **complementary, not overlapping**, and ROADMAP3 + a new MARKET.md §9 now
+  credit the adjacent work by name. Committed scorecard pinned byte-identical
+  to a fresh run; deterministic; stdlib-only; in the 3-OS matrix.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
