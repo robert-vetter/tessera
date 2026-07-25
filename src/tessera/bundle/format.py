@@ -29,6 +29,11 @@ FORMAT_MINOR = 0
 # false-PASSes (the spec-0134 content-not-label rule).
 CHAIN_FORMAT_MINOR = 1
 
+# NOTE: redaction (spec 0149) deliberately does NOT bump the minor. `format`
+# is itself a manifest leaf, so touching it would move the root — and a
+# redacted bundle preserving its original root is the whole point. Redacted
+# content is self-describing through its `redacted` markers instead.
+
 # The evidence-closure kind single-decision bundles emit (spec 0131 D4): the
 # bundle carries the whole corpus, so whole-graph shapes and omission
 # attacks are handled by construction. A verifier that meets an unknown
@@ -97,7 +102,45 @@ def _get(mapping: dict[str, object], key: str) -> object:
     return mapping[key]
 
 
-def leaf_manifest(bundle: dict[str, object]) -> dict[str, str]:
+def is_withheld(value: object) -> bool:
+    """Whether a section or node was redacted (spec 0149): its content was
+    withheld and only the commitment already in the manifest remains.
+
+    A withheld *section* carries the marker alone; a withheld *node* also
+    keeps its record id, because citations must still resolve. Anything else
+    riding along under the marker is not redaction and is not accepted here.
+    """
+    if not isinstance(value, dict) or value.get("redacted") is not True:
+        return False
+    extra = set(value) - {"redacted", "record"}
+    if extra:
+        return False
+    record = value.get("record")
+    return record is None or (isinstance(record, dict) and set(record) == {"id"})
+
+
+def _leaf(value: object, name: str, committed: dict[str, str] | None) -> str:
+    """A leaf's digest — or, for withheld content, the commitment the bundle
+    was sealed with (spec 0149).
+
+    Taking the stored value here is what preserves the root through
+    redaction, and it is safe precisely because withheld content is
+    *unverifiable*: no claim can be re-derived from it, so a redacted bundle
+    proves LESS, never more. A wrong commitment moves the root and breaks
+    any signature or approval made over the original.
+    """
+    if is_withheld(value):
+        if committed is None or name not in committed:
+            raise ValueError(
+                f"withheld leaf {name!r} has no commitment in the sealed manifest"
+            )
+        return committed[name]
+    return digest(value)
+
+
+def leaf_manifest(
+    bundle: dict[str, object], committed: dict[str, str] | None = None
+) -> dict[str, str]:
     """Recompute the leaf manifest from a bundle's content sections.
 
     One leaf per graph node (``node:<record-id>`` — a tampered record is
@@ -106,24 +149,43 @@ def leaf_manifest(bundle: dict[str, object]) -> dict[str, str]:
     until unit 0136 fills it); ``signature``/``anchor`` never enter the
     manifest (they attest the root). Raises :class:`ValueError` on a
     malformed shape or a duplicate node id.
+
+    ``committed`` supplies the sealed manifest so **withheld** content
+    (spec 0149) contributes its commitment instead of a digest of the
+    redaction marker — which is what keeps a redacted bundle's root
+    identical to the original's.
     """
     closure = _dict(_get(bundle, "evidence_closure"), "evidence_closure")
-    graph = _dict(_get(closure, "graph"), "evidence_closure.graph")
+    graph_value = _get(closure, "graph")
+    graph_withheld = is_withheld(graph_value)
+    withheld_marker: dict[str, object] = {"redacted": True}
+    graph: dict[str, object] = (
+        {
+            "nodes": [],
+            "edges": withheld_marker,
+            "resolutions": withheld_marker,
+            "mentions": withheld_marker,
+        }
+        if graph_withheld
+        else _dict(graph_value, "evidence_closure.graph")
+    )
 
     leaves: dict[str, str] = {
         "format": digest(_get(bundle, "format")),
         "engine": digest(_get(bundle, "engine")),
-        "result": digest(_get(bundle, "result")),
+        "result": _leaf(_get(bundle, "result"), "result", committed),
         "action": digest(_get(bundle, "action")),
         # The closure metadata (its declared kind) is hashed too, so tampering
         # the label is at least an integrity break without a re-seal; the
         # verifier additionally decides re-derivability from what is PRESENT,
         # never from this label alone (spec 0134, the downgrade-attack fix).
         "closure.kind": digest(_get(closure, "kind")),
-        "kb": digest(_get(closure, "kb")),
-        "graph.edges": digest(_get(graph, "edges")),
-        "graph.resolutions": digest(_get(graph, "resolutions")),
-        "graph.mentions": digest(_get(graph, "mentions")),
+        "kb": _leaf(_get(closure, "kb"), "kb", committed),
+        "graph.edges": _leaf(_get(graph, "edges"), "graph.edges", committed),
+        "graph.resolutions": _leaf(
+            _get(graph, "resolutions"), "graph.resolutions", committed
+        ),
+        "graph.mentions": _leaf(_get(graph, "mentions"), "graph.mentions", committed),
     }
     for i, item in enumerate(_list(_get(graph, "nodes"), "nodes")):
         node = _dict(item, f"nodes[{i}]")
@@ -134,7 +196,16 @@ def leaf_manifest(bundle: dict[str, object]) -> dict[str, str]:
         leaf = f"node:{record_id}"
         if leaf in leaves:
             raise ValueError(f"duplicate node id {record_id!r} in the graph snapshot")
-        leaves[leaf] = digest(node)
+        # A withheld node keeps its id (citations must still resolve) and
+        # contributes the commitment it was sealed with (spec 0149).
+        leaves[leaf] = _leaf(node, leaf, committed)
+    if graph_withheld and committed is not None:
+        # The whole graph withheld: every per-record commitment still stands,
+        # so the manifest — and the root — are unchanged. Which records existed
+        # is public in the manifest; only their content was not shared.
+        for name, value in committed.items():
+            if name.startswith("node:"):
+                leaves[name] = value
     if _get(closure, "kind") == CLOSURE_CHAIN:
         # One leaf per embedded upstream bundle, NAMED by its sealed root
         # (spec 0143 D2): the manifest commits to the upstream set by root and
@@ -208,7 +279,9 @@ def integrity_mismatches(bundle: dict[str, object]) -> list[str]:
 
     problems.extend(_section_set_problems(bundle))
 
-    recomputed = leaf_manifest(bundle)
+    # Withheld content contributes the commitment it was sealed with, so a
+    # redacted bundle's root recomputes identically (spec 0149).
+    recomputed = leaf_manifest(bundle, stored)
     for name in sorted(recomputed.keys() - stored.keys()):
         problems.append(f"missing leaf {name!r}")
     for name in sorted(stored.keys() - recomputed.keys()):
@@ -244,7 +317,7 @@ def _section_set_problems(bundle: dict[str, object]) -> list[str]:
                 f"unexpected evidence_closure key(s) {sorted(extra_closure)}"
             )
         graph = closure.get("graph")
-        if isinstance(graph, dict):
+        if isinstance(graph, dict) and not is_withheld(graph):
             extra_graph = set(graph) - _GRAPH_KEYS
             if extra_graph:
                 problems.append(f"unexpected graph key(s) {sorted(extra_graph)}")

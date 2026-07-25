@@ -61,8 +61,10 @@ from tessera.bundle.format import (
     FORMAT_NAME,
     compute_root,
     integrity_mismatches,
+    is_withheld,
     leaf_manifest,
 )
+from tessera.bundle.redact import withheld_ids
 from tessera.bundle.serde import (
     claim_from_grounded,
     graph_from_dict,
@@ -164,6 +166,10 @@ class VerifyReport:
     #: against the RECOMPUTED root. Approvals inform; policies enforce — an
     #: invalid approval never changes the bundle's own verdict.
     approvals: tuple[ApprovalCheck, ...] = ()
+    #: Content withheld by redaction (spec 0149): record ids and section
+    #: names whose commitments remain but whose content was not shared. Any
+    #: redaction forces the degraded path — a redacted bundle proves less.
+    withheld: tuple[str, ...] = ()
 
     @property
     def envelope_problems(self) -> tuple[str, ...]:
@@ -183,11 +189,13 @@ class VerifyReport:
 
     @property
     def degraded(self) -> bool:
-        """Visible degradation: not re-derivable, or an honestly-unverified
-        claim faithfully recorded (unreachable on the committed corpora,
-        whose faithfulness floor is 1.0 — kept for the taxonomy's honesty)."""
-        return self.taxonomy != RE_DERIVED or any(
-            not c.recorded and not c.rederived for c in self.claims
+        """Visible degradation: not re-derivable, content withheld by
+        redaction (spec 0149 — a redacted bundle can never report a full
+        PASS), or an honestly-unverified claim faithfully recorded."""
+        return (
+            self.taxonomy != RE_DERIVED
+            or bool(self.withheld)
+            or any(not c.recorded and not c.rederived for c in self.claims)
         )
 
     @property
@@ -224,6 +232,7 @@ class VerifyReport:
             "refused": self.refused,
             "upstreams": [u.to_dict() for u in self.upstreams],
             "approvals": [a.to_dict() for a in self.approvals],
+            "withheld": list(self.withheld),
             "semantic_problems": list(self.semantic_problems),
             "verdict": self.verdict,
             "exit_code": self.exit_code,
@@ -407,12 +416,32 @@ def _claim_checks(
     result: GroundedResult,
     graph: KnowledgeGraph,
     shapes: tuple[ClaimShape, ...],
+    withheld: frozenset[str] = frozenset(),
 ) -> tuple[ClaimCheck, ...]:
     """Check (a): re-run ``is_supported`` for every recorded claim against the
-    packaged graph, and compare with the recorded verdict."""
+    packaged graph, and compare with the recorded verdict.
+
+    A claim citing **withheld** evidence (spec 0149) cannot be re-executed
+    here. It is reported as not re-derivable rather than as a mismatch — a
+    mismatch would read as a lie, when the truth is that the evidence was
+    not shared. It is never treated as verified, so redaction can hide but
+    never upgrade a verdict.
+    """
     nodes = {node.id: node for node in graph.nodes}
     checks: list[ClaimCheck] = []
     for index, claim in enumerate(result.claims):
+        cites_withheld = any(evidence.id in withheld for evidence in claim.support)
+        if cites_withheld:
+            checks.append(
+                ClaimCheck(
+                    index=index,
+                    text=claim.text,
+                    recorded=claim.verified,
+                    rederived=False,
+                    cause=None,  # withheld, not wrong — never a semantic failure
+                )
+            )
+            continue
         rederived = is_supported(claim_from_grounded(claim), nodes, graph, shapes)
         cause: str | None = None
         if claim.verified and not rederived:
@@ -862,7 +891,15 @@ def verify_bundle(
     # named invalid entry, not a crash.
     approval_checks: list[ApprovalCheck] = []
     if approvals:
-        recomputed_root = compute_root(leaf_manifest(bundle))
+        integrity_section = bundle.get("integrity")
+        committed = (
+            integrity_section.get("leaves")
+            if isinstance(integrity_section, dict)
+            else None
+        )
+        recomputed_root = compute_root(
+            leaf_manifest(bundle, committed if isinstance(committed, dict) else None)
+        )
         for artifact in approvals:
             try:
                 approval_checks.append(check_approval(artifact, recomputed_root))
@@ -955,10 +992,49 @@ def verify_bundle(
     upstreams: tuple[UpstreamCheck, ...] = ()
     answer_rederives: bool | None = None
     answer_cause: str | None = None
+    # Redaction (spec 0149): withheld content keeps its id and commitment but
+    # not its content. Those nodes are removed before reconstruction (their
+    # shape is a marker, not a record) and their ids are carried so citations
+    # still resolve and claims that depend on them are reported as withheld.
+    withheld_records = withheld_ids(bundle)
+    withheld_sections = [
+        name
+        for name, value in (("kb", closure.get("kb")), ("graph", closure.get("graph")))
+        if is_withheld(value)
+    ]
+    withheld_all = tuple(sorted(withheld_records)) + tuple(withheld_sections)
+    if taxonomy == RE_DERIVED and "graph" in withheld_sections:
+        # The whole graph withheld: nothing left to re-execute claims against.
+        # (A withheld knowledge base is different — the claim grammars read the
+        # graph; the kb feeds the answer re-derivation, which is skipped below.)
+        taxonomy, reason = (
+            INTEGRITY_ONLY,
+            (
+                "the evidence graph was withheld by redaction: commitments are "
+                "checked, but no verdict can be re-executed from what was shared"
+            ),
+        )
     if taxonomy == RE_DERIVED:
         try:
-            graph = graph_from_dict(_section(closure, "graph"))
-            kb = kb_from_dict(_section(closure, "kb"))
+            graph_section = _section(closure, "graph")
+            packaged_nodes = graph_section.get("nodes")
+            visible_graph = {
+                **graph_section,
+                "nodes": [
+                    node
+                    for node in (
+                        packaged_nodes if isinstance(packaged_nodes, list) else []
+                    )
+                    if not is_withheld(node)
+                ],
+            }
+            graph = graph_from_dict(visible_graph)
+            kb_section = closure.get("kb")
+            kb = (
+                KnowledgeBase(records=())
+                if is_withheld(kb_section)
+                else kb_from_dict(_section(closure, "kb"))
+            )
         except ValueError as error:
             raise BundleFormatError(f"malformed evidence closure: {error}") from error
         # A full re-derivable graph is present, so re-execution runs regardless
@@ -974,7 +1050,13 @@ def verify_bundle(
                 f"sealed domain (expected {expected_kind!r}) — the label "
                 "cannot suppress re-execution"
             )
-        referential = _referential_problems(result, graph)
+        referential = tuple(
+            problem
+            for problem in _referential_problems(result, graph)
+            # A citation to withheld evidence is not dangling: the record is
+            # committed, just not shared. It is reported per claim instead.
+            if not any(identifier in problem for identifier in withheld_records)
+        )
         if referential:
             # A dangling reference would crash re-execution; report it as a
             # named semantic failure and do not attempt the checks that assume
@@ -993,10 +1075,19 @@ def verify_bundle(
                     )
                 else:
                     dom = domain(domain_name)
-                    claims = _claim_checks(result, graph, dom.claim_shapes)
-                    answer_rederives, answer_cause = _answer_rederivation(
-                        _section(bundle, "result"), result, graph, kb, domain_name
+                    claims = _claim_checks(
+                        result, graph, dom.claim_shapes, frozenset(withheld_records)
                     )
+                    if withheld_all:
+                        # Re-running the router over a deliberately partial
+                        # corpus would yield a different answer and read as a
+                        # forgery. Redaction means the answer check was not
+                        # performed — which the degraded verdict states.
+                        answer_rederives, answer_cause = None, None
+                    else:
+                        answer_rederives, answer_cause = _answer_rederivation(
+                            _section(bundle, "result"), result, graph, kb, domain_name
+                        )
                 # An action bundle also re-derives its wire request (spec 0136).
                 action_section = bundle.get("action")
                 if isinstance(action_section, dict):
@@ -1031,6 +1122,7 @@ def verify_bundle(
         refused=result.refused,
         upstreams=upstreams,
         approvals=tuple(approval_checks),
+        withheld=withheld_all,
     )
 
 

@@ -120,24 +120,42 @@ const CLOSURE_KEYS = new Set(["kind", "graph", "kb"]);
 const CHAIN_CLOSURE_KEYS = new Set(["kind", "graph", "kb", "upstream"]);
 const GRAPH_KEYS = new Set(["nodes", "edges", "resolutions", "mentions"]);
 
-function leafManifest(bundle) {
+/** Redaction (spec 0149): withheld content keeps only the commitment the
+ *  bundle was sealed with, which is what preserves the root. Safe because
+ *  withheld content is unverifiable — a redacted bundle proves LESS, never
+ *  more — and a wrong commitment moves the root and breaks any signature. */
+function isWithheld(value) {
+  return Boolean(value) && typeof value === "object" && plain(value.redacted) === true;
+}
+
+function leafOf(value, name, committed) {
+  if (isWithheld(value)) {
+    if (!committed || !(name in committed)) {
+      throw new Error(`withheld leaf '${name}' has no commitment in the manifest`);
+    }
+    return committed[name];
+  }
+  return digest(value);
+}
+
+function leafManifest(bundle, committed) {
   const closure = bundle.evidence_closure;
   const graph = closure.graph;
   const leaves = {
     format: digest(bundle.format),
     engine: digest(bundle.engine),
-    result: digest(bundle.result),
+    result: leafOf(bundle.result, "result", committed),
     action: digest(bundle.action ?? null),
     "closure.kind": digest(closure.kind),
-    kb: digest(closure.kb),
-    "graph.edges": digest(graph.edges),
-    "graph.resolutions": digest(graph.resolutions),
-    "graph.mentions": digest(graph.mentions),
+    kb: leafOf(closure.kb, "kb", committed),
+    "graph.edges": leafOf(graph.edges, "graph.edges", committed),
+    "graph.resolutions": leafOf(graph.resolutions, "graph.resolutions", committed),
+    "graph.mentions": leafOf(graph.mentions, "graph.mentions", committed),
   };
   for (const node of graph.nodes) {
     const leaf = "node:" + node.record.id;
     if (leaf in leaves) throw new Error(`duplicate node id ${node.record.id}`);
-    leaves[leaf] = digest(node);
+    leaves[leaf] = leafOf(node, leaf, committed);
   }
   if (closure.kind === CLOSURE_CHAIN) {
     for (const upstream of closure.upstream ?? []) {
@@ -173,8 +191,8 @@ function integrityProblems(bundle) {
     return [`canonicalization '${integrity.canonicalization}' is not ${CANONICALIZATION}`];
   }
   problems.push(...sectionSetProblems(bundle));
-  const recomputed = leafManifest(bundle);
-  const stored = integrity.leaves ?? {};
+  const stored = plain(integrity.leaves ?? {});
+  const recomputed = leafManifest(bundle, stored);
   for (const name of Object.keys(recomputed).sort()) {
     if (!(name in stored)) problems.push(`missing leaf '${name}'`);
   }
@@ -186,7 +204,7 @@ function integrityProblems(bundle) {
       problems.push(`leaf '${name}' does not match its content`);
     }
   }
-  if (integrity.root !== digest(recomputed)) {
+  if (plain(integrity.root) !== digest(recomputed)) {
     problems.push("root does not recompute from the content");
   }
   return problems;
@@ -284,7 +302,10 @@ function cents(raw) {
 
 function buildGraph(closure) {
   const nodes = new Map();
-  for (const node of closure.graph.nodes) nodes.set(node.record.id, node);
+  for (const node of closure.graph.nodes ?? []) {
+    if (isWithheld(node)) continue; // committed, not shared
+    nodes.set(node.record.id, node);
+  }
   return {
     nodes,
     edges: closure.graph.edges,
@@ -539,6 +560,7 @@ function verifyBundle(rawBundle, approvals = []) {
     claims: [],
     approvals: [],
     upstreams: [],
+    withheld: [],
     not_performed: [
       "answer re-derivation (needs the engine's router)",
       "action re-derivation (needs the engine's drafting pipeline)",
@@ -575,7 +597,9 @@ function verifyBundle(rawBundle, approvals = []) {
     return report;
   }
 
-  const recomputedRoot = digest(leafManifest(rawBundle));
+  const recomputedRoot = digest(
+    leafManifest(rawBundle, plain(rawBundle.integrity?.leaves ?? {}))
+  );
   for (const artifact of approvals) {
     report.approvals.push(checkApproval(artifact, recomputedRoot));
   }
@@ -594,7 +618,10 @@ function verifyBundle(rawBundle, approvals = []) {
   // Referential integrity: every cited id must resolve to a packaged node.
   for (const claim of result.claims ?? []) {
     for (const evidence of claim.support ?? []) {
-      if (!graph.nodes.has(evidence.id)) {
+      const withheldHere = (closure.graph?.nodes ?? []).some(
+        (node) => isWithheld(node) && node.record?.id === evidence.id
+      );
+      if (!graph.nodes.has(evidence.id) && !withheldHere) {
         report.semantic_problems.push(`cited record '${evidence.id}' is absent from the graph`);
       }
     }
@@ -640,8 +667,22 @@ function verifyBundle(rawBundle, approvals = []) {
 
   // Claim-level semantic re-execution.
   const declared = bundle.engine.claim_shapes ?? [];
+  const withheldIds = new Set(
+    (closure.graph?.nodes ?? [])
+      .filter((node) => isWithheld(node))
+      .map((node) => node.record?.id)
+  );
+  const withheldSections = ["kb", "graph", "result"].filter((name) =>
+    isWithheld(name === "result" ? bundle.result : closure[name])
+  );
+  report.withheld = [...withheldIds, ...withheldSections];
   let notEvaluable = 0;
   for (const [index, claim] of (result.claims ?? []).entries()) {
+    if ((claim.support ?? []).some((e) => withheldIds.has(e.id))) {
+      // Withheld, not wrong: reported, never counted as verified.
+      report.claims.push({ index, rederived: false, recorded: claim.verified, matches: null });
+      continue;
+    }
     const rederived = claimVerdict(claim, graph, declared);
     if (rederived === "NOT-EVALUABLE") {
       notEvaluable += 1;
@@ -660,7 +701,7 @@ function verifyBundle(rawBundle, approvals = []) {
   }
 
   if (report.semantic_problems.length) report.verdict = "FAIL";
-  else if (notEvaluable) report.verdict = "NOT-EVALUABLE";
+  else if (notEvaluable || report.withheld.length) report.verdict = "NOT-EVALUABLE";
   else report.verdict = "PASS-PARTIAL";
   return report;
 }
@@ -696,6 +737,12 @@ function render(report, source) {
   }
   for (const upstream of report.upstreams) {
     lines.push(`upstream:  ${upstream.root} → ${upstream.verdict}`);
+  }
+  if (report.withheld.length) {
+    lines.push(
+      `withheld:  ${report.withheld.length} item(s) — commitments intact, ` +
+        "content not shared; claims citing them are not re-derivable here"
+    );
   }
   const matched = report.claims.filter((c) => c.matches === true).length;
   lines.push(`claims:    ${matched}/${report.claims.length} re-executed and matched`);
