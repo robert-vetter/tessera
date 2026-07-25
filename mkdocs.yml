@@ -62,6 +62,7 @@ nav:
   - Chained bundles: CHAIN.md
   - Trust policies: POLICY.md
   - Verifiable approvals: APPROVAL.md
+  - Verifiable redaction: REDACTION.md
   - Audit records (EU AI Act): COMPLIANCE.md
   - Real SALT data (S1): SALT_REAL.md
   - Engineering: ENGINEERING.md
@@ -102,6 +103,13 @@ nav:
       - 0030 HANA KG persistence boundary: adr/0030-hana-kg-persistence-boundary.md
       - 0031 The trust-bundle format: adr/0031-trust-bundle-format.md
       - 0032 Bundle signing: adr/0032-bundle-signing.md
+      - 0033 Chained bundles: adr/0033-chained-bundles.md
+      - 0034 Trust policies: adr/0034-trust-policies.md
+      - 0035 Verifiable approvals: adr/0035-verifiable-approvals.md
+      - 0036 The conformance benchmark: adr/0036-conformance-benchmark.md
+      - 0037 The bounded soundness proof: adr/0037-bounded-soundness-proof.md
+      - 0038 A portable second verifier: adr/0038-portable-second-verifier.md
+      - 0039 Verifiable redaction: adr/0039-verifiable-redaction.md
 
 # The ADR template is intentionally not a published page.
 not_in_nav: |

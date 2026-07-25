@@ -47,10 +47,12 @@ _RULE_KEYS = (
     "actions",
     "chain",
     "approvals",
+    "redaction",
 )
 _ACTION_KEYS = ("allow", "require_approval_gate", "forbid_real_send")
 _CHAIN_KEYS = ("max_depth", "require_signed_upstreams", "allowed_upstream_signers")
 _APPROVAL_KEYS = ("require", "allowed_approvers", "distinct_approvers")
+_REDACTION_KEYS = ("allow", "max_withheld")
 
 
 class PolicyError(ValueError):
@@ -189,6 +191,20 @@ def validate_policy(policy: object) -> dict[str, object]:
             )
         _validate_str_list(approvals, "allowed_approvers")
         _validate_bool(approvals, "distinct_approvers")
+
+    redaction = rules.get("redaction")
+    if redaction is not None:
+        _require(isinstance(redaction, dict), "rule 'redaction' must be an object")
+        assert isinstance(redaction, dict)
+        unknown_r = set(redaction) - set(_REDACTION_KEYS)
+        _require(not unknown_r, f"unknown redaction rule(s) {sorted(unknown_r)}")
+        _validate_bool(redaction, "allow")
+        if "max_withheld" in redaction:
+            limit = redaction["max_withheld"]
+            _require(
+                isinstance(limit, int) and not isinstance(limit, bool) and limit >= 0,
+                "redaction rule 'max_withheld' must be a non-negative integer",
+            )
     return policy
 
 
@@ -482,6 +498,31 @@ def evaluate_policy(
                 effective >= needed,
                 f"{effective} {counting} approval(s) of this exact root "
                 f"(need {needed})",
+            )
+
+    redaction_rules = rules.get("redaction")
+    if isinstance(redaction_rules, dict):
+        # Disclosure is a control like any other: an auditor who needs the
+        # full corpus says so once, here (spec 0149).
+        withheld = len(report.withheld)
+        if redaction_rules.get("allow") is False:
+            add(
+                "redaction.allow",
+                withheld == 0,
+                (
+                    "no content was withheld"
+                    if withheld == 0
+                    else f"{withheld} item(s) withheld, but this policy requires "
+                    "the complete evidence"
+                ),
+            )
+        if "max_withheld" in redaction_rules:
+            limit = redaction_rules["max_withheld"]
+            assert isinstance(limit, int)
+            add(
+                "redaction.max_withheld",
+                withheld <= limit,
+                f"{withheld} item(s) withheld (limit {limit})",
             )
 
     name = policy["name"]

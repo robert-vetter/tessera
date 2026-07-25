@@ -84,6 +84,8 @@ def main(argv: list[str] | None = None) -> int:
         return chain_main(argv[1:])
     if argv and argv[0] == "approve":
         return approve_main(argv[1:])
+    if argv and argv[0] == "redact":
+        return redact_main(argv[1:])
     args = _parser().parse_args(argv)
     try:
         if args.action:
@@ -308,6 +310,77 @@ def approve_main(argv: list[str] | None = None) -> int:
         "note:     this binds a key to these exact bytes; check it with "
         f"`tessera verify {args.bundle} --approval {out}`"
     )
+    return 0
+
+
+# --- tessera bundle redact --------------------------------------------------------
+
+
+def redact_main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="tessera bundle redact",
+        description="Withhold evidence without losing verifiability (spec "
+        "0149): every withheld record contributes the commitment it was "
+        "sealed with, so the ROOT IS PRESERVED — a signature or approval made "
+        "over the original still verifies over the redacted copy. A redacted "
+        "bundle can never report a full PASS: claims citing withheld evidence "
+        "are reported as not re-derivable here. Redaction hides; it never "
+        "upgrades a verdict.",
+    )
+    parser.add_argument("bundle", type=Path, help="path to the .tsb file")
+    parser.add_argument(
+        "-o",
+        "--out",
+        type=Path,
+        default=None,
+        help="output path (default: <bundle>.redacted.tsb; never overwrites)",
+    )
+    parser.add_argument(
+        "--hops",
+        type=int,
+        default=1,
+        help="relation hops to keep around cited records (default: 1, which "
+        "keeps what the entity/aggregate grammars need to re-derive)",
+    )
+    parser.add_argument(
+        "--keep-kb",
+        action="store_true",
+        help="keep the knowledge base (withheld by default: its records carry "
+        "the same text in bulk)",
+    )
+    args = parser.parse_args(argv)
+
+    bundle = _load_bundle(args.bundle)
+    if bundle is None:
+        return 4
+
+    from tessera.bundle.canonical import canonical_bytes
+    from tessera.bundle.redact import RedactionError, redact
+
+    out = args.out or args.bundle.with_suffix(args.bundle.suffix + ".redacted.tsb")
+    if out.exists():
+        print(f"error: {out} already exists", file=sys.stderr)
+        return 2
+    try:
+        redacted = redact(bundle, hops=args.hops, withhold_kb=not args.keep_kb)
+    except RedactionError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+    original_size = len(canonical_bytes(bundle))
+    data = canonical_bytes(redacted) + b"\n"
+    out.write_bytes(data)
+
+    from tessera.bundle.verify import verify_bundle
+
+    report = verify_bundle(redacted)
+    integrity = redacted["integrity"]
+    assert isinstance(integrity, dict)
+    print(f"withheld: {len(report.withheld)} item(s)")
+    print(f"root:     {integrity['root']} (UNCHANGED — approvals still verify)")
+    print(f"size:     {original_size:,} -> {len(data):,} bytes")
+    print(f"verdict:  {report.verdict} — a redacted bundle proves less, never more")
+    print(f"wrote:    {out}")
     return 0
 
 

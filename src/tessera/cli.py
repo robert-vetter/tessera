@@ -41,6 +41,8 @@ Trust bundles (Milestones 20–22):
   tessera bundle approve <file>.tsb       sign a detached approval bound to
                                           the exact sealed bytes; check with
                                           verify --approval (+ policy rules)
+  tessera bundle redact <file>.tsb        withhold evidence, keep the root —
+                                          share the receipt, not the data
 
 The Verification Gap benchmark (Milestone 22):
   tessera conformance                     grade the published verification

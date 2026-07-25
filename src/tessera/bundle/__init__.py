@@ -49,4 +49,7 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.approval` — verifiable approvals (spec 0145, ADR
   0035): detached signed artifacts binding an approver's key to the exact
   sealed root; approvals inform, policies enforce (four-eyes in one rule).
+- :mod:`tessera.bundle.redact` — verifiable redaction (spec 0149, ADR
+  0039): withhold evidence while preserving the root, so prior signatures
+  and approvals still verify; redaction can hide but never upgrade a verdict.
 """
