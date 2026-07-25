@@ -3165,3 +3165,80 @@ with the losing cell in the mail itself.
 **State of the tree:** `main` green (945fce2); new package
 `tessera/conformance/`; scorecard committed; tags through `milestone-21`
 (M22 in progress); dependabot #186 open (actions/checkout 7.0.1).
+
+---
+
+## 2026-07-18 — Autonomous session 5: the bounded soundness theorem (spec 0147, ADR 0037, #190)
+
+**Mode note:** autonomous from the maintainer's kickoff — "even bigger
+than the benchmark, something categorically new". The chosen answer was
+the one categorical step still available: from **empirical** ("the attacks
+we thought of did not get through") to **proved** ("no attack in this
+domain can get through").
+
+**The unit.** `tessera proof` enumerates two bounded universes **in full**
+— 461,544 states, and 7,077,144 with `--deep` — and machine-checks
+`verify(S) = PASS ⟹ S is honest`. Result: **PROVED** for the re-executing
+verifier (204 states accepted, every one honest). The load-bearing
+argument: the universe is *closed under arbitrary rewriting*, so an
+attacker with unlimited re-seal/re-sign power can only produce states
+already inside it — attacker coverage follows as a corollary, and no
+completeness argument about an attack list is needed. Enumeration over a
+finite domain is a decision procedure, which is what makes this a proof
+for the domain rather than a very thorough test. The model hands the
+attacker maximum power: **no hashes and no signatures in it at all** (the
+conformance benchmark's issuer model taken to its limit).
+
+**Falsifiability as a construction principle.** Two deliberately unsound
+verifiers run in the same sweep and **must** be refuted with printed
+counterexamples: `control-trusting` (believes the recorded verdict —
+exactly what an integrity-only receipt does; 139,044 accepted) and
+`control-claims-only` (recomputes claims but never checks the answer
+belongs to the question; its counterexample is a **true claim attached to
+the wrong question**; 5,160 accepted). `proved` is *defined* as: real
+verifier sound ∧ both controls refuted ∧ zero fidelity disagreements.
+
+**Fidelity is differential, not asserted.** 26,840 model claims are
+materialised into real `EvidenceRecord`/`Node`/`Claim` objects and
+re-evaluated by the **shipping** `is_supported` with the real
+`BUSINESS_CLAIM_SHAPES` — **0 disagreements**; a drift fails the build.
+
+**Anti-vacuity guards, and the one that paid off immediately.** Universe
+size is computed by formula *and* by walking, with the run aborting on
+mismatch; and a test pins that a verifier accepting nothing proves
+nothing. That second guard caught a real defect during the build:
+universe B fixed answers at two claims while every canonical answer had
+one, so **nothing passed and the theorem held there only vacuously**. The
+model gained a genuine two-claim question (`Question.BOTH`) and the
+universe now enumerates answers of every length — the flattering number
+was fixed, not kept.
+
+**Honest scope, printed with every result and in `docs/PROOF.md`:**
+bounded; proves a property of a **model** (the Python implementation is
+not verified); model fidelity is **tested, not proven**; says nothing
+about truth in the world. Pure stdlib, no SMT solver — the whole argument
+is auditable by reading four small files.
+
+**Docs correction in this wrap (measured beats estimated):** the `--deep`
+universe was documented as "~4.4M states, minutes"; the measured run is
+**6,615,600 states (7,077,144 total) in ~13 s**. Corrected in
+`universe.py`, the CLI help and `PROOF.md`.
+
+**Eval:** six lines byte-identical; gate green (813 tests, +20); mypy
+strict; mkdocs strict; frozen core, agent chain, bundle layer **and** the
+conformance package all empty-diff.
+
+**Z Fellows update v7 drafted** (local): the proof as headline, the
+benchmark as setup, both losing cells kept in the mail.
+
+**Next**
+- 0138 Rekor (maintainer-present only) + 0141 write-up close M22; the
+  write-up now carries a measured comparison *and* a machine-checked
+  theorem.
+- Named future work: proof-assistant formalisation of the real code
+  (named, never promised); widening the bounds; publishing the conformance
+  adapter protocol.
+
+**State of the tree:** `main` green (f2dfa58); new package
+`tessera/proof/`; certificate committed; tags through `milestone-21` (M22
+in progress); dependabot #186 open.

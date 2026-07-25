@@ -149,6 +149,33 @@ then the phase tags are the releases.
   credit the adjacent work by name. Committed scorecard pinned byte-identical
   to a fresh run; deterministic; stdlib-only; in the 3-OS matrix.
 
+- **The bounded soundness theorem — no false PASS exists** (spec 0147,
+  ADR 0037, #190). `tessera proof` machine-checks, over **461,544 bundle
+  states enumerated in full** (7,077,144 with `--deep`), that
+  `verify(S) = PASS ⟹ S is honest` for the re-executing verifier: **PROVED**.
+  Because the universe is closed under arbitrary rewriting, an attacker with
+  unlimited re-seal and re-sign power can only produce states already in it,
+  so attacker coverage follows as a corollary and no completeness argument
+  about an attack list is needed; enumeration over a finite domain is a
+  decision procedure. The model hands that attacker maximum power — it
+  contains no hashes and no signatures at all.
+  **"PROVED" is falsifiable by construction:** two deliberately unsound
+  verifiers run in the same sweep and must be refuted with printed
+  counterexamples — one trusting the recorded verdict (exactly what an
+  integrity-only receipt does; 139,044 states accepted, forgeries among
+  them) and one recomputing claims but never re-deriving the answer (its
+  counterexample is a *true* claim attached to the wrong question) — and
+  `proved` is defined to require both refutations plus zero fidelity
+  disagreements. **Fidelity is differential:** 26,840 model claims are
+  materialised into real records and re-evaluated by the *shipping*
+  `is_supported` with the real grammars — 0 disagreements. Two anti-vacuity
+  guards: universe size computed by formula *and* by walking (run aborts on
+  mismatch), and a verifier that accepts nothing fails the tests — the
+  second caught a universe whose theorem held only vacuously during the
+  build, and the model was fixed rather than the number kept. Bounds, and
+  what the proof does *not* cover, print with every result. Pure stdlib, no
+  SMT solver. Certificate committed and pinned; in the 3-OS matrix.
+
 ## [milestone-21] — 2026-07-11
 
 **Act 3, Milestone 21 — sealed and measured.** Trust bundles gain an origin
