@@ -34,7 +34,7 @@ cloud = ["hdbcli>=2.19"]
 # Parquet reader for the real SAP SALT dataset — OPT-IN: `uv sync --extra salt`.
 # Imported only by scripts/salt_real_slice.py (the gated-data slice extractor,
 # spec 0130); the ingester (tessera/sources/salt_real.py) and CI never touch it.
-salt = ["pyarrow>=17"]
+salt = ["pyarrow>=25.0.0"]
 # Model Context Protocol server SDK — OPT-IN: `uv sync --extra agent`. Imported
 # lazily only by tessera.agent.mcp_server's build_server()/main(); the default
 # clone-and-run graph and CI never touch it (guarded by
