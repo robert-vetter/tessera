@@ -30,7 +30,7 @@ tessera-ui = "tessera.ui.server:main"
 # OPT-IN: `uv sync --extra cloud`. Imported lazily by the HANA vector backend
 # (ADR 0015); the default clone-and-run graph never touches it (guarded by
 # tests/test_vectors.py::test_default_import_graph_has_no_hdbcli).
-cloud = ["hdbcli>=2.19"]
+cloud = ["hdbcli>=2.29.25"]
 # Parquet reader for the real SAP SALT dataset — OPT-IN: `uv sync --extra salt`.
 # Imported only by scripts/salt_real_slice.py (the gated-data slice extractor,
 # spec 0130); the ingester (tessera/sources/salt_real.py) and CI never touch it.
@@ -58,15 +58,15 @@ packages = ["src/tessera"]
 # Dev tooling (PEP 735 dependency group). Installed via `uv sync`.
 [dependency-groups]
 dev = [
-    "ruff>=0.10",
-    "mypy>=1.15",
-    "pytest>=8.0",
-    "pre-commit>=4.0",
+    "ruff>=0.16.0",
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "pre-commit>=4.6.1",
 ]
 # Docs site toolchain. Not installed by default; CI and local docs builds opt in
 # with `uv sync --group docs` / `uv run --group docs mkdocs ...`.
 docs = [
-    "mkdocs-material>=9.5",
+    "mkdocs-material>=9.7.7",
 ]
 
 # --- Ruff: linting + formatting in one tool ---------------------------------
