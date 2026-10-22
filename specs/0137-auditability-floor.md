@@ -109,3 +109,18 @@ metric moves, the change is wrong.
 - The signature-mutation class needs the `sign` extra; it is skipped
   cleanly where absent (like the signing tests) and the doc block notes
   when it was not measured.
+
+## Addendum (2026-07-11) — post-close audit: three classes added
+
+The comprehensive M20+M21 review added three mutation classes, taking the
+floor to **16** (100% detected): `outcome_forgery` and `approval_strip`
+(the action-receipt execution-outcome gap, spec 0136 addendum) and
+`extra_top_section` (an unauthenticated extra top-level section, closed by
+the integrity section-set check). This reconciles the battery with the
+spirit of spec 0131 D9's enumeration: `approval strip` (D9) is now
+present; `leaf reorder` is realized as `leaf_tamper` (a pure reorder is a
+canonical no-op under sorted-key JSON, so there is nothing to detect); and
+`signature mismatch` remains pinned separately in `test_bundle_signing.py`
+(it needs the `sign` extra, so it stays out of this environment-independent
+block, as the doc states). The pinned block is regenerated and byte-equal
+on every run.

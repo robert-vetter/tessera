@@ -108,3 +108,19 @@ None — additive verification of an existing serialized object.
   every committed action through emit→verify at exit 0.
 - `render_body` is imported from the agent layer (pure, stdlib) — verify
   stays extras-free; the leak-guard is extended.
+
+## Addendum (2026-07-11) — post-close audit: the whole receipt is re-derived
+
+The comprehensive M20+M21 review found that binding only the wire
+*request* (method/path/body/slots) left the receipt's **execution
+outcome** unbound: a re-sealed bundle could set `outcome="created"`,
+`simulated=false`, and a fabricated `result` (a real-looking GitHub issue
+URL) — or forge `approved=true` — and still verify PASS, because only
+`sent` was checked. Fixed by re-running the **simulated execution**
+(`execute_payload`) over the re-derived request and requiring the *whole*
+receipt to match: outcome, result, simulated/executed/actuator, approval,
+and the request. A bundled action is only ever an unapproved, unsent
+simulation, so any deviation is a named semantic failure (exit 2). Pinned
+by `test_forged_execution_outcome_fails` and `test_forged_approval_fails`,
+and by the `outcome_forgery` / `approval_strip` classes in the
+Auditability Floor.

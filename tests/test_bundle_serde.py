@@ -197,7 +197,7 @@ def test_verify_claims_agrees_across_the_boundary() -> None:
 
 def test_missing_key_raises_valueerror_naming_it() -> None:
     with pytest.raises(ValueError, match="'text'"):
-        serde.claim_from_dict({"support": []})
+        serde.grounded_claim_from_dict({"verified": True, "support": []})
 
 
 def test_wrong_type_raises_valueerror_naming_it() -> None:

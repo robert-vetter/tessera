@@ -34,4 +34,22 @@ and every value traces to a verifier-passing claim.
 - :mod:`tessera.bundle.mutations` — the deterministic tamper battery the
   Auditability Floor (``tessera.eval.auditability``, spec 0137) measures
   against, so the verifier's teeth are a CI-pinned number.
+- :mod:`tessera.bundle.explain` — a read-only, human-legible rendering of
+  a bundle's chain (question → claims → evidence → action), showing
+  verify's verdict first (spec 0142).
+- :mod:`tessera.bundle.audit` — a decision record mapping a bundle to the
+  EU AI Act record-keeping/human-oversight concepts (spec 0139); a mapping
+  and documentation aid, never a compliance attestation.
+- :mod:`tessera.bundle.chain` — chained bundles (spec 0143, ADR 0033): a
+  verified bundle becomes evidence for the next answer; upstreams travel
+  embedded and `verify` re-executes the whole chain recursively, offline.
+- :mod:`tessera.bundle.policy` — trust policies (spec 0144, ADR 0034):
+  the auditor's rule file, re-executed at verify time against the sealed
+  evidence; fail-closed, offline, never a self-attested compliance stamp.
+- :mod:`tessera.bundle.approval` — verifiable approvals (spec 0145, ADR
+  0035): detached signed artifacts binding an approver's key to the exact
+  sealed root; approvals inform, policies enforce (four-eyes in one rule).
+- :mod:`tessera.bundle.redact` — verifiable redaction (spec 0149, ADR
+  0039): withhold evidence while preserving the root, so prior signatures
+  and approvals still verify; redaction can hide but never upgrade a verdict.
 """

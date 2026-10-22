@@ -230,6 +230,28 @@ def test_the_action_section_is_a_leaf_from_day_one() -> None:
     assert "leaf 'action' does not match its content" in integrity_mismatches(tampered)
 
 
+def test_unexpected_sections_are_rejected() -> None:
+    """Adversarial audit (final review, finding 2): the manifest hashes leaves,
+    not the section set, so an extra top-level / closure / graph key would ride
+    along unauthenticated. The section-set check rejects it — even WITHOUT
+    re-sealing (the extra key was never in the manifest to begin with)."""
+    bundle = build_bundle("business", _GROUNDED["business"])
+
+    with_top = copy.deepcopy(bundle)
+    with_top["smuggled"] = {"payload": "x"}
+    assert any("unexpected top-level" in p for p in integrity_mismatches(with_top))
+
+    with_graph_key = copy.deepcopy(bundle)
+    closure = with_graph_key["evidence_closure"]
+    assert isinstance(closure, dict)
+    graph = closure["graph"]
+    assert isinstance(graph, dict)
+    graph["evil"] = []
+    assert any(
+        "unexpected graph key" in p for p in integrity_mismatches(with_graph_key)
+    )
+
+
 def test_format_and_closure_kind_are_hashed() -> None:
     """Defense-in-depth (adversarial review, finding 4 / finding 1): editing
     the format section or the closure kind without re-sealing breaks

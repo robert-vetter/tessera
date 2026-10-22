@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verify a Tessera trust bundle — in your browser, offline</title>
+<style>
+  :root { color-scheme: light dark; --ok:#0a7d33; --bad:#b3261e; --warn:#8a6100; --line:#8884; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:2rem 1.25rem 4rem; font:16px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; max-width:60rem; margin-inline:auto; }
+  h1 { font-size:1.6rem; margin:0 0 .35rem; }
+  .sub { opacity:.75; margin:0 0 1.5rem; }
+  #drop { border:2px dashed var(--line); border-radius:14px; padding:2.5rem 1.5rem; text-align:center; cursor:pointer; transition:.15s; }
+  #drop.hot { border-color:var(--ok); transform:scale(1.01); }
+  #drop p { margin:.35rem 0; }
+  .row { display:flex; flex-wrap:wrap; gap:.5rem; justify-content:center; margin-top:1rem; }
+  button { font:inherit; padding:.5rem .9rem; border-radius:9px; border:1px solid var(--line); background:transparent; cursor:pointer; }
+  button:hover { border-color:var(--ok); }
+  #out { margin-top:1.75rem; }
+  .verdict { font-size:1.25rem; font-weight:700; padding:.75rem 1rem; border-radius:10px; border:1px solid var(--line); }
+  .v-pass { color:var(--ok); } .v-fail { color:var(--bad); } .v-warn { color:var(--warn); }
+  table { border-collapse:collapse; width:100%; margin-top:1rem; font-size:.93rem; }
+  th,td { text-align:left; padding:.4rem .55rem; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-weight:600; opacity:.8; }
+  code,pre { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86em; }
+  pre { white-space:pre-wrap; word-break:break-word; }
+  .note { font-size:.9rem; opacity:.8; margin-top:1.5rem; border-top:1px solid var(--line); padding-top:1rem; }
+  .pill { display:inline-block; font-size:.78rem; padding:.05rem .45rem; border-radius:999px; border:1px solid var(--line); }
+</style>
+</head>
+<body>
+<h1>Verify a Tessera trust bundle</h1>
+<p class="sub">Drop a <code>.tsb</code> file below. Verification runs entirely in this
+page — <strong>your file never leaves your device</strong>, and this page makes no
+network requests at all. Disconnect your Wi-Fi and try it.</p>
+
+<div id="drop" tabindex="0" role="button" aria-label="Drop a bundle file to verify">
+  <p><strong>Drop a .tsb file here</strong></p>
+  <p class="sub">…or click to choose one. Add an <code>.approval.json</code> to check a sign-off.</p>
+  <div class="row">
+    <button type="button" data-example="honest">Try an honest example</button>
+    <button type="button" data-example="forged">Try a forged one</button>
+  </div>
+</div>
+<input id="picker" type="file" multiple accept=".tsb,.json" hidden>
+<div id="out"></div>
+
+<p class="note">
+This is the <em>same verifier</em> that runs on the command line
+(<code>verifier/js/verify-core.mjs</code>, zero dependencies) and an independent
+re-implementation of the Python reference — written from the format contract, not
+translated. Two checks need the engine itself and are <strong>not</strong> performed
+here, so this page can never report a full pass; its best verdict is
+<code>PASS-PARTIAL</code> and it always prints what it did not do.
+Ed25519 signatures are not checked in this build, and it says so when it meets one.
+</p>
+
+<script type="module">
+/*__TESSERA_CORE__*/
+
+const EXAMPLES = {
+  honest: "__TESSERA_HONEST__",
+  forged: "__TESSERA_FORGED__",
+};
+
+const drop = document.getElementById("drop");
+const picker = document.getElementById("picker");
+const out = document.getElementById("out");
+
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+const VERDICT_CLASS = { "PASS-PARTIAL": "v-pass", FAIL: "v-fail", TAMPERED: "v-fail", "NOT-EVALUABLE": "v-warn" };
+const VERDICT_WORD = {
+  "PASS-PARTIAL": "everything this page can check, checks out",
+  FAIL: "this decision does NOT follow from its own evidence",
+  TAMPERED: "the file was altered after sealing",
+  "NOT-EVALUABLE": "not fully checkable here — see below",
+};
+
+function render(report, name) {
+  const rows = report.claims.map((c) => {
+    const state = c.rederived === null ? "withheld / unknown grammar"
+      : c.rederived ? "re-derives" : "does NOT re-derive";
+    const mark = c.matches === true ? "✓" : c.matches === null ? "–" : "✗";
+    return `<tr><td>${mark}</td><td>claim ${c.index}</td><td>recorded <code>${c.recorded}</code></td><td>${esc(state)}</td></tr>`;
+  }).join("");
+
+  const parts = [];
+  parts.push(`<div class="verdict ${VERDICT_CLASS[report.verdict] || ""}">${report.verdict} — ${esc(VERDICT_WORD[report.verdict] || "")}</div>`);
+  parts.push(`<table><tr><th>file</th><td colspan="3"><code>${esc(name)}</code> · domain <code>${esc(report.domain ?? "?")}</code></td></tr>`);
+  parts.push(`<tr><th>integrity</th><td colspan="3">${report.integrity_problems.length
+    ? "<strong>BROKEN</strong>: " + report.integrity_problems.map(esc).join("; ")
+    : "intact — every leaf and the root re-computed here"}</td></tr>`);
+  if (report.signature) {
+    parts.push(`<tr><th>signature</th><td colspan="3">${esc(
+      report.signature.status === "UNSIGNED" ? "unsigned"
+      : report.signature.unchecked ? report.signature.unchecked
+      : report.signature.problems.length ? report.signature.problems.join("; ")
+      : "present, key " + report.signature.key)}</td></tr>`);
+  }
+  if (report.withheld?.length) {
+    parts.push(`<tr><th>withheld</th><td colspan="3">${report.withheld.length} item(s) redacted — commitments intact, content not shared; claims citing them cannot be re-derived here</td></tr>`);
+  }
+  for (const u of report.upstreams ?? []) {
+    parts.push(`<tr><th>upstream</th><td colspan="3"><code>${esc(u.root.slice(0, 26))}…</code> → ${esc(u.verdict)}</td></tr>`);
+  }
+  for (const a of report.approvals ?? []) {
+    parts.push(`<tr><th>approval</th><td colspan="3">${a.valid ? "valid — key " + esc(a.approver) : "INVALID — " + esc(a.problem)}</td></tr>`);
+  }
+  parts.push(`</table>`);
+  if (rows) parts.push(`<table><tr><th></th><th>claim</th><th>recorded</th><th>re-executed here</th></tr>${rows}</table>`);
+  if (report.semantic_problems.length) {
+    parts.push(`<table><tr><th>named cause</th></tr>` + report.semantic_problems.map((p) => `<tr><td>${esc(p)}</td></tr>`).join("") + `</table>`);
+  }
+  parts.push(`<p class="note">Not performed here: ${report.not_performed.map(esc).join("; ")}.</p>`);
+  out.innerHTML = parts.join("");
+}
+
+function verifyText(text, name, approvals = []) {
+  let parsed;
+  try {
+    parsed = parseRaw(text);
+  } catch (error) {
+    out.innerHTML = `<div class="verdict v-fail">Not a readable bundle — ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!parsed.sawSource) {
+    out.innerHTML = `<div class="verdict v-warn">This browser does not expose JSON source text, so canonical bytes cannot be reproduced. Refusing to guess — use the command-line verifier.</div>`;
+    return;
+  }
+  render(verifyBundle(parsed.tree, approvals), name);
+}
+
+async function handleFiles(files) {
+  const list = [...files];
+  const bundle = list.find((f) => f.name.endsWith(".tsb")) ?? list[0];
+  const approvals = [];
+  for (const file of list) {
+    if (file !== bundle && file.name.endsWith(".json")) {
+      approvals.push(parseRaw(await file.text()).tree);
+    }
+  }
+  if (bundle) verifyText(await bundle.text(), bundle.name, approvals);
+}
+
+drop.addEventListener("click", () => picker.click());
+drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") picker.click(); });
+picker.addEventListener("change", () => handleFiles(picker.files));
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("hot"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("hot"));
+drop.addEventListener("drop", (e) => {
+  e.preventDefault();
+  drop.classList.remove("hot");
+  handleFiles(e.dataTransfer.files);
+});
+for (const button of document.querySelectorAll("[data-example]")) {
+  button.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const which = button.dataset.example;
+    verifyText(EXAMPLES[which], `example-${which}.tsb`);
+  });
+}
+</script>
+</body>
+</html>

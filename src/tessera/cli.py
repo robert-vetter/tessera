@@ -30,9 +30,30 @@ Bring-your-own-data (Milestone 18):
   tessera ask <owner>/<repo>|<dir> "<q>"  answer over a repo or a directory
   tessera smoke <owner>/<repo>            check the trust contract holds on it
 
-Trust bundles (Milestone 20):
+Trust bundles (Milestones 20–22):
   tessera bundle "<q>" --domain <d>       emit a sealed, portable trust bundle
   tessera verify <file>.tsb               re-execute its verification, offline
+  tessera bundle explain <file>.tsb       render its chain legibly for a human
+  tessera bundle audit <file>.tsb         decision record (EU AI Act mapping)
+  tessera bundle chain "<q>" <a.tsb> ...  chain bundles: verified answers
+                                          become evidence; verify re-executes
+                                          the whole chain from one file
+  tessera bundle approve <file>.tsb       sign a detached approval bound to
+                                          the exact sealed bytes; check with
+                                          verify --approval (+ policy rules)
+  tessera bundle redact <file>.tsb        withhold evidence, keep the root —
+                                          share the receipt, not the data
+  tessera bundle attest <file>.tsb        record it in the issuance log
+  tessera ledger head|prove|check         "is this all of them?" — inclusion
+                                          and consistency proofs, offline
+
+The Verification Gap benchmark (Milestone 22):
+  tessera conformance                     grade the published verification
+                                          methods against an attack battery,
+                                          under two named threat models
+  tessera proof                           machine-check the bounded soundness
+                                          theorem: over every state of a
+                                          bounded universe, no false PASS
 
 Otherwise the argument is a business-vertical question:
   tessera "Which customer has the highest total order value?"
@@ -56,6 +77,18 @@ def main(argv: list[str] | None = None) -> int:
         from tessera.bundle.cli import verify_main
 
         return verify_main(args[1:])
+    if args and args[0] == "conformance":
+        from tessera.conformance.cli import main as conformance_main
+
+        return conformance_main(args[1:])
+    if args and args[0] == "ledger":
+        from tessera.ledger.cli import main as ledger_main
+
+        return ledger_main(args[1:])
+    if args and args[0] == "proof":
+        from tessera.proof.cli import main as proof_main
+
+        return proof_main(args[1:])
     if args and args[0] in _BYO_COMMANDS:
         from tessera.connect.cli import main as connect_main
 

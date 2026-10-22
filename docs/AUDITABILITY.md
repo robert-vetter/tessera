@@ -52,11 +52,14 @@ verdict class and a report that names the broken claim or link:
 | leaf_tamper | TAMPERED (4) | TAMPERED (4) | yes |
 | root_mismatch | TAMPERED (4) | TAMPERED (4) | yes |
 | engine_version_spoof | DEGRADED (3) | DEGRADED (3) | yes |
+| extra_top_section | TAMPERED (4) | TAMPERED (4) | yes |
 | wire_body_injection | FAIL (2) | FAIL (2) | yes |
 | wire_method_repoint | FAIL (2) | FAIL (2) | yes |
 | wire_slot_edit | FAIL (2) | FAIL (2) | yes |
+| outcome_forgery | FAIL (2) | FAIL (2) | yes |
+| approval_strip | FAIL (2) | FAIL (2) | yes |
 
-Floor (100%): 13/13 detected — holds.
+Floor (100%): 16/16 detected — holds.
 
 <!-- auditability:end -->
 

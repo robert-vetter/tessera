@@ -45,15 +45,26 @@ from tessera.agent.grounded import (
     domain,
     serialize_answer,
 )
+from tessera.bundle.approval import (
+    ApprovalCheck,
+    ApprovalFormatError,
+    check_approval,
+)
 from tessera.bundle.canonical import canonical_bytes
 from tessera.bundle.ed25519 import verify as ed25519_verify
 from tessera.bundle.emit import engine_version, shape_identifiers
 from tessera.bundle.format import (
+    CHAIN_DOMAIN,
+    CLOSURE_CHAIN,
     CLOSURE_FULL_SNAPSHOT,
     FORMAT_MAJOR,
     FORMAT_NAME,
+    compute_root,
     integrity_mismatches,
+    is_withheld,
+    leaf_manifest,
 )
+from tessera.bundle.redact import withheld_ids
 from tessera.bundle.serde import (
     claim_from_grounded,
     graph_from_dict,
@@ -101,6 +112,30 @@ class ClaimCheck:
         }
 
 
+@dataclass(frozen=True)
+class UpstreamCheck:
+    """One embedded upstream bundle's recursive verification (spec 0143): its
+    sealed root, the verdict its own full re-verification produced *here*
+    (recorded verdicts are never trusted), the named cause on non-PASS, and
+    the upstream's signature status/signer (spec 0144: chain signer policies
+    read the recursion the verifier already performs)."""
+
+    root: str
+    verdict: str
+    cause: str | None
+    signature_status: str = "UNSIGNED"
+    signer: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "root": self.root,
+            "verdict": self.verdict,
+            "cause": self.cause,
+            "signature_status": self.signature_status,
+            "signer": self.signer,
+        }
+
+
 UNSIGNED = "UNSIGNED"
 SIGNED = "SIGNED"
 ed25519_ALGORITHM = "ed25519"
@@ -124,6 +159,21 @@ class VerifyReport:
     answer_rederives: bool | None
     answer_cause: str | None
     refused: bool
+    #: Chain bundles only (spec 0143): one entry per embedded upstream, from
+    #: its recursive re-verification here. Empty for single-decision bundles.
+    upstreams: tuple[UpstreamCheck, ...] = ()
+    #: Detached approval artifacts passed to verify (spec 0145), each checked
+    #: against the RECOMPUTED root. Approvals inform; policies enforce — an
+    #: invalid approval never changes the bundle's own verdict.
+    approvals: tuple[ApprovalCheck, ...] = ()
+    #: The issuance-log inclusion check (spec 0151), when the verifier
+    #: supplied a proof AND a head. ``None`` means it was not checked — a
+    #: completeness claim is never implied, only reported.
+    inclusion: str | None = None
+    #: Content withheld by redaction (spec 0149): record ids and section
+    #: names whose commitments remain but whose content was not shared. Any
+    #: redaction forces the degraded path — a redacted bundle proves less.
+    withheld: tuple[str, ...] = ()
 
     @property
     def envelope_problems(self) -> tuple[str, ...]:
@@ -143,11 +193,13 @@ class VerifyReport:
 
     @property
     def degraded(self) -> bool:
-        """Visible degradation: not re-derivable, or an honestly-unverified
-        claim faithfully recorded (unreachable on the committed corpora,
-        whose faithfulness floor is 1.0 — kept for the taxonomy's honesty)."""
-        return self.taxonomy != RE_DERIVED or any(
-            not c.recorded and not c.rederived for c in self.claims
+        """Visible degradation: not re-derivable, content withheld by
+        redaction (spec 0149 — a redacted bundle can never report a full
+        PASS), or an honestly-unverified claim faithfully recorded."""
+        return (
+            self.taxonomy != RE_DERIVED
+            or bool(self.withheld)
+            or any(not c.recorded and not c.rederived for c in self.claims)
         )
 
     @property
@@ -182,6 +234,10 @@ class VerifyReport:
             "answer_rederives": self.answer_rederives,
             "answer_cause": self.answer_cause,
             "refused": self.refused,
+            "upstreams": [u.to_dict() for u in self.upstreams],
+            "approvals": [a.to_dict() for a in self.approvals],
+            "withheld": list(self.withheld),
+            "inclusion": self.inclusion,
             "semantic_problems": list(self.semantic_problems),
             "verdict": self.verdict,
             "exit_code": self.exit_code,
@@ -365,12 +421,32 @@ def _claim_checks(
     result: GroundedResult,
     graph: KnowledgeGraph,
     shapes: tuple[ClaimShape, ...],
+    withheld: frozenset[str] = frozenset(),
 ) -> tuple[ClaimCheck, ...]:
     """Check (a): re-run ``is_supported`` for every recorded claim against the
-    packaged graph, and compare with the recorded verdict."""
+    packaged graph, and compare with the recorded verdict.
+
+    A claim citing **withheld** evidence (spec 0149) cannot be re-executed
+    here. It is reported as not re-derivable rather than as a mismatch — a
+    mismatch would read as a lie, when the truth is that the evidence was
+    not shared. It is never treated as verified, so redaction can hide but
+    never upgrade a verdict.
+    """
     nodes = {node.id: node for node in graph.nodes}
     checks: list[ClaimCheck] = []
     for index, claim in enumerate(result.claims):
+        cites_withheld = any(evidence.id in withheld for evidence in claim.support)
+        if cites_withheld:
+            checks.append(
+                ClaimCheck(
+                    index=index,
+                    text=claim.text,
+                    recorded=claim.verified,
+                    rederived=False,
+                    cause=None,  # withheld, not wrong — never a semantic failure
+                )
+            )
+            continue
         rederived = is_supported(claim_from_grounded(claim), nodes, graph, shapes)
         cause: str | None = None
         if claim.verified and not rederived:
@@ -426,6 +502,41 @@ def _answer_rederivation(
         question=result.question,
         route=route,
     )
+    return _fresh_divergence(stored_result, result, fresh)
+
+
+def _chain_answer_rederivation(
+    stored_result: dict[str, object],
+    result: GroundedResult,
+    graph: KnowledgeGraph,
+    kb: KnowledgeBase,
+) -> tuple[bool, str | None]:
+    """Check (b) for chain bundles (spec 0143 D5): re-run the deterministic
+    chain route — the frozen core's lexical retrieval over the derived claim
+    records — over the packaged corpus; equality rules identical to the
+    domain check."""
+    from tessera.bundle.chain import CHAIN_CLAIM_SHAPES, chain_route
+
+    route, answer = chain_route(result.question, graph, kb)
+    fresh = serialize_answer(
+        answer,
+        graph,
+        CHAIN_CLAIM_SHAPES,
+        domain=CHAIN_DOMAIN,
+        question=result.question,
+        route=route,
+    )
+    return _fresh_divergence(stored_result, result, fresh)
+
+
+def _fresh_divergence(
+    stored_result: dict[str, object],
+    result: GroundedResult,
+    fresh: GroundedResult,
+) -> tuple[bool, str | None]:
+    """The shared equality rule for check (b): canonical-bytes equality, then
+    the first divergence named (mode, refusal, claim texts, metadata, or a
+    fabricated derived/display field)."""
     if canonical_bytes(stored_result) == canonical_bytes(fresh.to_dict()):
         return True, None
     # Name the first divergence — the packaged corpus does not yield this answer.
@@ -529,7 +640,15 @@ def _action_problems(
         )
 
     # Re-derive the exact wire request the frozen pipeline produces from this
-    # answer, then require the recorded receipt to match it.
+    # answer, then re-run the SIMULATED execution over it and require the WHOLE
+    # recorded receipt to match — the request AND the execution-outcome metadata
+    # (outcome, result, simulated/executed/actuator, approval). The adversarial
+    # audit of M20/M21 found that binding only the request let a receipt claim a
+    # real create (outcome="created", simulated=false, a fabricated result URL)
+    # while passing; comparing the full simulated receipt closes that, since a
+    # bundled action is only ever an unapproved, unsent simulation.
+    from tessera.agent.execution import execute_payload
+
     proposal = ActionProposal(
         kind=receipt.kind,
         domain=result.domain,
@@ -548,37 +667,217 @@ def _action_problems(
             "for this action (the frozen pipeline withholds it)"
         )
         return tuple(dict.fromkeys(problems))
-    if receipt.method != expected.method or receipt.path != expected.path:
-        problems.append(
-            "the wire method/path does not match the request re-derived from "
-            "the packaged evidence"
+
+    expected_receipt = execute_payload(expected)  # SimulatedActuator, no approval
+    expected_d = expected_receipt.to_dict()
+    recorded_d = receipt.to_dict()
+    if recorded_d != expected_d:
+        named = False
+        if receipt.method != expected_receipt.method or receipt.path != (
+            expected_receipt.path
+        ):
+            problems.append(
+                "the wire method/path does not match the request re-derived from "
+                "the packaged evidence"
+            )
+            named = True
+        if receipt.body != expected_receipt.body:
+            problems.append(
+                "the wire body does not match the request re-derived from the "
+                "packaged evidence — it adds or alters content beyond the "
+                "grounded values"
+            )
+            named = True
+        if recorded_d["slots"] != expected_d["slots"]:
+            problems.append(
+                "the wire slots do not match those re-derived from the packaged "
+                "evidence (a value, its provenance, or its role was altered)"
+            )
+            named = True
+        outcome_keys = (
+            "target",
+            "actuator",
+            "executed",
+            "simulated",
+            "withheld",
+            "withheld_reason",
+            "outcome",
+            "result",
+            "idempotency_key",
+            "approved",
+            "requires_approval",
         )
-    if receipt.body != expected.body:
-        problems.append(
-            "the wire body does not match the request re-derived from the "
-            "packaged evidence — it adds or alters content beyond the grounded "
-            "values"
-        )
-    if tuple(s.to_dict() for s in receipt.slots) != tuple(
-        s.to_dict() for s in expected.slots
-    ):
-        problems.append(
-            "the wire slots do not match those re-derived from the packaged "
-            "evidence (a value, its provenance, or its role was altered)"
-        )
+        diverged = [k for k in outcome_keys if recorded_d.get(k) != expected_d.get(k)]
+        if diverged:
+            problems.append(
+                "the action's execution outcome does not match a simulated draft "
+                f"(altered {', '.join(diverged)}) — a bundled action is an "
+                "unapproved, unsent simulation, not an executed one"
+            )
+            named = True
+        if not named:
+            # Safety net: the recorded receipt differs from the re-derived one in
+            # a field none of the named checks covers — never a silent pass.
+            problems.append(
+                "the action receipt does not match the one re-derived from the "
+                "packaged evidence"
+            )
     return tuple(dict.fromkeys(problems))
+
+
+# --- the chain layer (spec 0143) ---------------------------------------------------
+
+
+def _short_root(root: str) -> str:
+    """A readable root prefix for named causes: ``sha256:`` + 12 hex chars."""
+    return root[:19] + "…" if len(root) > 20 else root
+
+
+def _chain_problems(
+    closure: dict[str, object], kb: KnowledgeBase
+) -> tuple[tuple[UpstreamCheck, ...], tuple[str, ...]]:
+    """The chain checks (spec 0143 D5, ADR 0033): recursively re-verify every
+    embedded upstream with the FULL verifier — recorded verdicts are never
+    trusted — then require every derived record to byte-match the upstream
+    claim it cites, and that claim to have re-derived in the upstream's own
+    re-execution. Every failure is a named semantic problem (exit 2)."""
+    problems: list[str] = []
+    checks: list[UpstreamCheck] = []
+    passing: dict[str, tuple[dict[str, object], VerifyReport]] = {}
+
+    raw = closure.get("upstream")
+    if not isinstance(raw, list):
+        problems.append("the chain closure carries no upstream list")
+        raw = []
+
+    for position, item in enumerate(raw):
+        if not isinstance(item, dict):
+            problems.append(f"upstream[{position}] is not a bundle object")
+            continue
+        integrity = item.get("integrity")
+        root = integrity.get("root") if isinstance(integrity, dict) else None
+        root_name = root if isinstance(root, str) else f"upstream[{position}]"
+        try:
+            sub = verify_bundle(item)
+        except BundleFormatError as error:
+            problems.append(
+                f"embedded upstream {_short_root(root_name)} cannot be "
+                f"verified: {error}"
+            )
+            checks.append(
+                UpstreamCheck(root=root_name, verdict="TAMPERED", cause=str(error))
+            )
+            continue
+        cause: str | None = None
+        if sub.verdict == "PASS":
+            passing[root_name] = (item, sub)
+        else:
+            cause = (
+                sub.taxonomy_reason
+                or next(iter(sub.semantic_problems), None)
+                or next(iter(sub.envelope_problems), None)
+                or sub.verdict
+            )
+            problems.append(
+                f"embedded upstream {_short_root(root_name)} does not "
+                f"re-verify ({sub.verdict}): {cause}"
+            )
+        checks.append(
+            UpstreamCheck(
+                root=root_name,
+                verdict=sub.verdict,
+                cause=cause,
+                signature_status=sub.signature_status,
+                signer=sub.signature_public_key,
+            )
+        )
+
+    for record in kb.records:
+        locator = record.origin.locator
+        parts = dict(locator.parts)
+        cited_root = parts.get("bundle")
+        cited_index = parts.get("claim")
+        if locator.kind != "bundle-claim" or cited_root is None or cited_index is None:
+            problems.append(
+                f"chain record {record.id!r} does not cite an upstream claim "
+                "(a chain corpus may contain nothing else)"
+            )
+            continue
+        if cited_root not in passing:
+            problems.append(
+                f"chain record {record.id!r} cites upstream "
+                f"{_short_root(cited_root)}, which is not embedded-and-passing "
+                "in this bundle"
+            )
+            continue
+        upstream, sub = passing[cited_root]
+        result_section = upstream.get("result")
+        claims_raw = (
+            result_section.get("claims") if isinstance(result_section, dict) else None
+        )
+        claims_list = claims_raw if isinstance(claims_raw, list) else []
+        index = int(cited_index) if cited_index.isdigit() else -1
+        if not 0 <= index < len(claims_list):
+            problems.append(
+                f"chain record {record.id!r} cites claim {cited_index!r} of "
+                f"{_short_root(cited_root)}, which does not exist"
+            )
+            continue
+        upstream_claim = claims_list[index]
+        claim_dict = upstream_claim if isinstance(upstream_claim, dict) else {}
+        if claim_dict.get("text") != record.text:
+            problems.append(
+                f"chain record {record.id!r} does not match upstream claim "
+                f"{index} of {_short_root(cited_root)} — the cited text was "
+                "altered"
+            )
+            continue
+        if claim_dict.get("verified") is not True:
+            problems.append(
+                f"chain record {record.id!r} cites upstream claim {index} of "
+                f"{_short_root(cited_root)}, which is not a verifier-passing "
+                "claim"
+            )
+            continue
+        if index >= len(sub.claims) or not sub.claims[index].rederived:
+            problems.append(
+                f"chain record {record.id!r} cites upstream claim {index} of "
+                f"{_short_root(cited_root)}, which does not re-derive from its "
+                "own packaged evidence"
+            )
+    return tuple(checks), tuple(problems)
 
 
 # --- the verifier ------------------------------------------------------------------
 
 
 def verify_bundle(
-    bundle: dict[str, object], *, require_signed: bool = False
+    bundle: dict[str, object],
+    *,
+    require_signed: bool = False,
+    approvals: list[dict[str, object]] | None = None,
 ) -> VerifyReport:
     """Verify one parsed bundle, both layers. Raises
     :class:`BundleFormatError` when the envelope is unreadable. With
-    ``require_signed``, an unsigned bundle is an envelope failure (exit 4)."""
+    ``require_signed``, an unsigned bundle is an envelope failure (exit 4).
+    ``approvals`` are detached approval artifacts (spec 0145), each checked
+    against the RECOMPUTED root and reported — never altering the bundle's
+    own verdict (enforcement is the policy layer's job)."""
+    # Bundle-native chain grammars (spec 0143); imported here, not at module
+    # level, to keep the bundle-layer import graph acyclic and shallow.
+    from tessera.bundle.chain import CHAIN_CLAIM_SHAPES
+
     _check_format(bundle)
+    # The anchor section is reserved for transparency-log anchoring (unit 0138)
+    # and has no verifier yet. It is an attestation OVER the root, so it is not
+    # in the integrity manifest; until 0138 gives it meaning, a non-null anchor
+    # is unverifiable content this version must refuse rather than ignore (the
+    # M20/M21 audit found it could otherwise ride along unauthenticated).
+    if bundle.get("anchor") is not None:
+        raise BundleFormatError(
+            "the anchor section is reserved and not verifiable by this version "
+            "(transparency anchoring arrives in a later unit)"
+        )
     engine = _section(bundle, "engine")
     closure = _section(bundle, "evidence_closure")
 
@@ -590,6 +889,36 @@ def verify_bundle(
     signature_status, signature_public_key, signature_problems = _verify_signature(
         bundle, require_signed=require_signed
     )
+
+    # Approvals (spec 0145) check against the root RECOMPUTED from content —
+    # never a stored claim — so an approval detaches from any tampered-and-
+    # re-sealed descendant automatically. A malformed artifact becomes a
+    # named invalid entry, not a crash.
+    approval_checks: list[ApprovalCheck] = []
+    if approvals:
+        integrity_section = bundle.get("integrity")
+        committed = (
+            integrity_section.get("leaves")
+            if isinstance(integrity_section, dict)
+            else None
+        )
+        recomputed_root = compute_root(
+            leaf_manifest(bundle, committed if isinstance(committed, dict) else None)
+        )
+        for artifact in approvals:
+            try:
+                approval_checks.append(check_approval(artifact, recomputed_root))
+            except ApprovalFormatError as error:
+                approval_checks.append(
+                    ApprovalCheck(
+                        approves_root="?",
+                        approver="?",
+                        valid=False,
+                        problem=f"malformed approval artifact: {error}",
+                        note=None,
+                        at=None,
+                    )
+                )
 
     domain_name = engine.get("domain")
     if not isinstance(domain_name, str):
@@ -612,14 +941,17 @@ def verify_bundle(
         )
 
     # --- taxonomy: can the installed engine honestly judge this bundle? ---
+    # The chain domain is bundle-native (spec 0143 D5): it never enters the
+    # GroundedDomain registry, declares no claim shapes, and re-executes via
+    # the chain route — so its gate replaces registry membership only.
     taxonomy = RE_DERIVED
     reason: str | None = None
-    if domain_name not in available_domains():
+    if domain_name != CHAIN_DOMAIN and domain_name not in available_domains():
         taxonomy, reason = (
             NOT_EVALUABLE,
             (
                 f"unknown domain {domain_name!r} — this engine knows "
-                f"{', '.join(available_domains())}"
+                f"{', '.join(available_domains())} and chain bundles"
             ),
         )
     elif sealed_under != installed:
@@ -634,7 +966,11 @@ def verify_bundle(
         )
     else:
         recorded_shapes = engine.get("claim_shapes")
-        installed_shapes = shape_identifiers(domain(domain_name).claim_shapes)
+        installed_shapes = shape_identifiers(
+            CHAIN_CLAIM_SHAPES
+            if domain_name == CHAIN_DOMAIN
+            else domain(domain_name).claim_shapes
+        )
         if recorded_shapes != installed_shapes:
             taxonomy, reason = (
                 NOT_EVALUABLE,
@@ -658,38 +994,105 @@ def verify_bundle(
             )
 
     claims: tuple[ClaimCheck, ...] = ()
+    upstreams: tuple[UpstreamCheck, ...] = ()
     answer_rederives: bool | None = None
     answer_cause: str | None = None
+    # Redaction (spec 0149): withheld content keeps its id and commitment but
+    # not its content. Those nodes are removed before reconstruction (their
+    # shape is a marker, not a record) and their ids are carried so citations
+    # still resolve and claims that depend on them are reported as withheld.
+    withheld_records = withheld_ids(bundle)
+    withheld_sections = [
+        name
+        for name, value in (("kb", closure.get("kb")), ("graph", closure.get("graph")))
+        if is_withheld(value)
+    ]
+    withheld_all = tuple(sorted(withheld_records)) + tuple(withheld_sections)
+    if taxonomy == RE_DERIVED and "graph" in withheld_sections:
+        # The whole graph withheld: nothing left to re-execute claims against.
+        # (A withheld knowledge base is different — the claim grammars read the
+        # graph; the kb feeds the answer re-derivation, which is skipped below.)
+        taxonomy, reason = (
+            INTEGRITY_ONLY,
+            (
+                "the evidence graph was withheld by redaction: commitments are "
+                "checked, but no verdict can be re-executed from what was shared"
+            ),
+        )
     if taxonomy == RE_DERIVED:
         try:
-            graph = graph_from_dict(_section(closure, "graph"))
-            kb = kb_from_dict(_section(closure, "kb"))
+            graph_section = _section(closure, "graph")
+            packaged_nodes = graph_section.get("nodes")
+            visible_graph = {
+                **graph_section,
+                "nodes": [
+                    node
+                    for node in (
+                        packaged_nodes if isinstance(packaged_nodes, list) else []
+                    )
+                    if not is_withheld(node)
+                ],
+            }
+            graph = graph_from_dict(visible_graph)
+            kb_section = closure.get("kb")
+            kb = (
+                KnowledgeBase(records=())
+                if is_withheld(kb_section)
+                else kb_from_dict(_section(closure, "kb"))
+            )
         except ValueError as error:
             raise BundleFormatError(f"malformed evidence closure: {error}") from error
         # A full re-derivable graph is present, so re-execution runs regardless
-        # of the kind label. If the label nonetheless claims a partial closure,
-        # that inconsistency is itself a semantic failure — the downgrade
-        # attack (relabel to suppress the check) is caught, not silently obeyed.
-        if closure.get("kind") != CLOSURE_FULL_SNAPSHOT:
+        # of the kind label. If the label nonetheless claims a different
+        # closure, that inconsistency is itself a semantic failure — the
+        # downgrade attack (relabel to suppress a check) is caught, not obeyed.
+        expected_kind = (
+            CLOSURE_CHAIN if domain_name == CHAIN_DOMAIN else CLOSURE_FULL_SNAPSHOT
+        )
+        if closure.get("kind") != expected_kind:
             structural.append(
-                f"the closure kind {closure.get('kind')!r} claims a partial "
-                f"closure, but a full re-derivable graph is packaged (expected "
-                f"{CLOSURE_FULL_SNAPSHOT!r}) — the label cannot suppress "
-                "re-execution"
+                f"the closure kind {closure.get('kind')!r} does not match the "
+                f"sealed domain (expected {expected_kind!r}) — the label "
+                "cannot suppress re-execution"
             )
-        referential = _referential_problems(result, graph)
+        referential = tuple(
+            problem
+            for problem in _referential_problems(result, graph)
+            # A citation to withheld evidence is not dangling: the record is
+            # committed, just not shared. It is reported per claim instead.
+            if not any(identifier in problem for identifier in withheld_records)
+        )
         if referential:
             # A dangling reference would crash re-execution; report it as a
             # named semantic failure and do not attempt the checks that assume
             # a referentially-consistent graph.
             structural.extend(referential)
         else:
-            dom = domain(domain_name)
             try:
-                claims = _claim_checks(result, graph, dom.claim_shapes)
-                answer_rederives, answer_cause = _answer_rederivation(
-                    _section(bundle, "result"), result, graph, kb, domain_name
-                )
+                if domain_name == CHAIN_DOMAIN:
+                    # The chain layer: recursive upstream re-verification plus
+                    # the record↔upstream-claim cross-checks (spec 0143 D5).
+                    upstreams, chain_problems = _chain_problems(closure, kb)
+                    structural.extend(chain_problems)
+                    claims = _claim_checks(result, graph, CHAIN_CLAIM_SHAPES)
+                    answer_rederives, answer_cause = _chain_answer_rederivation(
+                        _section(bundle, "result"), result, graph, kb
+                    )
+                else:
+                    dom = domain(domain_name)
+                    claims = _claim_checks(
+                        result, graph, dom.claim_shapes, frozenset(withheld_records)
+                    )
+                    if withheld_all:
+                        # Re-running the router over a deliberately partial
+                        # corpus would yield a different answer and read as a
+                        # forgery. Redaction means the answer check was not
+                        # performed — which the degraded verdict states.
+                        answer_rederives, answer_cause = None, None
+                    else:
+                        answer_rederives, answer_cause = _answer_rederivation(
+                            _section(bundle, "result"), result, graph, kb, domain_name
+                        )
                 # An action bundle also re-derives its wire request (spec 0136).
                 action_section = bundle.get("action")
                 if isinstance(action_section, dict):
@@ -722,6 +1125,9 @@ def verify_bundle(
         answer_rederives=answer_rederives,
         answer_cause=answer_cause,
         refused=result.refused,
+        upstreams=upstreams,
+        approvals=tuple(approval_checks),
+        withheld=withheld_all,
     )
 
 
@@ -756,6 +1162,21 @@ def render_report(report: VerifyReport, *, source: str) -> str:
             "(compare it to a key you trust)"
         )
 
+    if report.approvals:
+        valid = sum(1 for a in report.approvals if a.valid)
+        lines.append(
+            f"approvals: {valid}/{len(report.approvals)} valid — each binds a "
+            "key to this exact sealed root"
+        )
+        for a in report.approvals:
+            mark = "ok" if a.valid else "!!"
+            if a.problem:
+                extra = f" — {a.problem}"
+            else:
+                parts = [p for p in (a.note, a.at) if p]
+                extra = f" ({'; '.join(parts)})" if parts else ""
+            lines.append(f"  [{mark}] approved by key {a.approver}{extra}")
+
     if report.taxonomy != RE_DERIVED:
         lines.append(f"semantic:  {report.taxonomy} — {report.taxonomy_reason}")
     else:
@@ -771,6 +1192,19 @@ def render_report(report: VerifyReport, *, source: str) -> str:
                 mark = "ok" if check.matches and check.rederived else "!!"
                 state = "supported" if check.rederived else "UNSUPPORTED"
                 lines.append(f"  [{mark}] claim {check.index}: {state} — {check.text}")
+        if report.upstreams:
+            passing = sum(1 for u in report.upstreams if u.verdict == "PASS")
+            lines.append(
+                f"chain:     {passing}/{len(report.upstreams)} embedded "
+                "upstream bundle(s) re-verified recursively"
+            )
+            for upstream in report.upstreams:
+                mark = "ok" if upstream.verdict == "PASS" else "!!"
+                suffix = f" — {upstream.cause}" if upstream.cause else ""
+                lines.append(
+                    f"  [{mark}] upstream {_short_root(upstream.root)}: "
+                    f"{upstream.verdict}{suffix}"
+                )
         if report.answer_rederives:
             lines.append(
                 "answer:    re-derives — the packaged corpus yields exactly "

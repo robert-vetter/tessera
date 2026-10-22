@@ -23,6 +23,19 @@ transcript of hallucinations verifies flawlessly. Integrity is solved;
 agent-governance tools states it verbatim: none performs re-execution
 verification — all rely on signature and hash-chain validation.
 
+**Sharpened 2026-07-18 after reading the primary sources** (spec 0146,
+now measured in [CONFORMANCE.md](CONFORMANCE.md)): the honest form of
+this claim names its axis. Adjacent work is real and good — the IETF
+signed-receipt drafts, Microsoft's verifiable-compliance-receipt proposal
+(whose own text says the verifier confirms consistent signing, not that
+the decision was correct), and *Proof of Execution*
+([arXiv:2607.05397](https://arxiv.org/abs/2607.05397)), which verifies
+authorization, scope, trace integrity and replayability under stated
+assumptions via invariants it calls syntactic. **Tessera's axis is
+different: claim-vs-evidence re-execution.** The benchmark grades every
+method on the axis it targets, and records the case Tessera itself
+misses (replay of an expired mandate).
+
 Tessera owns the missing half already: a deterministic, dependency-free
 verifier that recomputes claims against evidence instead of judging
 them. Act 3 puts that verifier inside a portable artifact:
@@ -39,11 +52,15 @@ The scoped novelty claim, its mandatory caveats, and every load-bearing
 design decision are fixed in [spec 0131](https://github.com/robert-vetter/tessera/blob/main/specs/0131-verifiable-audit-plan.md)
 — public copy may not exceed them.
 
-The timing is dated: the EU AI Act's high-risk record-keeping and
-human-oversight obligations (Articles 12 and 14) apply from
-**2026-08-02**, with both candidate technical standards still drafts.
-Act 3 ships a field-level **mapping** to those articles — a mapping,
-never a compliance claim.
+The timing is real but not a cliff — and this plan's original date here
+was stale (corrected 2026-07-18, the honest-timeline rule of spec 0139):
+the **Digital Omnibus deferred** the Annex III high-risk obligations —
+Art. 12 record-keeping and Art. 14 human oversight — to **2 December
+2027**; only Art. 50 transparency applies from 2026-08-02, and both
+candidate technical standards are still drafts ([MARKET.md §3](MARKET.md),
+[COMPLIANCE.md](COMPLIANCE.md)). Act 3 ships a field-level **mapping**
+to those articles — a mapping, never a compliance claim — and the demand
+it serves is engineering-driven, with the regulation as tailwind.
 
 **Positioning (Act 2's line, extended one clause):**
 

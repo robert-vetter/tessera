@@ -195,6 +195,35 @@ def test_claimed_real_send_in_a_bundle_fails() -> None:
     assert report.exit_code == 2
 
 
+def test_forged_execution_outcome_fails() -> None:
+    """Adversarial audit (final review, finding 1): the receipt's execution
+    OUTCOME (outcome/result/simulated/executed/actuator) is re-derived too, so
+    a receipt forging a real GitHub create — while keeping sent=false — is
+    caught, not passed. This was a confirmed exit-0 before the fix."""
+    bundle = _fresh_action(*_ACTIONS[0])
+    action = _action(bundle)
+    action["outcome"] = "created"
+    action["simulated"] = False
+    action["executed"] = True
+    action["actuator"] = "github"
+    action["result"] = {"status": 201, "response": {"number": 1337}}
+    tampered = _reseal(bundle)
+    report = verify_bundle(tampered)
+    assert any("execution outcome" in p for p in report.structural_problems)
+    assert report.exit_code == 2
+
+
+def test_forged_approval_fails() -> None:
+    """Adversarial audit (completeness, D9 'approval strip'): a bundled action
+    is an unapproved simulation; a forged approved=true is caught."""
+    for field, value in (("approved", True), ("requires_approval", False)):
+        bundle = _fresh_action(*_ACTIONS[0])
+        _action(bundle)[field] = value
+        report = verify_bundle(_reseal(bundle))
+        assert report.exit_code == 2, field
+        assert any("unapproved" in p for p in report.structural_problems), field
+
+
 def test_dangling_slot_provenance_is_a_clean_exit_2() -> None:
     """A slot citing a record absent from the packaged snapshot is caught (its
     slots diverge from the re-derived ones), not crashed."""

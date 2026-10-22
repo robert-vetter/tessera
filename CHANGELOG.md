@@ -11,7 +11,264 @@ then the phase tags are the releases.
 
 ## [Unreleased]
 
-*(nothing yet)*
+- **Act 3 hardening after a comprehensive M20+M21 review.** A four-lens
+  audit (completeness, docs-vs-code honesty, adversarial re-verification,
+  discipline) confirmed the core promise holds — no false PASS of a claim,
+  answer, or wire action, all prior fixes intact, ed25519 sound against a
+  300-key libsodium cross-check — and surfaced three gaps in adjacent
+  trust regions, now closed:
+  - the action receipt's **execution outcome** (`outcome`/`result`/
+    `simulated`/`executed`/`actuator`/`approved`) is now re-derived by
+    re-running the simulated execution over the re-derived answer, so a
+    receipt forging a real create (or a forged approval) fails instead of
+    passing — previously an exit-0 gap;
+  - the integrity check now commits to the **section set** (rejects any
+    unexpected top-level / closure / graph key) and refuses a non-null
+    reserved `anchor`, so nothing rides along unauthenticated;
+  - the Auditability Floor grew to **16 mutation classes** (added
+    `outcome_forgery`, `approval_strip`, `extra_top_section`).
+  Plus documentation truthfulness fixes: refreshed the BUNDLE.md quickstart
+  (sizes, root, the `signature:` line), a new honest limit (a PASS is not a
+  recency/anti-replay claim), ADR 0031's leaf list corrected, ADRs 0031/0032
+  added to the docs nav, and the vestigial `serde` Claim pair removed.
+- **`tessera bundle explain` — a bundle made legible to a human** (spec 0142,
+  #175). A read-only rendering of a bundle's whole chain — question → claims
+  with their re-derived verdicts → the cited evidence records → the action
+  receipt with per-slot provenance — that shows `verify`'s verdict *first*,
+  so a tampered bundle renders FAIL with the broken claim named: explain
+  never launders a bad bundle. `--json` / `--full`; stdlib-only.
+- **The forged-bundle challenge — spot the lie offline** (spec 0140, #176).
+  Two committed bundles, `data/challenge/{honest,forged}.tsb` (synthetic data
+  only): the forgery inflates a total by EUR 3,500, leaves the evidence
+  untouched, and is re-sealed, so integrity tooling reports BOTH intact; only
+  re-execution separates them (honest PASS, forged FAIL). The forge script is
+  committed and deterministic (a byte-identity test pins no drift).
+  `docs/CHALLENGE.md` + README pointer. *(This and the `explain` entry are
+  backfilled from the 2026-07-16 session, which shipped them without
+  CHANGELOG entries — drift repaired.)*
+- **`tessera bundle audit` — the decision record for an auditor** (spec 0139,
+  #178). From any trust bundle, the record a compliance or engineering buyer
+  actually needs: the verification verdict first, then a mapping of the
+  bundle's contents to the record-keeping (Art. 12) and human-oversight
+  (Art. 14) *concepts* named in the EU AI Act — a documentation aid, never a
+  compliance attestation, with the disclaimer and the corrected deferred
+  timeline (2 Dec 2027) pinned by tests so an overclaiming edit fails the
+  build. Never a rubber stamp: the forged challenge bundle records **FAILED**
+  with 1/3 claims re-deriving — counted from the verifier's re-execution,
+  never from the bundle's own recorded flags (the demo run caught a first cut
+  doing exactly that; fixed and pinned pre-merge). A broken envelope cannot
+  be audited (exit 4); a DEGRADED bundle reports "not re-executed here"
+  rather than a count. `docs/COMPLIANCE.md` + README pointer; stdlib-only.
+- **Chained trust bundles — the audit trail for agent pipelines** (spec 0143,
+  ADR 0033, #180). A verified bundle becomes first-class evidence for the
+  next answer: `tessera bundle chain` derives the new corpus exclusively
+  from upstream bundles' verifier-passing claims (a non-PASS upstream
+  refuses to chain, named — try the challenge's forgery), embeds the
+  upstreams whole, and commits to them by root in the integrity manifest (a
+  hash-DAG; cycles impossible by construction). One offline `tessera verify`
+  then re-executes the **entire chain**: every embedded upstream re-verified
+  recursively — recorded verdicts are never trusted — every derived record
+  byte-matched to the upstream claim it cites, the chain answer re-derived.
+  The theorem is test-pinned: a fully self-consistent deep forgery (re-sealed
+  at every level, every reference rewritten) still FAILS, caught by the
+  recursion alone. Closure kind `chain-snapshot` at format minor 1.1 as a
+  per-file feature level (single-decision bundles keep declaring 1.0, so the
+  committed challenge artifacts stay byte-stable); one declared chain claim
+  grammar (verbatim citation); frozen core and agent chain byte-identical.
+  Committed deterministic demo `data/chain/brief.tsb` (a DevEx root-cause
+  receipt + the challenge's honest business bundle → one cross-vertical
+  brief), byte-identity pinned; the 3-OS determinism matrix now covers the
+  chain tests. `docs/CHAIN.md` + README pointer; ROADMAP3's stale
+  pre-Omnibus compliance date corrected to the deferred timeline.
+
+- **Trust policies — governance as code, re-executed by the verifier**
+  (spec 0144, ADR 0034, #182). A policy is a small, versioned JSON rule
+  file a verifying party owns: `tessera verify <file> --policy rules.json`
+  re-executes every rule against the sealed bundle and the verifier's own
+  re-execution report — PASS or VIOLATED per rule with a named detail,
+  offline, over chains recursively where the rule says so. The two
+  load-bearing properties: the policy lives with the VERIFIER, never
+  inside the bundle (self-attested compliance is a rubber stamp; zero
+  format change — every existing bundle is immediately policy-checkable),
+  and parsing is FAIL-CLOSED (an unknown rule, malformed value, or
+  unreadable file refuses evaluation, named — a typo'd guardrail must
+  never silently pass). Rule vocabulary v1: signature/signer allowlists,
+  re-derivation, per-claim verdicts, cited-evidence source allowlists
+  (`fnmatchcase` — verdicts must not depend on the verifier's OS), action
+  approval-gate rules, chain depth/signed-upstream/signer rules (read
+  from the recursion; `UpstreamCheck` gains signature status/signer,
+  additive). Exit code 5 for the policy layer, precedence 4 > 2 > 5 > 3 >
+  0 — a policy can never upgrade a broken or lying bundle. "COMPLIANT
+  means: this policy, these rules, this file — not correctness, not legal
+  compliance, not certification" is printed verbatim and test-pinned.
+  Three committed example policies (`policies/`); `docs/POLICY.md`;
+  SAP_ALIGNMENT addendum (enterprise-controls mapping, mapping language
+  only); the 3-OS matrix runs the policy tests.
+
+- **Verifiable approvals — the sign-off as a cryptographic artifact**
+  (spec 0145, ADR 0035, #184). `tessera bundle approve` signs a DETACHED
+  approval artifact bound to the bundle's sealed root — proof of WHO (a
+  key) approved WHAT (these exact bytes): change one digit and re-seal,
+  and every prior approval reads INVALID with the mismatch named (the
+  forged challenge bundle cannot borrow the honest one's approval —
+  pinned). `tessera verify --approval a.json` (repeatable) checks each
+  artifact against the RECOMPUTED root and reports it, never altering the
+  bundle's own verdict (approved lies are still lies; exit precedence
+  pinned); the fail-closed `approvals` policy rule group makes four-eyes
+  one line (require N, distinct keys — a duplicate counts once — and
+  allowed-approver lists; verify without approvals against such a policy
+  violates, never passes vacuously). Detached by design (ADR 0035):
+  embedding would re-seal the very root being approved. Creating needs
+  the `sign` extra; checking is pure stdlib (leak-guarded). Honesty
+  stated where it matters: a key is not a person; the optional `at` is a
+  signed claim, not proof of time. `docs/APPROVAL.md`; POLICY.md rule
+  table + SAP_ALIGNMENT clause extended; the 3-OS matrix runs the tests.
+
+- **The Verification Gap — a conformance benchmark you can re-run**
+  (spec 0146, ADR 0036, #188). `tessera conformance` grades five
+  verification methods against 21 attacks under two named threat models,
+  offline, in about a second — turning the project's central comparative
+  claim from an assertion into a measurement. The methods are *our own*
+  implementations of *published* methods (hash-chained/Merkle receipts;
+  IETF ASQAV-style signed receipts; Microsoft AGT-style policy-bound
+  receipts; Proof-of-Execution-style syntactic validator invariants,
+  arXiv:2607.05397) plus Tessera's re-execution; no third-party product is
+  run, named in a score, or characterised beyond its own published text.
+  **Result:** under the outside-tamperer model — printed first — signatures
+  detect everything and re-execution adds no detection power (19/20 vs
+  20/21). Under the model that applies to an agent's own receipt, where the
+  issuer seals it, no non-re-executing method detects **any** of the 15
+  semantic/action/chain forgeries and re-execution detects all 15.
+  **The parts that don't flatter us are pinned:** `stale_contract_replay`
+  is a cell Tessera loses by design (a PASS is not a recency claim), the
+  runtime-attestation method wins it; `policy_swap` is NOT-APPLICABLE, never
+  a win; all four baselines miss `extra_top_section` (measured, against the
+  spec's own prediction); and no method may flag an honest bundle. Reading
+  the primary sources also sharpened the public claim: Proof of Execution is
+  **complementary, not overlapping**, and ROADMAP3 + a new MARKET.md §9 now
+  credit the adjacent work by name. Committed scorecard pinned byte-identical
+  to a fresh run; deterministic; stdlib-only; in the 3-OS matrix.
+
+- **The bounded soundness theorem — no false PASS exists** (spec 0147,
+  ADR 0037, #190). `tessera proof` machine-checks, over **461,544 bundle
+  states enumerated in full** (7,077,144 with `--deep`), that
+  `verify(S) = PASS ⟹ S is honest` for the re-executing verifier: **PROVED**.
+  Because the universe is closed under arbitrary rewriting, an attacker with
+  unlimited re-seal and re-sign power can only produce states already in it,
+  so attacker coverage follows as a corollary and no completeness argument
+  about an attack list is needed; enumeration over a finite domain is a
+  decision procedure. The model hands that attacker maximum power — it
+  contains no hashes and no signatures at all.
+  **"PROVED" is falsifiable by construction:** two deliberately unsound
+  verifiers run in the same sweep and must be refuted with printed
+  counterexamples — one trusting the recorded verdict (exactly what an
+  integrity-only receipt does; 139,044 states accepted, forgeries among
+  them) and one recomputing claims but never re-deriving the answer (its
+  counterexample is a *true* claim attached to the wrong question) — and
+  `proved` is defined to require both refutations plus zero fidelity
+  disagreements. **Fidelity is differential:** 26,840 model claims are
+  materialised into real records and re-evaluated by the *shipping*
+  `is_supported` with the real grammars — 0 disagreements. Two anti-vacuity
+  guards: universe size computed by formula *and* by walking (run aborts on
+  mismatch), and a verifier that accepts nothing fails the tests — the
+  second caught a universe whose theorem held only vacuously during the
+  build, and the model was fixed rather than the number kept. Bounds, and
+  what the proof does *not* cover, print with every result. Pure stdlib, no
+  SMT solver. Certificate committed and pinned; in the 3-OS matrix.
+
+- **A second, independent verifier — the guarantee is the format** (spec
+  0148, ADR 0038, #192). `verifier/js/tessera-verify.mjs`: zero
+  dependencies, Node standard library only, written **from the format
+  contract** rather than translated from the Python. It implements canonical
+  bytes, the leaf manifest and root, the section-set commitment, the
+  reserved-`anchor` refusal, Ed25519 signatures, detached approvals,
+  referential integrity, **claim-level semantic re-execution** and
+  **recursive chain verification**. Honest scope is in the verdict, not a
+  footnote: answer and action re-derivation need the engine, so it **cannot
+  report a full PASS** — its ceiling is `PASS-PARTIAL` and it prints what it
+  did not do every run. The differential contract is asymmetric and enforced
+  per case (it never rejects what the reference accepts; a silent pass
+  alongside a reference failure is allowed only when every named cause is
+  one of the two non-portable checks). Measured over the committed kit:
+  **25 cases · 12 caught by both · 7 declined by design · 0 disagreements**.
+  Writing it was also a specification review and found a real defect:
+  `tessera-canonical-json-1` was under-specified for numbers (Python's float
+  `1.0` re-emits as `1` in a language without an int/float distinction,
+  changing two leaf digests and producing a **false TAMPERED** on an honest
+  bundle). Fixed in the spec, not in one program — the ADR 0031 addendum now
+  requires canonical bytes to preserve a number's lexical form, and an
+  implementation that cannot recover it must refuse rather than guess. No
+  emitted byte changed. CI installs Node and runs the harness.
+
+- **Verifiable redaction — send the receipt without sending the data**
+  (spec 0149, ADR 0039, #194). A trust bundle packages the entire evidence
+  closure, which is why it usually could not leave the building.
+  `tessera bundle redact` withholds content while keeping the artifact
+  verifiable **without moving the root**: a withheld record contributes the
+  commitment it was sealed with, so the manifest and root recompute
+  bit-for-bit identically and a signature or detached approval made over the
+  original **still verifies over the redacted copy**. Measured on the
+  committed challenge bundle: 404,339 → 164,431 bytes, same root, all three
+  claims still re-deriving (the default keeps cited records plus one relation
+  hop). The safety property is pinned adversarially: **redaction can hide,
+  but it can never upgrade a verdict** — a forger who withholds exactly the
+  evidence that exposes the lie gets DEGRADED with every affected claim
+  visibly un-re-derived, never PASS; a claim citing withheld evidence is
+  reported *not re-derivable here* rather than as a mismatch; and any
+  redaction forces the degraded path. The fail-closed policy engine gains
+  `redaction: {allow, max_withheld}`, and the rule is ported to the
+  independent JavaScript verifier in the same unit (a format change only one
+  implementation understands would undo ADR 0038). Recorded correction: the
+  spec's proposed format-minor bump would have moved the root, because
+  `format` is itself a manifest leaf — redaction is self-describing through
+  its markers instead. Committed demo `data/redacted/honest-public.tsb`;
+  `docs/REDACTION.md`; the seven Act-3 ADRs added to the docs nav.
+
+- **Verify in the browser — ten seconds, no install, nothing uploaded**
+  (spec 0150, ADR 0040, #196). After nine guarantees the binding constraint
+  stopped being depth and became reach: all of them lived behind
+  `git clone` plus a toolchain. `docs/verify.html` is **one self-contained
+  file** — drop a `.tsb` on it and the verdict appears in a second, with
+  per-claim re-execution, chain upstreams, withheld items from redaction,
+  approvals, and the honest "not performed here" line. It is **not a second
+  implementation**: `verifier/js/verify-core.mjs` now holds every rule with
+  ZERO imports so the identical file runs behind the CLI and inside the
+  page, the page is generated from it and pinned byte-identical to a fresh
+  build, and the cross-implementation kit regenerates unchanged. The core
+  carries its own SHA-256 (Node's crypto is absent in a browser and
+  WebCrypto's digest is async, which would make the verifier async and no
+  longer the same code) — differentially tested against `node:crypto` so it
+  cannot drift; Ed25519 is injected by the host, and the browser build says
+  so rather than implying it checked. **"Your file never leaves your
+  device" is a pinned test**: no `fetch`, `XMLHttpRequest`, `WebSocket`,
+  `sendBeacon`, `EventSource`, dynamic `import()`, form, iframe, img or
+  `action=`, and no URL outside the inert example data — the two example
+  bundles are embedded, so even "try an example" is not a request.
+  Published under `docs/`, served by the existing Pages workflow.
+
+- **The issuance ledger — answering "is this all of them?"** (spec 0151,
+  ADR 0041, #198). Ten layers prove a receipt is *honest*; every one of them
+  concerns a receipt you were **given**, so an operator who never shows you a
+  decision defeats them all by omission. This adds the missing axis: an
+  append-only Merkle log of issued receipt roots built as Certificate
+  Transparency builds one (RFC 6962), with **inclusion** proofs (this receipt
+  is in the log at the head *you already hold*) and **consistency** proofs
+  (this head extends an earlier one with nothing rewritten). An unrecorded
+  decision has no inclusion proof; a rewritten history cannot produce a
+  consistency proof. The proof is **detached** like an approval — no byte
+  moves, no root changes, every signature and approval stays valid — and the
+  **head comes from the verifier, never from the file**, because a proof that
+  vouches for its own head is self-attestation; `--inclusion` without
+  `--head` reports *not checked* rather than passing. Domain-separated
+  hashing; fail-closed `ledger: {require_inclusion: true}` policy rule;
+  inclusion verification in the shared JS core with a differential test.
+  Correctness is exhaustive rather than sampled — every entry of every log
+  size and every consistency pair up to 40, plus rewrite, deletion,
+  truncation, padding and unrecorded-receipt attacks (the battery caught 64
+  failing pairs in the first cut of the consistency verifier). The bound
+  travels with the guarantee: an operator keeping **two** logs can show two
+  heads and no offline check detects that split view — closing it needs the
+  reserved public transparency log. `docs/LEDGER.md`.
 
 ## [milestone-21] — 2026-07-11
 
