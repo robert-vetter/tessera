@@ -3522,3 +3522,32 @@ the ledger functions — regenerated, along with the conformance kit.
 
 **State of the tree:** `main` green; new package `tessera/ledger/`; tags
 through `milestone-21` (M22 in progress); dependabot #186 open.
+
+---
+
+## 2026-10-22 — Maintenance: dependencies current, demo re-verified
+
+**Done this session**
+- Merged the three open Dependabot PRs, each brought up to date with `main`
+  and green on the full CI matrix (gate + 3-OS bundle determinism) first:
+  #200 (GitHub Actions: `checkout`, `deploy-pages`), #187 (python group:
+  `hdbcli`, `ruff`, `mypy`, `pytest`, `pre-commit`, `mkdocs-material`),
+  #163 (`pyarrow` 24 → 25). CI never installs the opt-in `salt` extra, so
+  pyarrow 25 was additionally smoke-tested locally (parquet round-trip on the
+  PR branch).
+- Re-ran the gate on the merged `main`: green, 868 tests, mypy strict clean.
+- Re-verified the live demo against `main`: a build replicating
+  `deploy/hf-space/Dockerfile` from the `main` tarball serves pages
+  byte-identical to the running Space (index, two grounded answers, an action
+  draft), so no rebuild was needed.
+- Repository homepage now points at the live demo.
+
+**Current eval numbers:** six lines byte-identical to the last record
+(business 11/53 all 1.000; devex gold 1.000/0.950/0.889; github_actions gold
+1.000/0.833/0.800; synthetic all 1.000).
+
+**Next:** unchanged — 0138 (Rekor, maintainer-present only) and 0141 (the
+write-up) close M22.
+
+**State of the tree:** `main` green (`da5d47a`); no open PRs; tags through
+`milestone-21` (M22 in progress).
