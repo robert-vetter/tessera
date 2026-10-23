@@ -40,7 +40,7 @@ salt = ["pyarrow>=25.0.0"]
 # clone-and-run graph and CI never touch it (guarded by
 # tests/test_agent.py and tests/test_mcp_server.py). The grounded-tool
 # substance (tessera.agent.grounded) carries no MCP dependency (ADR 0022).
-agent = ["mcp>=1.0"]
+agent = ["mcp>=2.3.0"]
 # Ed25519 signing for trust bundles — OPT-IN: `uv sync --extra sign`. Imported
 # lazily only by tessera.bundle.signing (emit side + keygen, spec 0135).
 # VERIFICATION never needs it: tessera.bundle.ed25519 is a pure-Python RFC 8032
